@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+
+<html lang="id"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      "colors": {
+        "outline": "#73787c",
+        "on-error-container": "#93000a",
+        "on-secondary-container": "#7b493e",
+        "primary-fixed-dim": "#b2c9dc",
+        "surface": "#fbf8ff",
+        "inverse-surface": "#2d2f3f",
+        "secondary-fixed": "#ffdad2",
+        "on-primary-fixed-variant": "#344959",
+        "secondary-container": "#ffbcad",
+        "primary-container": "#0a2230",
+        "on-tertiary-fixed-variant": "#683b25",
+        "on-tertiary-fixed": "#331102",
+        "primary": "#000911",
+        "on-tertiary": "#ffffff",
+        "tertiary": "#140300",
+        "surface-container-high": "#e6e7fb",
+        "on-tertiary-container": "#b37a60",
+        "secondary": "#845145",
+        "surface-bright": "#fbf8ff",
+        "error-container": "#ffdad6",
+        "surface-container-lowest": "#ffffff",
+        "on-background": "#181b29",
+        "surface-dim": "#d8d8ec",
+        "on-surface": "#181b29",
+        "background": "#fbf8ff",
+        "secondary-fixed-dim": "#f9b7a8",
+        "surface-container": "#ececff",
+        "inverse-on-surface": "#f0efff",
+        "on-secondary": "#ffffff",
+        "on-error": "#ffffff",
+        "tertiary-fixed": "#ffdbcc",
+        "surface-tint": "#4b6171",
+        "tertiary-container": "#391504",
+        "on-primary-fixed": "#051e2c",
+        "inverse-primary": "#b2c9dc",
+        "tertiary-fixed-dim": "#f9b89a",
+        "primary-fixed": "#cee6f9",
+        "on-primary-container": "#748a9b",
+        "on-surface-variant": "#43474b",
+        "surface-variant": "#e0e1f5",
+        "surface-container-low": "#f4f2ff",
+        "surface-container-highest": "#e0e1f5",
+        "on-secondary-fixed": "#341008",
+        "error": "#ba1a1a",
+        "on-secondary-fixed-variant": "#693a2f",
+        "on-primary": "#ffffff",
+        "outline-variant": "#c3c7cc"
+      },
+      "borderRadius": {
+        "DEFAULT": "0.25rem",
+        "lg": "0.5rem",
+        "xl": "0.75rem",
+        "full": "9999px"
+      },
+      "spacing": {
+        "space-xs": "0.25rem",
+        "space-sm": "0.5rem",
+        "space-lg": "1.5rem",
+        "space-section": "6rem",
+        "margin": "2rem",
+        "gutter-mobile": "1rem",
+        "gutter": "1.5rem",
+        "margin-mobile": "1rem",
+        "space-xl": "2rem",
+        "space-2xl": "3rem",
+        "space-md": "1rem"
+      },
+      "fontFamily": {
+        "body-medium": [
+          "Plus Jakarta Sans"
+        ],
+        "headline-section": [
+          "Plus Jakarta Sans"
+        ],
+        "display-hero": [
+          "Plus Jakarta Sans"
+        ],
+        "caption": [
+          "Plus Jakarta Sans"
+        ],
+        "title-item": [
+          "Plus Jakarta Sans"
+        ],
+        "body-secondary-medium": [
+          "Plus Jakarta Sans"
+        ],
+        "headline-page-mobile": [
+          "Plus Jakarta Sans"
+        ],
+        "caption-medium": [
+          "Plus Jakarta Sans"
+        ],
+        "body-regular": [
+          "Plus Jakarta Sans"
+        ],
+        "body-secondary": [
+          "Plus Jakarta Sans"
+        ],
+        "headline-page": [
+          "Plus Jakarta Sans"
+        ],
+        "body-large": [
+          "Plus Jakarta Sans"
+        ],
+        "title-card": [
+          "Plus Jakarta Sans"
+        ],
+        "display-hero-mobile": [
+          "Plus Jakarta Sans"
+        ],
+        "button-text": [
+          "Plus Jakarta Sans"
+        ]
+      },
+      "fontSize": {
+        "body-medium": [
+          "16px",
+          {
+            "lineHeight": "24px",
+            "fontWeight": "500"
+          }
+        ],
+        "headline-section": [
+          "24px",
+          {
+            "lineHeight": "32px",
+            "letterSpacing": "-0.01em",
+            "fontWeight": "700"
+          }
+        ],
+        "display-hero": [
+          "56px",
+          {
+            "lineHeight": "68px",
+            "letterSpacing": "-0.02em",
+            "fontWeight": "800"
+          }
+        ],
+        "caption": [
+          "13px",
+          {
+            "lineHeight": "18px",
+            "fontWeight": "400"
+          }
+        ],
+        "title-item": [
+          "18px",
+          {
+            "lineHeight": "26px",
+            "fontWeight": "600"
+          }
+        ],
+        "body-secondary-medium": [
+          "14px",
+          {
+            "lineHeight": "20px",
+            "fontWeight": "500"
+          }
+        ],
+        "headline-page-mobile": [
+          "26px",
+          {
+            "lineHeight": "34px",
+            "letterSpacing": "-0.01em",
+            "fontWeight": "700"
+          }
+        ],
+        "caption-medium": [
+          "13px",
+          {
+            "lineHeight": "18px",
+            "fontWeight": "500"
+          }
+        ],
+        "body-regular": [
+          "16px",
+          {
+            "lineHeight": "24px",
+            "fontWeight": "400"
+          }
+        ],
+        "body-secondary": [
+          "14px",
+          {
+            "lineHeight": "20px",
+            "fontWeight": "400"
+          }
+        ],
+        "headline-page": [
+          "32px",
+          {
+            "lineHeight": "40px",
+            "letterSpacing": "-0.015em",
+            "fontWeight": "700"
+          }
+        ],
+        "body-large": [
+          "18px",
+          {
+            "lineHeight": "28px",
+            "fontWeight": "400"
+          }
+        ],
+        "title-card": [
+          "20px",
+          {
+            "lineHeight": "28px",
+            "fontWeight": "600"
+          }
+        ],
+        "display-hero-mobile": [
+          "36px",
+          {
+            "lineHeight": "44px",
+            "letterSpacing": "-0.02em",
+            "fontWeight": "800"
+          }
+        ],
+        "button-text": [
+          "15px",
+          {
+            "lineHeight": "20px",
+            "fontWeight": "600"
+          }
+        ]
+      }
+    }
+  }
+};</script></head><body class="bg-surface font-body-regular text-on-surface antialiased selection:bg-secondary-container selection:text-on-secondary-container min-h-screen flex flex-col justify-between"><header class="fixed top-0 inset-x-0 z-50 bg-primary-container border-b border-outline-variant/30 shadow-[0_10px_24px_-4px_rgba(10,34,48,0.08)]"><div class="h-[72px] max-w-[1200px] mx-auto px-gutter flex items-center justify-between"><div class="flex items-center gap-space-lg"><a class="flex items-center gap-space-sm focus:outline-none" href="#"><img alt="Brand logo. - Primary color: #0a2230
+- Font: plusJakartaSans
+- Mode: light
+- Roundness: rounded-md
+" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1UErNRiuFNdpH0Trg0NyRef1Pl59MBz47zGdiRNMg0c5-Mnzs3lP5PgUrr_FC5u1n9meX5ctfhoDFpOWI2HOdhH8plsTFIH_gXQARrJUbTpr5L7QCepxvfOXFn4d_I2TXj9HWc2hLiTj3L4c23Zw0kCkSgeUf9lduWfuMay08caYYcexvRPAdmUrZjzfsxSI0bqhPBEu7Kg0iwYReb6HQZBoQovPoFwx-gzWr35JvFq-47bmYpcDeHA9TvT"/><span class="font-headline-section text-headline-section text-on-primary font-bold tracking-tight">Lytera</span></a><div class="h-6 w-[1px] bg-on-primary-container/40 hidden sm:block"></div><nav class="flex items-center gap-space-xs" data-active-classes="bg-secondary text-on-secondary font-semibold rounded-lg shadow-sm"><a aria-current="page" class="px-space-md py-space-sm transition-colors bg-secondary text-on-secondary font-semibold rounded-lg shadow-sm" data-path="verifikasi" href="#">Verifikasi</a><a class="px-space-md py-space-sm rounded-lg font-body-secondary-medium text-body-secondary-medium text-on-primary-container hover:text-on-primary hover:bg-on-primary-container/10 transition-colors" data-path="riwayat" href="#">Riwayat</a><a class="px-space-md py-space-sm rounded-lg font-body-secondary-medium text-body-secondary-medium text-on-primary-container hover:text-on-primary hover:bg-on-primary-container/10 transition-colors" data-path="pemantauan" href="#">Pemantauan</a><a class="px-space-md py-space-sm rounded-lg font-body-secondary-medium text-body-secondary-medium text-on-primary-container hover:text-on-primary hover:bg-on-primary-container/10 transition-colors" data-path="verifikasi-faskes" href="#">Verifikasi Faskes</a><a class="px-space-md py-space-sm rounded-lg font-body-secondary-medium text-body-secondary-medium text-on-primary-container hover:text-on-primary hover:bg-on-primary-container/10 transition-colors" data-path="aturan-daerah" href="#">Aturan Daerah</a></nav></div><div class="flex items-center gap-space-md"><div class="hidden xl:flex items-center gap-space-xs px-space-md py-1.5 rounded-full bg-on-primary-container/15 border border-on-primary-container/30 text-on-primary font-caption-medium text-caption-medium"><span class="w-2 h-2 rounded-full bg-secondary-fixed"></span><span>Kelurahan Sukamaju • Verifikator</span></div><button class="inline-flex items-center gap-space-xs px-space-md py-2 rounded-xl border border-secondary-container text-secondary-fixed hover:bg-secondary/20 transition-all font-button-text text-button-text" type="button"><span class="material-symbols-outlined text-[18px]">auto_awesome</span><span class="hidden md:inline">Tanya Lytera AI</span></button><div class="flex items-center gap-space-sm pl-space-xs"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></div></header><main class="w-full pt-[72px] flex-1 bg-surface"><div class="max-w-[1200px] mx-auto px-gutter py-space-xl"><div class="flex flex-col w-full">
+<!-- Desktop 2-Column Responsive Workspace Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg w-full items-start">
+<!-- LEFT COLUMN: Antrean Verifikasi (Deskripsi & Daftar Pemohon) -->
+<section aria-label="Daftar Antrean Administrasi" class="lg:col-span-5 xl:col-span-4 flex flex-col gap-space-md w-full">
+<!-- Card Header Kontrol Antrean -->
+<div class="bg-surface-container-lowest rounded-[24px] p-space-lg shadow-sm border border-outline-variant/30 flex flex-col gap-space-md">
+<div class="flex flex-col gap-1">
+<div class="inline-flex items-center gap-1.5 self-start px-2.5 py-0.5 rounded-full bg-secondary-container/30 text-on-secondary-container font-caption-medium text-caption-medium">
+<span class="material-symbols-outlined text-[15px]">verified_user</span>
+<span>Verifikasi Dokumen Daerah</span>
+</div>
+<h1 class="font-headline-page text-headline-page text-primary tracking-tight font-bold">
+            Verifikasi Administrasi
+          </h1>
+<p class="font-body-secondary text-body-secondary text-on-surface-variant">
+            Validasi berkas kependudukan, kepesertaan jaminan, dan SKTM warga pra-rujukan antar faskes.
+          </p>
+</div>
+<!-- Tab Pemilih Status Antrean -->
+<div class="flex items-center bg-surface-container-low p-1 rounded-xl">
+<button class="flex-1 py-2 px-3 rounded-lg bg-secondary text-on-secondary font-button-text text-button-text flex items-center justify-center gap-1.5 shadow-sm transition-all" type="button">
+<span>Menunggu</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-lowest/20 text-on-secondary text-caption font-semibold">5</span>
+</button>
+<button class="flex-1 py-2 px-3 rounded-lg text-on-surface-variant hover:text-on-surface font-body-secondary-medium text-body-secondary-medium flex items-center justify-center gap-1.5 transition-colors" type="button">
+<span>Selesai</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-caption">24</span>
+</button>
+</div>
+<!-- Form Pencarian & Saring Cepat -->
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+<input class="w-full h-11 pl-10 pr-4 bg-surface-container-lowest border border-outline-variant/50 rounded-xl font-body-secondary text-body-secondary text-on-surface placeholder:text-outline focus:outline-none focus:border-primary-container focus:ring-2 focus:ring-primary-container/10 transition-all" placeholder="Cari nama warga atau NIK..." type="text" value="31740523"/>
+</div>
+<!-- Filter Chips Ringkas -->
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="font-caption-medium text-caption text-outline">Prioritas:</span>
+<span class="px-2 py-0.5 rounded-md bg-secondary-fixed/50 text-on-secondary-fixed-variant font-caption text-caption">Semua</span>
+<span class="px-2 py-0.5 rounded-md bg-surface-container-high/60 text-on-surface-variant font-caption text-caption hover:bg-surface-container-high cursor-pointer">Urgen</span>
+<span class="px-2 py-0.5 rounded-md bg-surface-container-high/60 text-on-surface-variant font-caption text-caption hover:bg-surface-container-high cursor-pointer">Elektif</span>
+</div>
+</div>
+<!-- Queue Items Container -->
+<div class="flex flex-col gap-2.5 w-full" role="list">
+<!-- Queue Item 1: AKTIF / TERPILIH (Siti Rahmawati) -->
+<article class="relative bg-surface-container-low rounded-[20px] p-space-md border-2 border-secondary shadow-sm transition-all cursor-pointer flex flex-col gap-2.5" role="listitem" tabindex="0">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[#E0A100] text-[20px]" title="Sedang ditinjau">schedule</span>
+<span class="font-title-item text-title-item font-bold text-primary tracking-tight">Siti Rahmawati</span>
+</div>
+<!-- Priority Badge: Urgen -->
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-caption font-semibold bg-[#FFF4D6] text-[#7A5200]">
+              Urgent
+            </span>
+</div>
+<div class="font-caption text-caption text-on-surface-variant flex flex-col gap-1">
+<div class="flex items-center gap-1.5 font-mono text-on-surface">
+<span class="material-symbols-outlined text-[16px] text-outline">badge</span>
+<span>NIK: 3174052309890004</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-outline">move_up</span>
+<span class="truncate">Puskesmas Sukamaju → RSUD Kartika Husada</span>
+</div>
+</div>
+<div class="pt-2 border-t border-outline-variant/30 flex items-center justify-between font-caption text-caption text-on-surface-variant">
+<span class="inline-flex items-center gap-1 text-[#7A5200] font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-[#E0A100]"></span>
+              Sedang Ditinjau
+            </span>
+<span class="text-outline">15 mnt lalu</span>
+</div>
+</article>
+<!-- Queue Item 2: Ahmad Dahlan -->
+<article class="bg-surface-container-lowest rounded-[20px] p-space-md border border-outline-variant/30 hover:border-outline-variant transition-all cursor-pointer flex flex-col gap-2.5 opacity-90 hover:opacity-100" role="listitem">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-2">
+<span class="w-4 h-4 rounded-full border border-outline-variant bg-surface-container-lowest flex items-center justify-center"></span>
+<span class="font-title-item text-title-item font-semibold text-on-surface">Ahmad Dahlan</span>
+</div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-caption font-medium bg-surface-container-high text-on-surface-variant">
+              Elektif
+            </span>
+</div>
+<div class="font-caption text-caption text-on-surface-variant flex flex-col gap-1">
+<div class="flex items-center gap-1.5 font-mono">
+<span class="material-symbols-outlined text-[16px] text-outline">badge</span>
+<span>NIK: 3174081105740002</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-outline">move_up</span>
+<span class="truncate">Puskesmas Sukamaju → RSUD Tarakan</span>
+</div>
+</div>
+<div class="pt-2 border-t border-outline-variant/30 flex items-center justify-between font-caption text-caption text-outline">
+<span>Menunggu Antrean</span>
+<span>45 mnt lalu</span>
+</div>
+</article>
+<!-- Queue Item 3: Budi Prasetyo -->
+<article class="bg-surface-container-lowest rounded-[20px] p-space-md border border-outline-variant/30 hover:border-outline-variant transition-all cursor-pointer flex flex-col gap-2.5 opacity-90 hover:opacity-100" role="listitem">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-2">
+<span class="w-4 h-4 rounded-full border border-outline-variant bg-surface-container-lowest flex items-center justify-center"></span>
+<span class="font-title-item text-title-item font-semibold text-on-surface">Budi Prasetyo</span>
+</div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-caption font-semibold bg-[#FDECEA] text-[#B3261E]">
+              Gawat Darurat
+            </span>
+</div>
+<div class="font-caption text-caption text-on-surface-variant flex flex-col gap-1">
+<div class="flex items-center gap-1.5 font-mono">
+<span class="material-symbols-outlined text-[16px] text-outline">badge</span>
+<span>NIK: 3174021908850001</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-outline">move_up</span>
+<span class="truncate">Klinik Cempaka → RSUD Tarakan</span>
+</div>
+</div>
+<div class="pt-2 border-t border-outline-variant/30 flex items-center justify-between font-caption text-caption text-outline">
+<span>Menunggu Antrean</span>
+<span>1 jam lalu</span>
+</div>
+</article>
+<!-- Queue Item 4: Dewi Lestari -->
+<article class="bg-surface-container-lowest rounded-[20px] p-space-md border border-outline-variant/30 hover:border-outline-variant transition-all cursor-pointer flex flex-col gap-2.5 opacity-90 hover:opacity-100" role="listitem">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-2">
+<span class="w-4 h-4 rounded-full border border-outline-variant bg-surface-container-lowest flex items-center justify-center"></span>
+<span class="font-title-item text-title-item font-semibold text-on-surface">Dewi Lestari</span>
+</div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-caption font-semibold bg-[#FFF4D6] text-[#7A5200]">
+              Urgent
+            </span>
+</div>
+<div class="font-caption text-caption text-on-surface-variant flex flex-col gap-1">
+<div class="flex items-center gap-1.5 font-mono">
+<span class="material-symbols-outlined text-[16px] text-outline">badge</span>
+<span>NIK: 3174094204920008</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-outline">move_up</span>
+<span class="truncate">Puskesmas Sukamaju → RSUD Kartika Husada</span>
+</div>
+</div>
+<div class="pt-2 border-t border-outline-variant/30 flex items-center justify-between font-caption text-caption text-outline">
+<span>Menunggu Antrean</span>
+<span>2 jam lalu</span>
+</div>
+</article>
+<!-- Queue Item 5: Herman Santoso -->
+<article class="bg-surface-container-lowest rounded-[20px] p-space-md border border-outline-variant/30 hover:border-outline-variant transition-all cursor-pointer flex flex-col gap-2.5 opacity-90 hover:opacity-100" role="listitem">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-2">
+<span class="w-4 h-4 rounded-full border border-outline-variant bg-surface-container-lowest flex items-center justify-center"></span>
+<span class="font-title-item text-title-item font-semibold text-on-surface">Herman Santoso</span>
+</div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-caption font-medium bg-surface-container-high text-on-surface-variant">
+              Elektif
+            </span>
+</div>
+<div class="font-caption text-caption text-on-surface-variant flex flex-col gap-1">
+<div class="flex items-center gap-1.5 font-mono">
+<span class="material-symbols-outlined text-[16px] text-outline">badge</span>
+<span>NIK: 3174011210680003</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-outline">move_up</span>
+<span class="truncate">Puskesmas Menteng → RSUD Tarakan</span>
+</div>
+</div>
+<div class="pt-2 border-t border-outline-variant/30 flex items-center justify-between font-caption text-caption text-outline">
+<span>Menunggu Antrean</span>
+<span>3 jam lalu</span>
+</div>
+</article>
+</div>
+</section>
+<!-- RIGHT COLUMN: Detail Berkas & Lembar Kerja Verifikasi -->
+<main aria-label="Lembar Kerja Verifikasi Pemohon" class="lg:col-span-7 xl:col-span-8 flex flex-col gap-space-lg w-full">
+<!-- CARD 1: Alur Verifikasi Bertingkat (Status Multi-tier) -->
+<div class="bg-surface-container-lowest rounded-[24px] p-space-lg shadow-sm border border-outline-variant/30 flex flex-col gap-space-md">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-outline-variant/20 pb-space-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[22px]">alt_route</span>
+<h2 class="font-title-card text-title-card font-bold text-primary">Alur Verifikasi Bertingkat</h2>
+</div>
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-high text-on-surface font-caption-medium text-caption-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+            Regulasi Daerah Prov. DKI Jakarta
+          </span>
+</div>
+<!-- Stepper Tiers Horizontal -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3 relative pt-2">
+<!-- Step 1: Kelurahan (Active Tier) -->
+<div class="bg-[#FFF9EE] border-2 border-[#E0A100]/60 rounded-2xl p-space-md flex flex-col gap-2 relative">
+<div class="flex items-center justify-between">
+<span class="w-6 h-6 rounded-full bg-[#E0A100] text-surface-container-lowest flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+</span>
+<span class="px-2 py-0.5 rounded-full bg-[#E0A100]/20 text-[#7A5200] font-caption-medium text-caption">Aktif Saat Ini</span>
+</div>
+<div>
+<div class="font-body-secondary-medium text-body-secondary-medium font-bold text-primary">Kelurahan Sukamaju</div>
+<div class="font-caption text-caption text-on-surface-variant">Pemeriksaan KTP, KK &amp; SKTM</div>
+</div>
+</div>
+<!-- Step 2: Kecamatan (Pending / Optional) -->
+<div class="bg-surface-container-low/60 border border-outline-variant/30 rounded-2xl p-space-md flex flex-col gap-2 relative">
+<div class="flex items-center justify-between">
+<span class="w-6 h-6 rounded-full bg-surface-container-lowest border border-outline-variant/60 text-outline flex items-center justify-center font-caption font-bold">2</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-outline font-caption-medium text-caption">Opsional</span>
+</div>
+<div>
+<div class="font-body-secondary-medium text-body-secondary-medium font-semibold text-on-surface">Kecamatan Cempaka Putih</div>
+<div class="font-caption text-caption text-outline">Eskalasi Kasus Khusus</div>
+</div>
+</div>
+<!-- Step 3: Suku Dinas Sosial (Pending / Optional) -->
+<div class="bg-surface-container-low/60 border border-outline-variant/30 rounded-2xl p-space-md flex flex-col gap-2 relative">
+<div class="flex items-center justify-between">
+<span class="w-6 h-6 rounded-full bg-surface-container-lowest border border-outline-variant/60 text-outline flex items-center justify-center font-caption font-bold">3</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-outline font-caption-medium text-caption">Opsional</span>
+</div>
+<div>
+<div class="font-body-secondary-medium text-body-secondary-medium font-semibold text-on-surface">Suku Dinas Sosial</div>
+<div class="font-caption text-caption text-outline">Rekomendasi Bantuan Daerah</div>
+</div>
+</div>
+</div>
+<!-- Note Penjelas Kebijakan Daerah -->
+<div class="rounded-xl bg-surface-container-low p-3.5 flex items-start gap-2.5 text-on-surface-variant">
+<span class="material-symbols-outlined text-secondary text-[20px] shrink-0 mt-0.5">info</span>
+<p class="font-caption text-caption leading-relaxed">
+<strong>Ketetapan Alur Administrasi:</strong> Berdasarkan Pergub No. 42/2023, pasien dengan kepesertaan jaminan kesehatan aktif (PBI/Non-PBI) atau berkas domisili tunggal dapat <em>langsung disetujui di tingkat Kelurahan</em> tanpa perlu eskalasi bertingkat ke Kecamatan/Dinsos.
+          </p>
+</div>
+</div>
+<!-- CARD 2: Surat Permohonan Rujukan (Document Simulation) -->
+<article class="bg-surface-container-lowest rounded-[24px] p-space-lg shadow-sm border border-outline-variant/30 flex flex-col gap-space-lg">
+<!-- Kop Surat Faskes Pengirim -->
+<div class="flex flex-col sm:flex-row items-center justify-between gap-space-md border-b-2 border-primary/10 pb-space-md">
+<div class="flex items-center gap-space-md text-center sm:text-left">
+<div class="w-14 h-14 rounded-2xl bg-primary-container text-secondary-fixed flex items-center justify-center shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-[32px]">local_hospital</span>
+</div>
+<div>
+<span class="font-caption-medium text-caption text-secondary font-bold tracking-wider uppercase">Pemerintah Provinsi DKI Jakarta</span>
+<h3 class="font-title-card text-title-card font-extrabold text-primary">PUSKESMAS KECAMATAN SUKAMAJU</h3>
+<p class="font-caption text-caption text-on-surface-variant">Jl. Percetakan Negara No. 89, Jakarta Pusat • Telp (021) 4245591</p>
+</div>
+</div>
+<div class="text-right sm:border-l sm:pl-space-md border-outline-variant/30 font-caption text-caption flex flex-col items-center sm:items-end">
+<span class="text-outline">Nomor Surat:</span>
+<span class="font-mono font-bold text-primary text-body-secondary">440/128/PKM-SKM/III/2025</span>
+<span class="text-outline mt-1">Tanggal Terbit: 12 Maret 2025</span>
+</div>
+</div>
+<!-- Strict Privacy Callout Notice: DATA MEDIS DISEMBUNYIKAN -->
+<div class="rounded-2xl bg-surface-container-low p-4 flex items-start gap-3 border-l-4 border-secondary">
+<span class="material-symbols-outlined text-secondary text-[22px] shrink-0">shield_lock</span>
+<div class="flex flex-col gap-0.5">
+<span class="font-body-secondary-medium text-body-secondary-medium font-bold text-primary">Perlindungan Kerahasiaan Medis (UU PDP No. 27/2022)</span>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+              Data rekam medis, anamnesis, diagnosis dokter, dan resep obat <strong>dirahasiakan sepenuhnya</strong> dan tidak ditampilkan pada portal verifikator kewilayahan. Layar ini hanya memuat kelengkapan identitas, kependudukan, serta status penjaminan sosial.
+            </p>
+</div>
+</div>
+<!-- Grid Data Administratif Warga (Non-Medical Only) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-x-space-lg gap-y-space-md p-space-md rounded-2xl bg-surface-container-low/40">
+<div class="flex flex-col gap-1">
+<span class="font-caption-medium text-caption text-outline uppercase tracking-wider">Nama Lengkap Pemohon</span>
+<div class="font-title-item text-title-item font-bold text-primary">Siti Rahmawati</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-caption-medium text-caption text-outline uppercase tracking-wider">Nomor Induk Kependudukan (NIK)</span>
+<div class="flex items-center gap-2">
+<span class="font-mono text-body-medium font-bold text-primary">3174052309890004</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#EDF7F2] text-[#1B6B4D] font-caption-medium text-caption">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+                Valid Dukcapil
+              </span>
+</div>
+</div>
+<div class="flex flex-col gap-1 md:col-span-2">
+<span class="font-caption-medium text-caption text-outline uppercase tracking-wider">Alamat Sesuai KTP Elektronik</span>
+<div class="font-body-medium text-body-medium text-on-surface">
+              Jl. Cempaka Putih Timur No. 14, RT 03 / RW 05, Kelurahan Sukamaju, Kecamatan Cempaka Putih, Kota Jakarta Pusat
+            </div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-caption-medium text-caption text-outline uppercase tracking-wider">Kepesertaan Jaminan (BPJS / KIS)</span>
+<div class="flex items-center gap-2">
+<span class="font-mono text-body-secondary font-semibold text-primary">0001827364501</span>
+<span class="px-2 py-0.5 rounded-md bg-secondary-container/40 text-on-secondary-container font-caption text-caption font-semibold">
+                Aktif PBI APBD
+              </span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-caption-medium text-caption text-outline uppercase tracking-wider">Tingkat Urgensi Pengantar</span>
+<div>
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF4D6] text-[#7A5200] font-body-secondary-medium text-body-secondary-medium font-bold">
+<span class="w-2 h-2 rounded-full bg-[#E0A100]"></span>
+                Prioritas 2 (Urgent Administrasi)
+              </span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-caption-medium text-caption text-outline uppercase tracking-wider">Fasilitas Kesehatan Pengirim (FKTP)</span>
+<div class="font-body-medium text-body-medium text-primary font-medium">Puskesmas Sukamaju • Poli Umum</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-caption-medium text-caption text-outline uppercase tracking-wider">Fasilitas Rujukan Dituju (FKRTL)</span>
+<div class="font-body-medium text-body-medium text-primary font-medium">RSUD Kartika Husada • Poli Spesialis Jantung</div>
+</div>
+</div>
+<!-- Bagian Pengesahan Elektronik & QR Code Verifikasi Resmi -->
+<div class="flex flex-col sm:flex-row items-center justify-between gap-space-md pt-space-sm border-t border-outline-variant/30">
+<div class="flex items-center gap-3">
+<!-- Render Real SVG QR Verification Matrix -->
+<div class="w-16 h-16 bg-surface-container-lowest border border-outline-variant/60 rounded-xl p-1.5 shadow-sm shrink-0 flex items-center justify-center">
+<svg class="w-full h-full text-primary" fill="currentColor" viewbox="0 0 100 100">
+<rect height="30" rx="4" width="30" x="0" y="0"></rect>
+<rect fill="white" height="18" rx="2" width="18" x="6" y="6"></rect>
+<rect height="10" width="10" x="10" y="10"></rect>
+<rect height="30" rx="4" width="30" x="70" y="0"></rect>
+<rect fill="white" height="18" rx="2" width="18" x="76" y="6"></rect>
+<rect height="10" width="10" x="80" y="10"></rect>
+<rect height="30" rx="4" width="30" x="0" y="70"></rect>
+<rect fill="white" height="18" rx="2" width="18" x="6" y="76"></rect>
+<rect height="10" width="10" x="10" y="80"></rect>
+<rect height="20" width="10" x="40" y="10"></rect>
+<rect height="15" width="8" x="55" y="15"></rect>
+<rect height="15" width="20" x="40" y="45"></rect>
+<rect height="10" width="15" x="70" y="45"></rect>
+<rect height="25" width="15" x="75" y="65"></rect>
+<rect height="15" width="15" x="45" y="75"></rect>
+<circle cx="50" cy="50" fill="#8F5A4E" r="5"></circle>
+</svg>
+</div>
+<div class="font-caption text-caption text-on-surface-variant">
+<div class="font-semibold text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-[#1B6B4D]">verified</span>
+                Tanda Tangan Elektronik Tersertifikasi
+              </div>
+<div>Kepala Puskesmas Sukamaju • Dr. Hendrawan, M.Kes</div>
+<div class="text-outline font-mono">BSrE-ID: 9812-440-SKM-2025</div>
+</div>
+</div>
+<div class="text-right">
+<span class="font-caption text-caption text-outline">Kesesuaian Regulasi:</span>
+<div class="font-caption-medium text-caption-medium text-secondary font-semibold">SK Kadinkes DKI 2024 / Rujukan Terpadu</div>
+</div>
+</div>
+</article>
+<!-- CARD 3: Checklist Pemeriksaan Kelayakan Berkas -->
+<section aria-label="Instrumen Pemeriksaan Berkas" class="bg-surface-container-lowest rounded-[24px] p-space-lg shadow-sm border border-outline-variant/30 flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[22px]">fact_check</span>
+<h3 class="font-title-card text-title-card font-bold text-primary">Pemeriksaan Kelayakan Berkas</h3>
+</div>
+<span class="font-caption text-caption text-outline">3 Parameter Verifikasi</span>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Item 1: NIK & Dukcapil -->
+<div class="p-3.5 rounded-xl bg-surface border border-outline-variant/30 flex items-center justify-between gap-3">
+<div class="flex items-center gap-3">
+<span class="w-7 h-7 rounded-full bg-[#1B6B4D] text-surface-container-lowest flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[18px]">check</span>
+</span>
+<div class="flex flex-col">
+<span class="font-body-secondary-medium text-body-secondary-medium font-semibold text-primary">Kesesuaian NIK dengan Database Kependudukan Dukcapil</span>
+<span class="font-caption text-caption text-on-surface-variant">Tercatat aktif di Dinas Kependudukan dan Catatan Sipil DKI</span>
+</div>
+</div>
+<span class="px-3 py-1 rounded-full bg-[#EDF7F2] text-[#1B6B4D] font-caption-medium text-caption-medium font-semibold shrink-0">
+              Valid
+            </span>
+</div>
+<!-- Item 2: Domisili Wilayah Kerja -->
+<div class="p-3.5 rounded-xl bg-surface border border-outline-variant/30 flex items-center justify-between gap-3">
+<div class="flex items-center gap-3">
+<span class="w-7 h-7 rounded-full bg-[#1B6B4D] text-surface-container-lowest flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[18px]">check</span>
+</span>
+<div class="flex flex-col">
+<span class="font-body-secondary-medium text-body-secondary-medium font-semibold text-primary">Domisili KTP Sesuai Wilayah Kerja Kelurahan Sukamaju</span>
+<span class="font-caption text-caption text-on-surface-variant">Konfirmasi terdaftar di lingkungan RT 03 / RW 05</span>
+</div>
+</div>
+<span class="px-3 py-1 rounded-full bg-[#EDF7F2] text-[#1B6B4D] font-caption-medium text-caption-medium font-semibold shrink-0">
+              Sesuai (RT 03 / RW 05)
+            </span>
+</div>
+<!-- Item 3: SKTM / Dinsos (Sedang Berlangsung) -->
+<div class="p-3.5 rounded-xl bg-[#FFF9EE] border border-[#E0A100]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+<div class="flex items-center gap-3">
+<span class="w-7 h-7 rounded-full bg-[#E0A100] text-surface-container-lowest flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+</span>
+<div class="flex flex-col">
+<span class="font-body-secondary-medium text-body-secondary-medium font-semibold text-primary">Surat Keterangan Tidak Mampu (SKTM) / Rekomendasi Dinsos</span>
+<span class="font-caption text-caption text-on-surface-variant">Dokumen digital tersimpan: SKTM-2025-0891-SM.pdf (1.4 MB)</span>
+</div>
+</div>
+<div class="flex items-center gap-2 self-end sm:self-auto shrink-0">
+<span class="px-3 py-1 rounded-full bg-[#FFF4D6] text-[#7A5200] font-caption-medium text-caption-medium font-semibold">
+                Sedang Diperiksa
+              </span>
+<button class="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-surface-container-lowest border border-outline-variant text-on-surface hover:bg-surface-container-low font-caption-medium text-caption-medium transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+<span>Lihat Berkas PDF</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- CARD 4: Action Panel (Keputusan Verifikator) -->
+<div class="bg-surface-container-lowest rounded-[24px] p-space-lg shadow-sm border border-outline-variant/30 flex flex-col gap-space-md">
+<div class="flex flex-col sm:flex-row items-center justify-between gap-space-md">
+<a class="inline-flex items-center gap-1.5 font-body-secondary-medium text-body-secondary-medium text-secondary hover:underline" href="#">
+<span class="material-symbols-outlined text-[18px]">history</span>
+<span>Buka Riwayat Verifikasi Warga Ini</span>
+</a>
+<div class="flex items-center gap-3 w-full sm:w-auto">
+<!-- Secondary Action Button -->
+<button class="flex-1 sm:flex-initial h-12 px-space-lg rounded-[14px] bg-surface-container-lowest border border-outline-variant/60 text-on-surface-variant hover:bg-surface-container-low font-button-text text-button-text transition-colors" type="button">
+              Kembalikan dengan Catatan
+            </button>
+<!-- Primary Action Button (Terracotta System Token) -->
+<button class="flex-1 sm:flex-initial h-12 px-space-lg rounded-[14px] bg-secondary text-on-secondary hover:bg-secondary/90 font-button-text text-button-text shadow-sm transition-all flex items-center justify-center gap-2" type="button">
+<span class="material-symbols-outlined text-[20px]">check</span>
+<span>Setujui &amp; Teruskan ke RSUD</span>
+</button>
+</div>
+</div>
+<div class="text-center font-caption text-caption text-outline">
+          Tindakan ini akan mengirimkan notifikasi persetujuan administrasi ke RSUD Kartika Husada dan Puskesmas Sukamaju.
+        </div>
+</div>
+</main>
+</div>
+</div></div></main><footer class="w-full bg-surface-container-lowest border-t border-outline-variant/30 py-space-lg mt-auto"><div class="max-w-[1200px] mx-auto px-gutter flex flex-col md:flex-row items-center justify-between gap-space-md"><div class="flex items-center gap-space-sm text-on-surface-variant font-caption text-caption"><span class="font-semibold text-on-surface">Lytera Indonesia</span><span>•</span><span>Infrastruktur Koordinasi Rujukan &amp; Verifikasi Rekam Pasien</span></div><div class="text-on-surface-variant font-caption text-caption">© 2025 Lytera Health Network. Hak Cipta Dilindungi.</div></div></footer></body></html>

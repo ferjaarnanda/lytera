@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lytera - Masuk ke Akun</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            night: '#0A2230',
+            deepnavy: '#0F3040',
+            terracotta: {
+              DEFAULT: '#8F5A4E',
+              hover: '#A56F63',
+            },
+            softpeach: '#D99B7F',
+            slatebody: '#464858',
+            mutedgray: '#6B7280',
+            canvasbg: '#F8FAFC',
+            cream: '#FAF5F2',
+            mist: '#EBF2F6',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-cream min-h-screen font-sans text-slatebody antialiased flex flex-col justify-between p-6 md:p-10">
+
+  <!-- Top bar / back button -->
+  <div class="max-w-[1200px] w-full mx-auto flex items-center justify-between">
+    <a href="#" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/80 border border-slate-200 text-deepnavy font-semibold text-sm hover:bg-white transition-all shadow-sm">
+      <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+      <span>Kembali ke Beranda</span>
+    </a>
+    <div class="text-xs text-mutedgray">Prototipe Kompetisi • Data Simulasi</div>
+  </div>
+
+  <!-- Centered Login Card -->
+  <div class="w-full flex items-center justify-center my-8">
+    <div class="w-full max-w-[520px] bg-white rounded-[24px] border border-slate-200 shadow-sm p-8 md:p-10">
+      
+      <!-- Brand Logo single instance -->
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl bg-night flex items-center justify-center border border-softpeach/40">
+          <svg class="w-6 h-6 text-softpeach" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9" stroke-width="2"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v8m-4-4h8"/>
+          </svg>
+        </div>
+        <span class="text-2xl font-extrabold tracking-tight text-deepnavy">Lytera</span>
+      </div>
+
+      <h1 class="text-[32px] leading-tight font-bold text-deepnavy mb-2 tracking-tight">Masuk ke Lytera</h1>
+      <p class="text-sm text-mutedgray mb-6">Pilih peran Anda untuk mengakses portal rujukan terpadu.</p>
+
+      <!-- Segmented Control Role Switcher -->
+      <div class="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-100/90 rounded-[16px] mb-6 border border-slate-200 text-xs font-semibold">
+        <button id="tab-pasien" onclick="switchRole('pasien')" class="py-2.5 px-3 rounded-[12px] bg-white text-deepnavy shadow-sm transition-all text-center">Pasien</button>
+        <button id="tab-faskes" onclick="switchRole('faskes')" class="py-2.5 px-3 rounded-[12px] text-mutedgray hover:text-deepnavy transition-all text-center">Fasilitas Kesehatan</button>
+        <button id="tab-verif" onclick="switchRole('verif')" class="py-2.5 px-3 rounded-[12px] text-mutedgray hover:text-deepnavy transition-all text-center">Verifikasi Adm</button>
+        <button id="tab-dinkes" onclick="switchRole('dinkes')" class="py-2.5 px-3 rounded-[12px] text-mutedgray hover:text-deepnavy transition-all text-center">Dinas Kesehatan</button>
+      </div>
+
+      <!-- FORM CONTENT: Pasien -->
+      <form id="form-pasien" class="space-y-5" onsubmit="event.preventDefault();">
+        <div>
+          <label class="block text-sm font-semibold text-deepnavy mb-2">Nomor Induk Kependudukan (NIK)</label>
+          <input type="text" placeholder="16 digit NIK terdaftar" value="3174052309890004" class="w-full h-12 px-4 rounded-[14px] bg-slate-50 border border-slate-200 text-deepnavy text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta transition-all font-mono" />
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm font-semibold text-deepnavy">Kode OTP Verifikasi</label>
+            <button type="button" class="text-xs font-semibold text-terracotta hover:underline">Kirim OTP ke WhatsApp</button>
+          </div>
+          <div class="relative">
+            <input type="text" maxlength="6" placeholder="Masukkan 6 digit kode OTP" value="849201" class="w-full h-12 px-4 rounded-[14px] bg-slate-50 border border-slate-200 text-deepnavy text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta transition-all font-mono tracking-widest" />
+            <span class="absolute right-3.5 top-3 text-xs text-mutedgray">Terkirim</span>
+          </div>
+        </div>
+
+        <button type="button" class="w-full h-12 rounded-[14px] bg-terracotta hover:bg-terracotta-hover text-white font-semibold text-sm transition-all shadow-sm flex items-center justify-center gap-2 mt-2">
+          <span>Masuk sebagai Pasien</span>
+        </button>
+
+        <div class="text-center pt-2">
+          <p class="text-sm text-mutedgray">Belum punya akun? <a href="#" class="font-semibold text-terracotta hover:underline">Daftar sebagai Pasien</a></p>
+        </div>
+      </form>
+
+      <!-- FORM CONTENT: Fasilitas Kesehatan -->
+      <form id="form-faskes" class="space-y-5 hidden" onsubmit="event.preventDefault();">
+        <div>
+          <label class="block text-sm font-semibold text-deepnavy mb-2">Email Dinas atau ID Petugas</label>
+          <input type="text" placeholder="contoh: hendra@rsudkartika.id" value="dr.hendra@sukamaju.faskes.id" class="w-full h-12 px-4 rounded-[14px] bg-slate-50 border border-slate-200 text-deepnavy text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta transition-all" />
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm font-semibold text-deepnavy">Kata Sandi</label>
+            <a href="#" class="text-xs font-semibold text-terracotta hover:underline">Lupa sandi?</a>
+          </div>
+          <input type="password" placeholder="••••••••••••" value="password123" class="w-full h-12 px-4 rounded-[14px] bg-slate-50 border border-slate-200 text-deepnavy text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta transition-all" />
+        </div>
+
+        <button type="button" class="w-full h-12 rounded-[14px] bg-terracotta hover:bg-terracotta-hover text-white font-semibold text-sm transition-all shadow-sm flex items-center justify-center gap-2 mt-2">
+          <span>Masuk ke Portal Faskes</span>
+        </button>
+
+        <div class="text-center pt-2">
+          <p class="text-sm text-mutedgray">Fasilitas belum terdaftar? <a href="#" class="font-semibold text-terracotta hover:underline">Daftar Fasilitas</a></p>
+        </div>
+      </form>
+
+      <!-- FORM CONTENT: Verifikasi Administrasi -->
+      <form id="form-verif" class="space-y-5 hidden" onsubmit="event.preventDefault();">
+        <div>
+          <label class="block text-sm font-semibold text-deepnavy mb-2">Nomor Induk Pegawai (NIP)</label>
+          <input type="text" placeholder="18 digit NIP verifikator" value="198504122010011008" class="w-full h-12 px-4 rounded-[14px] bg-slate-50 border border-slate-200 text-deepnavy text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta transition-all font-mono" />
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm font-semibold text-deepnavy">Kata Sandi</label>
+            <a href="#" class="text-xs font-semibold text-terracotta hover:underline">Lupa sandi?</a>
+          </div>
+          <input type="password" placeholder="••••••••••••" value="password123" class="w-full h-12 px-4 rounded-[14px] bg-slate-50 border border-slate-200 text-deepnavy text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta transition-all" />
+        </div>
+
+        <button type="button" class="w-full h-12 rounded-[14px] bg-terracotta hover:bg-terracotta-hover text-white font-semibold text-sm transition-all shadow-sm flex items-center justify-center gap-2 mt-2">
+          <span>Masuk sebagai Verifikator</span>
+        </button>
+
+        <div class="text-center pt-2">
+          <p class="text-sm text-mutedgray">Petugas baru? <a href="#" class="font-semibold text-terracotta hover:underline">Daftar Verifikator Wilayah</a></p>
+        </div>
+      </form>
+
+      <!-- FORM CONTENT: Dinas Kesehatan -->
+      <form id="form-dinkes" class="space-y-5 hidden" onsubmit="event.preventDefault();">
+        <div>
+          <label class="block text-sm font-semibold text-deepnavy mb-2">ID Petugas Dinkes</label>
+          <input type="text" placeholder="DK-PROV-3100" value="DK-DKI-8821" class="w-full h-12 px-4 rounded-[14px] bg-slate-50 border border-slate-200 text-deepnavy text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta transition-all font-mono" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-deepnavy mb-2">Kata Sandi</label>
+          <input type="password" placeholder="••••••••••••" value="password123" class="w-full h-12 px-4 rounded-[14px] bg-slate-50 border border-slate-200 text-deepnavy text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta transition-all" />
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm font-semibold text-deepnavy">Kode Keamanan OTP</label>
+            <button type="button" class="text-xs font-semibold text-terracotta hover:underline">Kirim ke Email</button>
+          </div>
+          <input type="text" maxlength="6" placeholder="6 digit autentikator" value="992104" class="w-full h-12 px-4 rounded-[14px] bg-slate-50 border border-slate-200 text-deepnavy text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta transition-all font-mono" />
+        </div>
+
+        <div class="p-3.5 bg-mist rounded-[16px] border border-slate-200 text-xs text-deepnavy leading-relaxed flex items-start gap-2.5">
+          <svg class="w-4 h-4 text-deepnavy shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span>Akun Dinas Kesehatan diterbitkan secara resmi oleh Administrator Sistem Nasional. Hubungi Helpdesk Dinkes untuk permohonan baru.</span>
+        </div>
+
+        <button type="button" class="w-full h-12 rounded-[14px] bg-deepnavy hover:bg-night text-white font-semibold text-sm transition-all shadow-sm flex items-center justify-center gap-2 mt-2">
+          <span>Masuk ke Portal Dinkes</span>
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Footer note -->
+  <div class="text-center text-xs text-mutedgray pb-2">
+    Lytera Sistem Rujukan Pasien & Rekam Medis Terpadu • Indonesia
+  </div>
+
+  <script>
+    function switchRole(role) {
+      const roles = ['pasien', 'faskes', 'verif', 'dinkes'];
+      roles.forEach(r => {
+        const tab = document.getElementById('tab-' + r);
+        const form = document.getElementById('form-' + r);
+        if (r === role) {
+          tab.className = 'py-2.5 px-3 rounded-[12px] bg-white text-deepnavy font-semibold shadow-sm transition-all text-center';
+          form.classList.remove('hidden');
+        } else {
+          tab.className = 'py-2.5 px-3 rounded-[12px] text-mutedgray hover:text-deepnavy font-semibold transition-all text-center';
+          form.classList.add('hidden');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

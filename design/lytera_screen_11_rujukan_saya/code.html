@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+
+<html lang="id"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-secondary": "#ffffff", "surface-container-lowest": "#ffffff", "surface-variant": "#e0e1f5", "primary-container": "#0a2230", "surface-container": "#ececff", "surface-container-low": "#f4f2ff", "on-error": "#ffffff", "on-primary-fixed": "#051e2c", "surface-bright": "#fbf8ff", "inverse-on-surface": "#f0efff", "secondary": "#845145", "surface": "#fbf8ff", "on-secondary-fixed-variant": "#693a2f", "surface-container-high": "#e6e7fb", "tertiary-container": "#391504", "on-tertiary-fixed-variant": "#683b25", "error": "#ba1a1a", "tertiary": "#140300", "tertiary-fixed": "#ffdbcc", "tertiary-fixed-dim": "#f9b89a", "on-secondary-fixed": "#341008", "surface-container-highest": "#e0e1f5", "on-primary-fixed-variant": "#344959", "background": "#fbf8ff", "primary-fixed-dim": "#b2c9dc", "on-tertiary": "#ffffff", "surface-tint": "#4b6171", "secondary-container": "#ffbcad", "primary": "#000911", "secondary-fixed": "#ffdad2", "primary-fixed": "#cee6f9", "on-surface": "#181b29", "inverse-primary": "#b2c9dc", "on-tertiary-container": "#b37a60", "on-background": "#181b29", "on-primary-container": "#748a9b", "on-primary": "#ffffff", "on-tertiary-fixed": "#331102", "on-error-container": "#93000a", "outline": "#73787c", "inverse-surface": "#2d2f3f", "on-surface-variant": "#43474b", "error-container": "#ffdad6", "outline-variant": "#c3c7cc", "on-secondary-container": "#7b493e", "secondary-fixed-dim": "#f9b7a8", "surface-dim": "#d8d8ec" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "gutter-mobile": "1rem", "margin": "2rem", "space-xs": "0.25rem", "margin-mobile": "1rem", "gutter": "1.5rem", "space-md": "1rem", "space-2xl": "3rem", "space-sm": "0.5rem", "space-lg": "1.5rem", "space-xl": "2rem", "space-section": "6rem" }, "fontFamily": { "body-large": ["Plus Jakarta Sans"], "body-secondary-medium": ["Plus Jakarta Sans"], "display-hero": ["Plus Jakarta Sans"], "button-text": ["Plus Jakarta Sans"], "headline-page": ["Plus Jakarta Sans"], "display-hero-mobile": ["Plus Jakarta Sans"], "caption": ["Plus Jakarta Sans"], "headline-page-mobile": ["Plus Jakarta Sans"], "title-item": ["Plus Jakarta Sans"], "caption-medium": ["Plus Jakarta Sans"], "title-card": ["Plus Jakarta Sans"], "body-medium": ["Plus Jakarta Sans"], "body-secondary": ["Plus Jakarta Sans"], "headline-section": ["Plus Jakarta Sans"], "body-regular": ["Plus Jakarta Sans"] }, "fontSize": { "body-large": ["18px", { "lineHeight": "28px", "fontWeight": "400" }], "body-secondary-medium": ["14px", { "lineHeight": "20px", "fontWeight": "500" }], "display-hero": ["56px", { "lineHeight": "68px", "letterSpacing": "-0.02em", "fontWeight": "800" }], "button-text": ["15px", { "lineHeight": "20px", "fontWeight": "600" }], "headline-page": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.015em", "fontWeight": "700" }], "display-hero-mobile": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "800" }], "caption": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "headline-page-mobile": ["26px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "title-item": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "caption-medium": ["13px", { "lineHeight": "18px", "fontWeight": "500" }], "title-card": ["20px", { "lineHeight": "28px", "fontWeight": "600" }], "body-medium": ["16px", { "lineHeight": "24px", "fontWeight": "500" }], "body-secondary": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "headline-section": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "body-regular": ["16px", { "lineHeight": "24px", "fontWeight": "400" }] } } } };</script></head><body class="bg-background font-body-regular text-on-surface antialiased min-h-screen flex flex-col justify-between"><header class="fixed top-0 left-0 w-full z-50 bg-primary-container shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-[72px] max-w-[1200px] mx-auto px-margin flex items-center justify-between"><div class="flex items-center gap-space-lg"><div class="flex items-center gap-space-sm"><img alt="Brand logo. - Primary color: #0a2230
+- Font: plusJakartaSans
+- Mode: light
+- Roundness: rounded-md
+" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1UErNRiuFNdpH0Trg0NyRef1Pl59MBz47zGdiRNMg0c5-Mnzs3lP5PgUrr_FC5u1n9meX5ctfhoDFpOWI2HOdhH8plsTFIH_gXQARrJUbTpr5L7QCepxvfOXFn4d_I2TXj9HWc2hLiTj3L4c23Zw0kCkSgeUf9lduWfuMay08caYYcexvRPAdmUrZjzfsxSI0bqhPBEu7Kg0iwYReb6HQZBoQovPoFwx-gzWr35JvFq-47bmYpcDeHA9TvT"/><span class="font-title-card text-title-card text-on-primary">Lytera</span></div><nav class="hidden md:flex items-center gap-space-xs" data-active-classes="bg-secondary text-on-secondary font-button-text text-button-text rounded-full px-space-md py-space-xs transition-colors"><a class="px-space-md py-space-xs rounded-full font-body-secondary-medium text-body-secondary-medium text-on-primary-container hover:text-on-primary transition-colors" data-path="beranda" href="#">Beranda</a><a aria-current="page" class="bg-secondary text-on-secondary font-button-text text-button-text rounded-full px-space-md py-space-xs transition-colors" data-path="rujukan-saya" href="#">Rujukan Saya</a><a class="px-space-md py-space-xs rounded-full font-body-secondary-medium text-body-secondary-medium text-on-primary-container hover:text-on-primary transition-colors" data-path="riwayat-medis" href="#">Riwayat Medis</a><a class="px-space-md py-space-xs rounded-full font-body-secondary-medium text-body-secondary-medium text-on-primary-container hover:text-on-primary transition-colors" data-path="izin-akses" href="#">Izin Akses</a></nav></div><div class="flex items-center gap-space-md"><button class="hidden sm:inline-flex items-center gap-space-xs px-space-md py-space-xs rounded-full bg-surface-container-lowest/10 text-on-primary font-button-text text-caption hover:bg-surface-container-lowest/20 hover:text-on-primary transition-colors" type="button"><span class="material-symbols-outlined text-[18px] text-secondary-fixed">auto_awesome</span><span>Tanya Lytera AI</span></button><div class="flex items-center gap-space-sm"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="hidden lg:flex flex-col text-left"><span class="font-caption-medium text-caption-medium text-on-primary leading-tight">Siti Rahmawati</span><span class="font-caption text-[11px] text-on-primary-container leading-tight">Pasien Mandiri</span></div></div></div></div></header><main class="w-full pt-[72px] bg-background flex-1"><div class="max-w-[1200px] mx-auto px-margin py-margin"><div class="flex flex-col w-full">
+<div class="w-full flex flex-col lg:flex-row items-start gap-space-lg">
+<!-- Left Column: Referrals Directory (420px fixed on desktop) -->
+<aside class="w-full lg:w-[420px] shrink-0 flex flex-col">
+<!-- Title & Live Meta -->
+<div class="flex items-center justify-between mb-space-md">
+<div>
+<h1 class="font-headline-section text-headline-section text-on-surface">Rujukan Saya</h1>
+<p class="font-caption text-caption text-on-surface-variant mt-0.5">Integrasi Faskes I &amp; Lanjutan Antar-Wilayah</p>
+</div>
+<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-caption-medium text-caption-medium">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+          Terhubung BPJS
+        </span>
+</div>
+<!-- Segmented Control Filter -->
+<div class="p-1 rounded-xl bg-surface-container-high flex items-center gap-1 mb-space-md" role="tablist">
+<button aria-selected="true" class="flex-1 py-2 rounded-lg bg-secondary text-on-secondary font-button-text text-caption-medium text-center transition-all shadow-sm flex items-center justify-center gap-1.5" id="tab-aktif" onclick="switchFilter('aktif')" role="tab" type="button">
+<span>Aktif</span>
+<span class="px-1.5 py-0.2 rounded-full bg-white/20 text-on-secondary text-[11px] font-bold">1</span>
+</button>
+<button aria-selected="false" class="flex-1 py-2 rounded-lg text-on-surface-variant hover:text-on-surface font-body-secondary-medium text-caption-medium text-center transition-all flex items-center justify-center gap-1.5" id="tab-selesai" onclick="switchFilter('selesai')" role="tab" type="button">
+<span>Selesai</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-variant text-on-surface-variant text-[11px] font-semibold">3</span>
+</button>
+</div>
+<!-- Referral Cards List -->
+<div class="flex flex-col gap-3" id="referral-list">
+<!-- Card 1: Active & Selected -->
+<div class="cursor-pointer rounded-2xl p-4 bg-surface-container-lowest transition-all relative overflow-hidden ring-2 ring-secondary shadow-sm hover:shadow-md" id="ref-card-1" onclick="selectReferral(1)">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-secondary"></div>
+<div class="flex items-start justify-between gap-2 mb-2">
+<div class="flex items-center gap-2 min-w-0">
+<div class="w-6 h-6 rounded-full bg-[#EDF7F2] flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[#1B6B4D] text-[16px]">check_circle</span>
+</div>
+<h3 class="font-body-medium text-body-medium font-bold text-on-surface truncate">RSUD Kartika Husada</h3>
+</div>
+<!-- Triage Badge Urgen -->
+<span class="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#FFF4D6] text-[#7A5200] font-caption-medium text-caption font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-[#E0A100] mr-1.5"></span>
+              Urgent
+            </span>
+</div>
+<p class="font-body-secondary-medium text-body-secondary-medium text-on-surface-variant pl-8 mb-3">
+            Poli Jantung &amp; Pembuluh Darah
+          </p>
+<div class="flex items-center justify-between pl-8 pt-2 border-t-0 bg-surface-container-low/60 rounded-xl px-3 py-2">
+<div class="flex items-center gap-1.5 text-on-surface-variant font-caption text-caption">
+<span class="material-symbols-outlined text-[16px]">event</span>
+<span class="tabular-nums">19 Apr 2025 • 10.30 WIB</span>
+</div>
+<span class="text-secondary font-button-text text-[13px] flex items-center gap-0.5">
+              Dipilih
+              <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</span>
+</div>
+</div>
+<!-- Card 2: Selesai -->
+<div class="cursor-pointer rounded-2xl p-4 bg-surface-container-lowest transition-all relative overflow-hidden hover:bg-surface-container-low/50 shadow-sm" id="ref-card-2" onclick="selectReferral(2)">
+<div class="flex items-start justify-between gap-2 mb-2">
+<div class="flex items-center gap-2 min-w-0">
+<div class="w-6 h-6 rounded-full bg-surface-variant flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-outline text-[16px]">check_circle</span>
+</div>
+<h3 class="font-body-medium text-body-medium font-semibold text-on-surface truncate">RSUD Tarakan</h3>
+</div>
+<span class="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#EDF7F2] text-[#1B6B4D] font-caption-medium text-caption">
+<span class="w-1.5 h-1.5 rounded-full bg-[#1B6B4D] mr-1.5"></span>
+              Selesai
+            </span>
+</div>
+<p class="font-body-secondary text-body-secondary text-on-surface-variant pl-8 mb-2">
+            Poli Penyakit Dalam
+          </p>
+<div class="flex items-center gap-1.5 pl-8 text-outline font-caption text-caption">
+<span class="material-symbols-outlined text-[16px]">calendar_today</span>
+<span class="tabular-nums">10 Jan 2025</span>
+</div>
+</div>
+<!-- Card 3: Selesai -->
+<div class="cursor-pointer rounded-2xl p-4 bg-surface-container-lowest transition-all relative overflow-hidden hover:bg-surface-container-low/50 shadow-sm" id="ref-card-3" onclick="selectReferral(3)">
+<div class="flex items-start justify-between gap-2 mb-2">
+<div class="flex items-center gap-2 min-w-0">
+<div class="w-6 h-6 rounded-full bg-surface-variant flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-outline text-[16px]">check_circle</span>
+</div>
+<h3 class="font-body-medium text-body-medium font-semibold text-on-surface truncate">Klinik Mata Nusantara</h3>
+</div>
+<span class="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#EDF7F2] text-[#1B6B4D] font-caption-medium text-caption">
+<span class="w-1.5 h-1.5 rounded-full bg-[#1B6B4D] mr-1.5"></span>
+              Selesai
+            </span>
+</div>
+<p class="font-body-secondary text-body-secondary text-on-surface-variant pl-8 mb-2">
+            Poli Mata
+          </p>
+<div class="flex items-center gap-1.5 pl-8 text-outline font-caption text-caption">
+<span class="material-symbols-outlined text-[16px]">calendar_today</span>
+<span class="tabular-nums">14 Nov 2024</span>
+</div>
+</div>
+<!-- Card 4: Selesai -->
+<div class="cursor-pointer rounded-2xl p-4 bg-surface-container-lowest transition-all relative overflow-hidden hover:bg-surface-container-low/50 shadow-sm" id="ref-card-4" onclick="selectReferral(4)">
+<div class="flex items-start justify-between gap-2 mb-2">
+<div class="flex items-center gap-2 min-w-0">
+<div class="w-6 h-6 rounded-full bg-surface-variant flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-outline text-[16px]">check_circle</span>
+</div>
+<h3 class="font-body-medium text-body-medium font-semibold text-on-surface truncate">Puskesmas Sukamaju</h3>
+</div>
+<span class="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#EDF7F2] text-[#1B6B4D] font-caption-medium text-caption">
+<span class="w-1.5 h-1.5 rounded-full bg-[#1B6B4D] mr-1.5"></span>
+              Selesai
+            </span>
+</div>
+<p class="font-body-secondary text-body-secondary text-on-surface-variant pl-8 mb-2">
+            Poli Gigi &amp; Mulut
+          </p>
+<div class="flex items-center gap-1.5 pl-8 text-outline font-caption text-caption">
+<span class="material-symbols-outlined text-[16px]">calendar_today</span>
+<span class="tabular-nums">05 Agu 2024</span>
+</div>
+</div>
+</div>
+<!-- Informational Callout -->
+<div class="mt-space-md p-4 rounded-2xl bg-surface-container-low flex items-start gap-3">
+<span class="material-symbols-outlined text-secondary text-[20px] shrink-0 mt-0.5">info</span>
+<div class="space-y-1">
+<p class="font-caption-medium text-caption-medium text-on-surface font-semibold">Masa Berlaku Rujukan</p>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+            Surat rujukan BPJS berlaku 30 hari kalender sejak diterbitkan faskes perujuk. Jika belum digunakan, konsultasikan ke faskes tingkat I Anda.
+          </p>
+</div>
+</div>
+</aside>
+<!-- Right Column: Primary Detail Panel (~740px flexible) -->
+<section class="w-full flex-1 rounded-[24px] bg-surface-container-lowest p-6 lg:p-8 shadow-sm">
+<!-- Top Action Bar -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6">
+<div class="space-y-1">
+<div class="flex flex-wrap items-center gap-3">
+<h2 class="font-headline-section text-headline-section text-on-surface">Detail Surat Rujukan <span class="tabular-nums">#LY-8821</span></h2>
+<!-- Urgent Triage Flag -->
+<span class="inline-flex items-center px-3 py-1 rounded-full bg-[#FFF4D6] text-[#7A5200] font-caption-medium text-caption font-bold shadow-xs">
+<span class="w-2 h-2 rounded-full bg-[#E0A100] mr-1.5"></span>
+              Urgent (Prioritas 2)
+            </span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant">Terdaftar pada National Referral Registry • Sertifikasi e-Klaim v3</p>
+</div>
+<button class="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[14px] bg-secondary text-on-secondary font-button-text text-button-text hover:bg-[#7b493e] active:scale-[0.98] transition-all shadow-sm shrink-0" onclick="downloadPDF()" type="button">
+<span class="material-symbols-outlined text-[20px]">picture_as_pdf</span>
+<span>Unduh Surat Rujukan (PDF)</span>
+</button>
+</div>
+<!-- Summary Grid (Mist #EBF2F6 Background) -->
+<div class="rounded-2xl bg-[#EBF2F6] p-5 mb-8">
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+<div class="space-y-1">
+<span class="font-caption text-caption text-on-surface-variant block uppercase tracking-wider text-[11px] font-bold">Faskes Asal</span>
+<p class="font-body-secondary-medium text-body-secondary-medium text-on-surface font-semibold">Puskesmas Sukamaju</p>
+<p class="font-caption text-caption text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-secondary">stethoscope</span>
+              dr. Hendra Kurniawan
+            </p>
+</div>
+<div class="space-y-1">
+<span class="font-caption text-caption text-on-surface-variant block uppercase tracking-wider text-[11px] font-bold">Faskes Tujuan</span>
+<p class="font-body-secondary-medium text-body-secondary-medium text-on-surface font-semibold">RSUD Kartika Husada</p>
+<p class="font-caption text-caption text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-secondary">clinical_notes</span>
+              dr. Anita Wijaya, Sp.JP
+            </p>
+</div>
+<div class="space-y-1">
+<span class="font-caption text-caption text-on-surface-variant block uppercase tracking-wider text-[11px] font-bold">Poli Layanan</span>
+<p class="font-body-secondary-medium text-body-secondary-medium text-on-surface font-semibold">Jantung &amp; Pembuluh Darah</p>
+<p class="font-caption text-caption text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-secondary">meeting_room</span>
+              Gedung B, Lantai 3 • R. 302
+            </p>
+</div>
+<div class="space-y-1">
+<span class="font-caption text-caption text-on-surface-variant block uppercase tracking-wider text-[11px] font-bold">Tanggal &amp; Masa Berlaku</span>
+<p class="font-body-secondary-medium text-body-secondary-medium text-on-surface font-semibold tabular-nums">16 April 2025</p>
+<p class="font-caption text-caption text-[#1B6B4D] font-medium tabular-nums flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">event_available</span>
+              Berlaku s/d 16 Mei 2025
+            </p>
+</div>
+</div>
+</div>
+<!-- Vertical Timeline Section with Timestamps -->
+<div class="mb-8">
+<div class="flex items-center justify-between mb-5">
+<h3 class="font-title-card text-title-card text-on-surface">Progres &amp; Jejak Status Resmi</h3>
+<span class="font-caption text-caption text-on-surface-variant tabular-nums">Sinkronisasi Realtime: 2 mnt lalu</span>
+</div>
+<div class="relative pl-6 sm:pl-8 space-y-7 before:content-[''] before:absolute before:left-[17px] sm:before:left-[21px] before:top-3 before:bottom-3 before:w-[2px] before:bg-surface-variant">
+<!-- Step 1: Done -->
+<div class="relative flex items-start gap-4">
+<div class="absolute -left-[27px] sm:-left-[31px] top-0 w-[22px] h-[22px] rounded-full bg-[#1B6B4D] text-white flex items-center justify-center ring-4 ring-surface-container-lowest">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</div>
+<div class="flex-1 bg-surface-container-low/40 rounded-xl p-3.5">
+<div class="flex flex-wrap items-center justify-between gap-1 mb-1">
+<h4 class="font-body-secondary-medium text-body-secondary-medium font-bold text-on-surface">Rujukan Diterbitkan di Puskesmas Sukamaju</h4>
+<span class="font-caption text-caption text-on-surface-variant tabular-nums">16 Apr 2025, 08:30 WIB</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant">Diagnosa Awal: Angina Pectoris Unstable (ICD-10 I20.0). Catatan rujukan: Evaluasi keluhan nyeri dada berulang pada aktivitas sedang.</p>
+</div>
+</div>
+<!-- Step 2: Done -->
+<div class="relative flex items-start gap-4">
+<div class="absolute -left-[27px] sm:-left-[31px] top-0 w-[22px] h-[22px] rounded-full bg-[#1B6B4D] text-white flex items-center justify-center ring-4 ring-surface-container-lowest">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</div>
+<div class="flex-1 bg-surface-container-low/40 rounded-xl p-3.5">
+<div class="flex flex-wrap items-center justify-between gap-1 mb-1">
+<div class="flex items-center gap-2">
+<h4 class="font-body-secondary-medium text-body-secondary-medium font-bold text-on-surface">Verifikasi Administrasi Sistem</h4>
+<span class="px-2 py-0.2 rounded-full bg-[#EDF7F2] text-[#1B6B4D] font-caption-medium text-[11px]">Valid</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant tabular-nums">16 Apr 2025, 08:32 WIB</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant">Status BPJS Kesehatan PBI: Aktif. Kelengkapan resume medis faskes 1 otomatis disahkan oleh sistem koordinasi rujukan.</p>
+</div>
+</div>
+<!-- Step 3: Done -->
+<div class="relative flex items-start gap-4">
+<div class="absolute -left-[27px] sm:-left-[31px] top-0 w-[22px] h-[22px] rounded-full bg-[#1B6B4D] text-white flex items-center justify-center ring-4 ring-surface-container-lowest">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</div>
+<div class="flex-1 bg-surface-container-low/40 rounded-xl p-3.5">
+<div class="flex flex-wrap items-center justify-between gap-1 mb-1">
+<h4 class="font-body-secondary-medium text-body-secondary-medium font-bold text-on-surface">Diterima Sistem RSUD Kartika Husada</h4>
+<span class="font-caption text-caption text-on-surface-variant tabular-nums">16 Apr 2025, 09:15 WIB</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant">Slot poliklinik dikonfirmasi oleh admisi RSUD. Nomor antrean poli otomatis dicadangkan atas nama pasien Siti Rahmawati.</p>
+</div>
+</div>
+<!-- Step 4: In Progress -->
+<div class="relative flex items-start gap-4">
+<div class="absolute -left-[27px] sm:-left-[31px] top-0 w-[22px] h-[22px] rounded-full bg-[#E0A100] text-white flex items-center justify-center ring-4 ring-[#FFF4D6] animate-pulse">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+</div>
+<div class="flex-1 rounded-xl p-3.5 bg-[#FFF4D6]/50">
+<div class="flex flex-wrap items-center justify-between gap-1 mb-1">
+<div class="flex items-center gap-2">
+<h4 class="font-body-secondary-medium text-body-secondary-medium font-bold text-[#7A5200]">Jadwal Pemeriksaan Poli Jantung</h4>
+<span class="px-2 py-0.2 rounded-full bg-[#7A5200] text-white font-caption-medium text-[11px]">Dalam Proses</span>
+</div>
+<span class="font-caption-medium text-caption text-[#7A5200] font-bold tabular-nums">19 Apr 2025, 10:30 WIB</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant">Antrean: <strong class="text-[#7A5200]">JTG-014</strong>. Harap hadir di meja cetak tiket mandiri loket admisi poli 30 menit sebelum sesi dimulai.</p>
+</div>
+</div>
+<!-- Step 5: Not Started -->
+<div class="relative flex items-start gap-4 opacity-70">
+<div class="absolute -left-[27px] sm:-left-[31px] top-0 w-[22px] h-[22px] rounded-full bg-surface-container-lowest text-outline border-2 border-outline-variant flex items-center justify-center ring-4 ring-surface-container-lowest">
+<span class="w-2 h-2 rounded-full bg-outline-variant"></span>
+</div>
+<div class="flex-1 bg-surface-container-low/20 rounded-xl p-3.5">
+<div class="flex flex-wrap items-center justify-between gap-1 mb-1">
+<h4 class="font-body-secondary-medium text-body-secondary-medium font-semibold text-on-surface-variant">Resume Medis &amp; Keputusan Rujuk Balik</h4>
+<span class="font-caption text-caption text-outline tabular-nums">Est. 19 Apr 2025</span>
+</div>
+<p class="font-caption text-caption text-outline">Dokumen instruksi pengobatan lanjutan atau surat Program Rujuk Balik (PRB) akan diterbitkan setelah konsultasi spesialis selesai.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Checklist Section: What to Bring (Cream #FAF5F2 Background) -->
+<div class="rounded-2xl bg-[#FAF5F2] p-5 sm:p-6">
+<div class="flex items-center justify-between gap-2 mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[22px]">fact_check</span>
+<h3 class="font-title-item text-title-item text-on-surface">Yang Perlu Dibawa ke Rumah Sakit</h3>
+</div>
+<span class="font-caption-medium text-caption text-secondary font-semibold">5 Persyaratan Wajib</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="checklist-container">
+<label class="flex items-center gap-3 p-3 rounded-xl bg-surface-container-lowest cursor-pointer hover:bg-surface-container-low transition-colors shadow-2xs">
+<input checked="" class="w-5 h-5 rounded accent-secondary text-on-secondary cursor-pointer" type="checkbox"/>
+<div class="flex flex-col">
+<span class="font-body-secondary-medium text-body-secondary-medium font-semibold text-on-surface">KTP Asli Siti Rahmawati</span>
+<span class="font-caption text-caption text-on-surface-variant">Identitas primer verifikasi biometrik BPJS</span>
+</div>
+</label>
+<label class="flex items-center gap-3 p-3 rounded-xl bg-surface-container-lowest cursor-pointer hover:bg-surface-container-low transition-colors shadow-2xs">
+<input checked="" class="w-5 h-5 rounded accent-secondary text-on-secondary cursor-pointer" type="checkbox"/>
+<div class="flex flex-col">
+<span class="font-body-secondary-medium text-body-secondary-medium font-semibold text-on-surface">Kartu BPJS Kesehatan Fisik / Mobile JKN</span>
+<span class="font-caption text-caption text-on-surface-variant">Kepesertaan aktif Kelas 3 Mandiri/PBI</span>
+</div>
+</label>
+<label class="flex items-center gap-3 p-3 rounded-xl bg-surface-container-lowest cursor-pointer hover:bg-surface-container-low transition-colors shadow-2xs">
+<input checked="" class="w-5 h-5 rounded accent-secondary text-on-secondary cursor-pointer" type="checkbox"/>
+<div class="flex flex-col">
+<span class="font-body-secondary-medium text-body-secondary-medium font-semibold text-on-surface">Surat Rujukan Digital</span>
+<span class="font-caption text-caption text-on-surface-variant">Sudah tersinkronisasi di sistem SIMRS RSUD</span>
+</div>
+</label>
+<label class="flex items-center gap-3 p-3 rounded-xl bg-surface-container-lowest cursor-pointer hover:bg-surface-container-low transition-colors shadow-2xs">
+<input class="w-5 h-5 rounded accent-secondary text-on-secondary cursor-pointer" type="checkbox"/>
+<div class="flex flex-col">
+<span class="font-body-secondary-medium text-body-secondary-medium font-semibold text-on-surface">Token Akses Medis 6 Digit</span>
+<span class="font-caption text-caption text-secondary font-medium">Buka menu izin akses untuk generate token</span>
+</div>
+</label>
+<label class="flex items-center gap-3 p-3 rounded-xl bg-surface-container-lowest cursor-pointer hover:bg-surface-container-low transition-colors shadow-2xs md:col-span-2">
+<input class="w-5 h-5 rounded accent-secondary text-on-secondary cursor-pointer" type="checkbox"/>
+<div class="flex flex-col">
+<span class="font-body-secondary-medium text-body-secondary-medium font-semibold text-on-surface">Obat-obatan Rutin yang Sedang Dikonsumsi</span>
+<span class="font-caption text-caption text-on-surface-variant">Bawa strip obat antihipertensi atau catatan dosis dari dokter faskes tingkat I</span>
+</div>
+</label>
+</div>
+<div class="mt-4 pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+<p class="font-caption text-caption text-on-surface-variant">
+            Lokasi Poli: <strong>Gedung Utama RSUD Kartika Husada</strong>, Jl. Raden Inten No. 45, Jakarta Timur.
+          </p>
+<a class="font-caption-medium text-caption text-secondary hover:underline inline-flex items-center gap-1" href="https://maps.google.com" rel="noopener noreferrer" target="_blank">
+<span class="material-symbols-outlined text-[16px]">navigation</span>
+            Buka Peta Faskes
+          </a>
+</div>
+</div>
+</section>
+</div>
+<!-- Client Interaction Script -->
+<script>
+    function switchFilter(tab) {
+      const tabAktif = document.getElementById('tab-aktif');
+      const tabSelesai = document.getElementById('tab-selesai');
+      
+      if (tab === 'aktif') {
+        tabAktif.className = 'flex-1 py-2 rounded-lg bg-secondary text-on-secondary font-button-text text-caption-medium text-center transition-all shadow-sm flex items-center justify-center gap-1.5';
+        tabAktif.setAttribute('aria-selected', 'true');
+        tabSelesai.className = 'flex-1 py-2 rounded-lg text-on-surface-variant hover:text-on-surface font-body-secondary-medium text-caption-medium text-center transition-all flex items-center justify-center gap-1.5';
+        tabSelesai.setAttribute('aria-selected', 'false');
+        
+        document.getElementById('ref-card-1').style.display = 'block';
+        document.getElementById('ref-card-2').style.display = 'block';
+        document.getElementById('ref-card-3').style.display = 'block';
+        document.getElementById('ref-card-4').style.display = 'block';
+      } else {
+        tabSelesai.className = 'flex-1 py-2 rounded-lg bg-secondary text-on-secondary font-button-text text-caption-medium text-center transition-all shadow-sm flex items-center justify-center gap-1.5';
+        tabSelesai.setAttribute('aria-selected', 'true');
+        tabAktif.className = 'flex-1 py-2 rounded-lg text-on-surface-variant hover:text-on-surface font-body-secondary-medium text-caption-medium text-center transition-all flex items-center justify-center gap-1.5';
+        tabAktif.setAttribute('aria-selected', 'false');
+
+        // Filter example: show cards 2, 3, 4 only
+        document.getElementById('ref-card-1').style.display = 'none';
+        document.getElementById('ref-card-2').style.display = 'block';
+        document.getElementById('ref-card-3').style.display = 'block';
+        document.getElementById('ref-card-4').style.display = 'block';
+      }
+    }
+
+    function selectReferral(id) {
+      for (let i = 1; i <= 4; i++) {
+        const card = document.getElementById('ref-card-' + i);
+        if (card) {
+          if (i === id) {
+            card.classList.add('ring-2', 'ring-secondary');
+          } else {
+            card.classList.remove('ring-2', 'ring-secondary');
+          }
+        }
+      }
+    }
+
+    function downloadPDF() {
+      const toast = document.createElement('div');
+      toast.className = 'fixed bottom-6 right-6 z-50 px-4 py-3 bg-primary text-on-primary rounded-xl shadow-lg text-sm flex items-center gap-2 animate-bounce';
+      toast.innerHTML = '<span class="material-symbols-outlined text-[18px] text-secondary-fixed">download_done</span> Surat rujukan #LY-8821 sedang diunduh...';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2800);
+    }
+  </script>
+</div></div></main><footer class="w-full bg-primary-container py-space-lg"><div class="max-w-[1200px] mx-auto px-margin flex flex-col md:flex-row items-center justify-between gap-space-sm text-center md:text-left"><p class="font-caption text-caption text-on-primary-container">Prototipe untuk keperluan lomba. Seluruh data adalah data simulasi.</p><p class="font-caption text-caption text-on-primary-container">© 2024 Lytera Healthcare Coordination. Hak Cipta Dilindungi.</p></div></footer></body></html>

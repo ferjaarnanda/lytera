@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lytera - Pilih Peran Fasilitas Kesehatan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            night: '#0A2230',
+            deepnavy: '#0F3040',
+            terracotta: {
+              DEFAULT: '#8F5A4E',
+              hover: '#A56F63',
+            },
+            softpeach: '#D99B7F',
+            slatebody: '#464858',
+            mutedgray: '#6B7280',
+            canvasbg: '#F8FAFC',
+            cream: '#FAF5F2',
+            mist: '#EBF2F6',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-canvasbg min-h-screen font-sans text-slatebody antialiased flex flex-col justify-between p-6 md:p-10">
+
+  <!-- Top bar / back button -->
+  <div class="max-w-[1200px] w-full mx-auto flex items-center justify-between">
+    <a href="#" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-slate-200 text-deepnavy font-semibold text-sm hover:bg-slate-50 transition-all shadow-sm">
+      <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+      <span>Kembali ke Beranda</span>
+    </a>
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-xl bg-night flex items-center justify-center border border-softpeach/40">
+        <svg class="w-4 h-4 text-softpeach" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" stroke-width="2"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v8m-4-4h8"/>
+        </svg>
+      </div>
+      <span class="text-lg font-bold text-deepnavy">Lytera</span>
+    </div>
+  </div>
+
+  <!-- Role Selection Container -->
+  <div class="max-w-[1000px] w-full mx-auto my-8">
+    <div class="text-center max-w-xl mx-auto mb-10">
+      <h1 class="text-2xl md:text-[32px] font-bold text-deepnavy tracking-tight mb-2">Kamu mendaftar sebagai apa?</h1>
+      <p class="text-sm text-mutedgray leading-relaxed">Pilih peran Anda dalam ekosistem fasilitas kesehatan. Setiap pendaftaran akan diverifikasi berjenjang demi keamanan rekam medis.</p>
+    </div>
+
+    <!-- 4 Selectable Cards in a 2x2 Grid with equal heights -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      
+      <!-- Card 1: Admin Fasilitas (Selected State) -->
+      <div id="card-admin" onclick="selectRole('admin')" class="bg-white rounded-[24px] border-2 border-terracotta p-7 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between relative ring-4 ring-terracotta/10">
+        <div class="absolute top-6 right-6 w-6 h-6 rounded-full bg-terracotta text-white flex items-center justify-center">
+          <svg class="w-3.5 h-3.5 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+        </div>
+        <div>
+          <div class="w-14 h-14 rounded-full bg-mist flex items-center justify-center text-deepnavy mb-5">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+          </div>
+          <h2 class="text-xl font-bold text-deepnavy mb-2">Admin Fasilitas</h2>
+          <p class="text-sm text-slatebody leading-relaxed mb-4">Daftarkan puskesmas, klinik, rumah sakit, atau apotek baru ke dalam jaringan nasional Lytera.</p>
+        </div>
+        <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
+          <span class="font-semibold text-terracotta">Verifikasi langsung oleh Dinkes</span>
+          <span class="font-bold text-deepnavy">Pilihan Utama →</span>
+        </div>
+      </div>
+
+      <!-- Card 2: Dokter -->
+      <div id="card-dokter" onclick="selectRole('dokter')" class="bg-white rounded-[24px] border border-slate-200 p-7 shadow-sm hover:border-slate-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between">
+        <div>
+          <div class="w-14 h-14 rounded-full bg-mist flex items-center justify-center text-deepnavy mb-5">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11v6m-3-3h6"/></svg>
+          </div>
+          <h2 class="text-xl font-bold text-deepnavy mb-2">Dokter</h2>
+          <p class="text-sm text-slatebody leading-relaxed mb-4">Gabung ke fasilitas yang sudah terdaftar untuk membuat rujukan dan meninjau resume medis klinis pasien.</p>
+        </div>
+        <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
+          <span class="text-mutedgray">Memerlukan validasi No. STR & SIP</span>
+          <span class="font-semibold text-mutedgray">Pilih</span>
+        </div>
+      </div>
+
+      <!-- Card 3: Apoteker -->
+      <div id="card-apoteker" onclick="selectRole('apoteker')" class="bg-white rounded-[24px] border border-slate-200 p-7 shadow-sm hover:border-slate-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between">
+        <div>
+          <div class="w-14 h-14 rounded-full bg-mist flex items-center justify-center text-deepnavy mb-5">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+          </div>
+          <h2 class="text-xl font-bold text-deepnavy mb-2">Apoteker</h2>
+          <p class="text-sm text-slatebody leading-relaxed mb-4">Kelola penebusan e-resep, verifikasi riwayat alergi pasien, dan pembaruan stok obat rujukan terpadu.</p>
+        </div>
+        <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
+          <span class="text-mutedgray">Memerlukan STRA faskes</span>
+          <span class="font-semibold text-mutedgray">Pilih</span>
+        </div>
+      </div>
+
+      <!-- Card 4: Petugas Admisi -->
+      <div id="card-admisi" onclick="selectRole('admisi')" class="bg-white rounded-[24px] border border-slate-200 p-7 shadow-sm hover:border-slate-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between">
+        <div>
+          <div class="w-14 h-14 rounded-full bg-mist flex items-center justify-center text-deepnavy mb-5">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+          </div>
+          <h2 class="text-xl font-bold text-deepnavy mb-2">Petugas Admisi</h2>
+          <p class="text-sm text-slatebody leading-relaxed mb-4">Pengaturan jadwal poli spesialis, penyesuaian kuota harian faskes, serta konfirmasi kedatangan rujukan.</p>
+        </div>
+        <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
+          <span class="text-mutedgray">Disetujui kepala tata usaha faskes</span>
+          <span class="font-semibold text-mutedgray">Pilih</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Note & Action Bottom Bar -->
+    <div class="bg-white rounded-[24px] border border-slate-200 p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-[#EDF7F2] text-[#1B6B4D] flex items-center justify-center shrink-0">
+          <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+        </div>
+        <p class="text-xs md:text-sm text-slatebody">
+          <strong class="text-deepnavy font-bold">Catatan:</strong> Fasilitas diverifikasi Dinas Kesehatan. Dokter dan petugas disetujui admin fasilitas.
+        </p>
+      </div>
+
+      <button type="button" class="w-full sm:w-auto px-8 h-12 rounded-[14px] bg-terracotta hover:bg-terracotta-hover text-white font-semibold text-sm transition-all shadow-sm flex items-center justify-center gap-2">
+        <span>Lanjut ke Formulir</span>
+        <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Bottom Footer -->
+  <div class="max-w-[1200px] w-full mx-auto text-center text-xs text-mutedgray pt-4">
+    Prototipe untuk keperluan lomba. Seluruh data adalah data simulasi.
+  </div>
+
+  <script>
+    function selectRole(role) {
+      const roles = ['admin', 'dokter', 'apoteker', 'admisi'];
+      roles.forEach(r => {
+        const card = document.getElementById('card-' + r);
+        if (r === role) {
+          card.className = 'bg-white rounded-[24px] border-2 border-terracotta p-7 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between relative ring-4 ring-terracotta/10';
+        } else {
+          card.className = 'bg-white rounded-[24px] border border-slate-200 p-7 shadow-sm hover:border-slate-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between';
+        }
+      });
+    }
+  </script>
+</body>
+</html>

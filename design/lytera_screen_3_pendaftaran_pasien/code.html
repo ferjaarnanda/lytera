@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lytera - Pendaftaran Pasien</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            night: '#0A2230',
+            deepnavy: '#0F3040',
+            terracotta: {
+              DEFAULT: '#8F5A4E',
+              hover: '#A56F63',
+            },
+            softpeach: '#D99B7F',
+            slatebody: '#464858',
+            mutedgray: '#6B7280',
+            canvasbg: '#F8FAFC',
+            cream: '#FAF5F2',
+            mist: '#EBF2F6',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-canvasbg min-h-screen font-sans text-slatebody antialiased flex flex-col justify-between p-6 md:p-10">
+
+  <!-- Top bar / back button -->
+  <div class="max-w-[1200px] w-full mx-auto flex items-center justify-between">
+    <a href="#" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-slate-200 text-deepnavy font-semibold text-sm hover:bg-slate-50 transition-all shadow-sm">
+      <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+      <span>Kembali ke Beranda</span>
+    </a>
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-xl bg-night flex items-center justify-center border border-softpeach/40">
+        <svg class="w-4 h-4 text-softpeach" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" stroke-width="2"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v8m-4-4h8"/>
+        </svg>
+      </div>
+      <span class="text-lg font-bold text-deepnavy">Lytera</span>
+    </div>
+  </div>
+
+  <!-- Stepper Header Section (Status System) -->
+  <div class="max-w-[1200px] w-full mx-auto my-8">
+    <div class="bg-white rounded-[24px] border border-slate-200 p-6 shadow-sm mb-8">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl md:text-[32px] font-bold text-deepnavy tracking-tight">Pendaftaran Pasien Baru</h1>
+          <p class="text-sm text-mutedgray mt-1">Lengkapi data untuk menghubungkan rekam medis rujukan keluarga Anda.</p>
+        </div>
+
+        <!-- 3 Steps status system -->
+        <div class="flex items-center gap-3">
+          <!-- Step 1 Done: filled green circle with white check -->
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-full bg-[#1B6B4D] flex items-center justify-center text-white shrink-0">
+              <svg class="w-4 h-4 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+            </div>
+            <span class="text-xs font-semibold text-deepnavy">Verifikasi HP</span>
+          </div>
+          <div class="w-6 h-[2px] bg-slate-200"></div>
+
+          <!-- Step 2 In Progress: yellow circle with clock icon -->
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-full bg-[#E0A100] flex items-center justify-center text-white shrink-0">
+              <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2"/></svg>
+            </div>
+            <span class="text-xs font-bold text-deepnavy">Biodata Diri</span>
+          </div>
+          <div class="w-6 h-[2px] bg-slate-200"></div>
+
+          <!-- Step 3 Not Started: plain white circle with thin gray outline, gray text -->
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-full bg-white border border-slate-300 flex items-center justify-center text-mutedgray shrink-0 text-xs font-semibold">
+              3
+            </div>
+            <span class="text-xs font-medium text-mutedgray">Persetujuan</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content 2 Columns: Left Form (Biodata), Right Info Card (Mist) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      
+      <!-- Left Card: Biodata Form (8 cols) -->
+      <div class="lg:col-span-8 bg-white rounded-[24px] border border-slate-200 p-8 shadow-sm">
+        <h2 class="text-xl font-bold text-deepnavy mb-6">Biodata Pasien</h2>
+
+        <form class="space-y-5" onsubmit="event.preventDefault();">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label class="block text-sm font-semibold text-deepnavy mb-2">Nomor Induk Kependudukan (NIK)</label>
+              <input type="text" value="3174052309890004" class="w-full h-12 px-4 rounded-[14px] bg-slate-50 border border-slate-200 text-deepnavy text-sm font-mono focus:bg-white focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta" />
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-deepnavy mb-2">Nama Lengkap (Sesuai KTP)</label>
+              <input type="text" value="Siti Rahmawati" class="w-full h-12 px-4 rounded-[14px] bg-white border border-slate-200 text-deepnavy text-sm focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label class="block text-sm font-semibold text-deepnavy mb-2">Tanggal Lahir</label>
+              <input type="date" value="1989-09-23" class="w-full h-12 px-4 rounded-[14px] bg-white border border-slate-200 text-deepnavy text-sm focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta" />
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-deepnavy mb-2">Jenis Kelamin</label>
+              <div class="grid grid-cols-2 gap-3">
+                <label class="flex items-center justify-center gap-2 h-12 px-4 rounded-[14px] border border-terracotta bg-softpeach/15 text-deepnavy text-sm font-semibold cursor-pointer">
+                  <input type="radio" name="gender" checked class="accent-terracotta" />
+                  <span>Perempuan</span>
+                </label>
+                <label class="flex items-center justify-center gap-2 h-12 px-4 rounded-[14px] border border-slate-200 bg-slate-50 text-slatebody text-sm font-medium cursor-pointer hover:bg-slate-100">
+                  <input type="radio" name="gender" class="accent-terracotta" />
+                  <span>Laki-laki</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-deepnavy mb-2">Nomor WhatsApp / HP Aktif</label>
+            <div class="relative">
+              <input type="text" value="0812-8890-2104" readonly class="w-full h-12 px-4 rounded-[14px] bg-slate-100 border border-slate-200 text-deepnavy text-sm font-mono" />
+              <span class="absolute right-3.5 top-3.5 inline-flex items-center gap-1.5 text-xs font-semibold text-[#1B6B4D] bg-[#EDF7F2] px-2.5 py-0.5 rounded-full">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                Terverifikasi
+              </span>
+            </div>
+          </div>
+
+          <!-- Alamat Domisili Dropdowns -->
+          <div>
+            <label class="block text-sm font-semibold text-deepnavy mb-2">Alamat Domisili KTP</label>
+            <input type="text" value="Jl. Cempaka Putih Timur No. 14, RT 03 / RW 05" class="w-full h-12 px-4 rounded-[14px] bg-white border border-slate-200 text-deepnavy text-sm focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta mb-3" />
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-mutedgray mb-1">Kecamatan</label>
+                <select class="w-full h-11 px-3 rounded-[14px] bg-white border border-slate-200 text-deepnavy text-sm font-medium">
+                  <option selected>Kecamatan Cempaka Putih</option>
+                  <option>Kecamatan Johar Baru</option>
+                  <option>Kecamatan Kemayoran</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-mutedgray mb-1">Kelurahan</label>
+                <select class="w-full h-11 px-3 rounded-[14px] bg-white border border-slate-200 text-deepnavy text-sm font-medium">
+                  <option selected>Kelurahan Sukamaju</option>
+                  <option>Kelurahan Rawasari</option>
+                  <option>Kelurahan Cempaka Putih Barat</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="text-sm font-semibold text-deepnavy">Nomor Kartu BPJS Kesehatan</label>
+                <span class="text-xs text-mutedgray">Opsional</span>
+              </div>
+              <input type="text" placeholder="13 digit kartu BPJS" value="0001827364501" class="w-full h-12 px-4 rounded-[14px] bg-white border border-slate-200 text-deepnavy text-sm font-mono focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta" />
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="text-sm font-semibold text-deepnavy">Riwayat Alergi Obat / Makanan</label>
+                <span class="text-xs text-mutedgray">Opsional</span>
+              </div>
+              <input type="text" placeholder="Contoh: Alergi Amoksisilin, Seafood" value="Penisilin (Reaksi gatal kulit)" class="w-full h-12 px-4 rounded-[14px] bg-white border border-slate-200 text-deepnavy text-sm focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta" />
+            </div>
+          </div>
+
+          <!-- Form Action Buttons -->
+          <div class="flex items-center justify-between pt-6 border-t border-slate-100 mt-6">
+            <button type="button" class="px-6 h-12 rounded-[14px] border border-slate-300 text-deepnavy font-semibold text-sm hover:bg-slate-50 transition-all">
+              Kembali
+            </button>
+            <button type="button" class="px-8 h-12 rounded-[14px] bg-terracotta hover:bg-terracotta-hover text-white font-semibold text-sm transition-all shadow-sm flex items-center gap-2">
+              <span>Lanjut ke Persetujuan</span>
+              <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Right Card: Mist Card "Kenapa data ini diminta" (4 cols) -->
+      <div class="lg:col-span-4 bg-mist rounded-[24px] border border-slate-200 p-7 shadow-sm">
+        <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-deepnavy shadow-sm mb-4">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        </div>
+
+        <h3 class="text-lg font-bold text-deepnavy mb-2">Kenapa data ini diminta?</h3>
+        <p class="text-sm text-slatebody mb-6 leading-relaxed">Lytera menjamin kerahasiaan dan kedaulatan data kesehatan pribadi Anda sesuai UU Pelindungan Data Pribadi.</p>
+
+        <div class="space-y-4">
+          <div class="p-4 bg-white/80 rounded-[16px] border border-slate-200/80">
+            <h4 class="text-sm font-bold text-deepnavy mb-1">Pencocokan Rekam Medis Tunggal</h4>
+            <p class="text-xs text-slatebody leading-relaxed">NIK digunakan untuk menyatukan riwayat rawat jalan dan lab dari puskesmas ke rumah sakit tanpa tertukar.</p>
+          </div>
+
+          <div class="p-4 bg-white/80 rounded-[16px] border border-slate-200/80">
+            <h4 class="text-sm font-bold text-deepnavy mb-1">Verifikasi Rujukan Wilayah</h4>
+            <p class="text-xs text-slatebody leading-relaxed">Data kelurahan dan kecamatan memudahkan penentuan faskes perujuk terdekat sesuai zonasi domisili Anda.</p>
+          </div>
+
+          <div class="p-4 bg-white/80 rounded-[16px] border border-slate-200/80">
+            <h4 class="text-sm font-bold text-deepnavy mb-1">Keamanan Alergi & Token</h4>
+            <p class="text-xs text-slatebody leading-relaxed">Informasi alergi otomatis menjadi penanda peringatan merah saat dokter spesialis meresepkan obat baru.</p>
+          </div>
+        </div>
+
+        <div class="mt-6 pt-5 border-t border-slate-200 text-xs text-mutedgray leading-relaxed flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-[#1B6B4D]"></span>
+          <span>Enkripsi AES-256 Standar HL7/FHIR Nasional</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Bottom Footer -->
+  <div class="max-w-[1200px] w-full mx-auto text-center text-xs text-mutedgray pt-4">
+    Prototipe untuk keperluan lomba. Seluruh data adalah data simulasi.
+  </div>
+
+</body>
+</html>

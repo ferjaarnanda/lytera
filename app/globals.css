@@ -1,26 +1,72 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: var(--font-plus-jakarta-sans), "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+
+  --color-night: #0A2230;
+  --color-deepnavy: #0F3040;
+  --color-terracotta: #8F5A4E;
+  --color-terracotta-hover: #A56F63;
+  --color-terracotta-active: #7B4B40;
+  --color-peach: #D99B7F;
+  --color-peach-hover: #E4AE94;
+  --color-slate: #464858;
+  --color-canvas: #F8FAFC;
+  --color-cream: #FAF5F2;
+  --color-mist: #EBF2F6;
+  --color-border-subtle: #E2E8F0;
+
+  --color-success: #1B6B4D;
+  --color-success-bg: #EDF7F2;
+  --color-warning: #E0A100;
+  --color-warning-bg: #FFF4D6;
+  --color-warning-text: #7A5200;
+  --color-danger: #B3261E;
+  --color-danger-bg: #FDECEA;
+
+  --radius-card: 24px;
+  --radius-button: 14px;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #F8FAFC;
+  --foreground: #464858;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-plus-jakarta-sans), "Plus Jakarta Sans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tabular figures untuk NIK, nomor rujukan, ICD-10, dan timestamp */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* CSS-First Scroll Reveal: Keadaan awal tersembunyi lewat CSS untuk mencegah flicker */
+.reveal-init {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 700ms cubic-bezier(0.22, 1, 0.36, 1), transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.reveal-visible {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-init {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
 }
