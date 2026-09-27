@@ -47,7 +47,9 @@ export const Stepper: React.FC<StepperProps> = ({
               <div className="pt-0.5">
                 <p
                   className={`text-sm font-semibold leading-tight ${
-                    step.status === "proses"
+                    step.status === "error"
+                      ? "text-[#BA1A1A] font-bold"
+                      : step.status === "proses"
                       ? "text-[#0F3040]"
                       : step.status === "selesai"
                       ? "text-[#0F3040]"
@@ -57,7 +59,15 @@ export const Stepper: React.FC<StepperProps> = ({
                   {step.title}
                 </p>
                 {step.subtitle && (
-                  <p className="text-xs text-slate-500 mt-0.5">{step.subtitle}</p>
+                  <p
+                    className={`text-xs mt-0.5 ${
+                      step.status === "error"
+                        ? "text-[#BA1A1A]/80 font-medium"
+                        : "text-slate-500"
+                    }`}
+                  >
+                    {step.subtitle}
+                  </p>
                 )}
               </div>
             </div>
@@ -78,11 +88,18 @@ export const Stepper: React.FC<StepperProps> = ({
           const isLast = idx === steps.length - 1;
 
           const titleColor =
-            step.status === "proses"
+            step.status === "error"
+              ? "text-[#BA1A1A] font-bold"
+              : step.status === "proses"
               ? "text-[#0F3040] font-bold"
               : step.status === "selesai"
               ? "text-[#0F3040] font-semibold"
               : "text-slate-400 font-medium";
+
+          const subtitleColor =
+            step.status === "error"
+              ? "text-[#BA1A1A]/80 font-medium"
+              : "text-slate-400";
 
           return (
             <React.Fragment key={step.id}>
@@ -98,7 +115,7 @@ export const Stepper: React.FC<StepperProps> = ({
                     {step.title}
                   </span>
                   {step.subtitle && (
-                    <span className="text-[11px] text-slate-400 leading-tight">
+                    <span className={`text-[11px] leading-tight ${subtitleColor}`}>
                       {step.subtitle}
                     </span>
                   )}

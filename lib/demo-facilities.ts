@@ -129,10 +129,10 @@ export const TOP_SEQUENCE: readonly (1 | 2)[] = [
   1, 2, 1, 1, 2, 2, 1, 2, 1, 2, 1,
 ];
 
-// Konstanta waktu rotasi dan animasi (milidetik) - diperlambat ~1.7 kali sesuai spesifikasi
-export const ROTATION_INTERVAL_MS = 10200;
-export const BOTTOM_OFFSET_MS = 5100;
-export const FADE_DURATION_MS = 700;
+// Konstanta waktu rotasi serempak (6000ms = 6 detik per siklus) dan durasi fade
+export const ROTATION_INTERVAL_MS = 6000;
+export const BOTTOM_OFFSET_MS = 0;
+export const FADE_DURATION_MS = 500;
 
 export const ALL_FACILITIES: Facility[] = [
   ...TINGKAT_1_FACILITIES,

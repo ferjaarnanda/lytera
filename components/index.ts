@@ -13,3 +13,7 @@ export * from "./HeroSection";
 export * from "./RolePickerDialog";
 export * from "./FileUploadDropzone";
 export * from "./OtpInput";
+export * from "./LogoutButton";
+export * from "./DatePicker";
+export * from "./PasienDashboard";
+export * from "./RegionCombobox";

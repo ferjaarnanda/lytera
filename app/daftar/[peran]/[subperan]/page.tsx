@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect, use, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   User,
   Building2,
@@ -14,12 +13,25 @@ import {
   Briefcase,
   ShieldCheck,
   Building,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { BackButton } from "@/components/BackButton";
 import { Logo } from "@/components/Logo";
 import { Stepper, StepItem } from "@/components/Stepper";
+import { StatusType } from "@/components/StatusIcon";
 import { FileUploadDropzone } from "@/components/FileUploadDropzone";
 import { OtpInput } from "@/components/OtpInput";
+import { DatePicker } from "@/components/DatePicker";
+import { submitPendaftaranAction } from "@/app/actions/pendaftaran";
+import {
+  COMMON_VALIDATION_ERROR_BANNER,
+  findFirstErrorStepAndField,
+  getErrorStepIndices,
+  focusAndScrollToField,
+  getFieldElementId,
+  getFieldStep,
+} from "@/lib/form-helpers";
 import {
   isValidRole,
   isValidSubRole,
@@ -27,12 +39,7 @@ import {
   getSubRoleMeta,
   RoleId,
 } from "@/lib/roles";
-import {
-  DEMO_PROVINCES,
-  DEMO_REGENCIES,
-  DEMO_DISTRICTS,
-  DEMO_SUBDISTRICTS,
-} from "@/lib/demo-regions";
+import { RegionCombobox } from "@/components/RegionCombobox";
 import { DEMO_FACILITIES } from "@/lib/demo-facilities";
 
 interface PageProps {
@@ -67,6 +74,8 @@ export default function PendaftaranPage({ params }: PageProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [otpValue, setOtpValue] = useState("");
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState("");
 
   // Pasien Pribadi Form State
   const [pribadiData, setPribadiData] = useState({
@@ -75,13 +84,16 @@ export default function PendaftaranPage({ params }: PageProps) {
     tanggalLahir: "",
     jenisKelamin: "L",
     noHp: "",
-    provinsi: "33",
-    kota: "3374",
-    kecamatan: "337401",
-    kelurahan: "33740101",
+    provinsi: "",
+    kota: "",
+    kecamatan: "",
+    kelurahan: "",
     alamatDetail: "",
     noBpjs: "",
     riwayatAlergi: "",
+    email: "",
+    password: "",
+    konfirmasiPassword: "",
     setujuKetentuan: false,
   });
 
@@ -92,6 +104,14 @@ export default function PendaftaranPage({ params }: PageProps) {
     noHpWali: "",
     hubunganWali: "Kepala Keluarga",
     noKk: "",
+    provinsi: "",
+    kota: "",
+    kecamatan: "",
+    kelurahan: "",
+    alamatWali: "",
+    emailWali: "",
+    passwordWali: "",
+    konfirmasiPasswordWali: "",
     setujuKetentuan: false,
   });
   const [anggotaKeluarga, setAnggotaKeluarga] = useState<
@@ -107,10 +127,10 @@ export default function PendaftaranPage({ params }: PageProps) {
   const [faskesAdminData, setFaskesAdminData] = useState({
     namaFaskes: "",
     kodeFaskes: "",
-    provinsi: "33",
-    kota: "3374",
-    kecamatan: "337401",
-    kelurahan: "33740101",
+    provinsi: "",
+    kota: "",
+    kecamatan: "",
+    kelurahan: "",
     alamatLengkap: "",
     noTelp: "",
     penanggungJawab: "",
@@ -137,10 +157,10 @@ export default function PendaftaranPage({ params }: PageProps) {
 
   // Verifikator Form State
   const [verifikatorData, setVerifikatorData] = useState({
-    provinsi: "33",
-    kota: "3374",
-    kecamatan: "337401",
-    kelurahan: "33740101",
+    provinsi: "",
+    kota: "",
+    kecamatan: "",
+    kelurahan: "",
     namaLengkap: "",
     nip: "",
     jabatan: "",
@@ -151,6 +171,24 @@ export default function PendaftaranPage({ params }: PageProps) {
     setujuIntegritas: false,
   });
 
+  // Internal region codes tracking for cascading async API fetching
+  const [pribadiCodes, setPribadiCodes] = useState({ province: "", regency: "", district: "" });
+  const [keluargaCodes, setKeluargaCodes] = useState({ province: "", regency: "", district: "" });
+  const [faskesCodes, setFaskesCodes] = useState({ province: "", regency: "", district: "" });
+  const [verifikatorCodes, setVerifikatorCodes] = useState({ province: "", regency: "", district: "" });
+
+  // Hitung langkah-langkah yang memiliki error validasi secara reaktif (Hooks must precede early returns)
+  const errorStepIndices = useMemo(() => {
+    return getErrorStepIndices(errors, peran, subperan, jalurFaskes);
+  }, [errors, peran, subperan, jalurFaskes]);
+
+  const getStepStatus = (stepIdx: number): StatusType => {
+    if (errorStepIndices.has(stepIdx)) return "error";
+    if (currentStep === stepIdx) return "proses";
+    if (currentStep > stepIdx) return "selesai";
+    return "belum";
+  };
+
   if (!valid || !roleMeta || !subRoleMeta) {
     return (
       <div className="min-h-screen bg-[#FAF5F2] flex items-center justify-center p-4">
@@ -159,47 +197,34 @@ export default function PendaftaranPage({ params }: PageProps) {
     );
   }
 
-  // Filtered lists for cascaded dropdowns
-  const availableDistricts = DEMO_DISTRICTS.filter(
-    (d) => d.regencyId === "3374"
-  );
-  const availableSubdistricts = DEMO_SUBDISTRICTS.filter((s) => {
-    const selectedDist =
-      peran === "pasien" && subperan === "pribadi"
-        ? pribadiData.kecamatan
-        : peran === "fasilitas"
-        ? faskesAdminData.kecamatan
-        : verifikatorData.kecamatan;
-    return s.districtId === selectedDist;
-  });
 
   // Steps definition based on role
   let steps: StepItem[] = [];
   if (peran === "pasien" && subperan === "pribadi") {
     steps = [
-      { id: 1, title: "Identitas Diri", subtitle: "KTP & Kontak", status: currentStep === 0 ? "proses" : currentStep > 0 ? "selesai" : "belum" },
-      { id: 2, title: "Alamat & Medis", subtitle: "Wilayah & Alergi", status: currentStep === 1 ? "proses" : currentStep > 1 ? "selesai" : "belum" },
-      { id: 3, title: "Verifikasi", subtitle: "Persetujuan & OTP", status: currentStep === 2 ? "proses" : currentStep > 2 ? "selesai" : "belum" },
+      { id: 1, title: "Identitas Diri", subtitle: "KTP & Kontak", status: getStepStatus(0) },
+      { id: 2, title: "Alamat & Medis", subtitle: "Wilayah & Alergi", status: getStepStatus(1) },
+      { id: 3, title: "Verifikasi", subtitle: "Persetujuan & OTP", status: getStepStatus(2) },
     ];
   } else if (peran === "pasien" && subperan === "keluarga") {
     steps = [
-      { id: 1, title: "Data Wali", subtitle: "Kepala Keluarga", status: currentStep === 0 ? "proses" : currentStep > 0 ? "selesai" : "belum" },
-      { id: 2, title: "Kartu Keluarga", subtitle: "Nomor & Berkas", status: currentStep === 1 ? "proses" : currentStep > 1 ? "selesai" : "belum" },
-      { id: 3, title: "Anggota", subtitle: "Data Keluarga", status: currentStep === 2 ? "proses" : currentStep > 2 ? "selesai" : "belum" },
-      { id: 4, title: "Verifikasi", subtitle: "Persetujuan & OTP", status: currentStep === 3 ? "proses" : currentStep > 3 ? "selesai" : "belum" },
+      { id: 1, title: "Data Wali", subtitle: "Kepala Keluarga", status: getStepStatus(0) },
+      { id: 2, title: "Kartu Keluarga", subtitle: "Nomor & Berkas", status: getStepStatus(1) },
+      { id: 3, title: "Anggota", subtitle: "Data Keluarga", status: getStepStatus(2) },
+      { id: 4, title: "Verifikasi", subtitle: "Persetujuan & OTP", status: getStepStatus(3) },
     ];
   } else if (peran === "fasilitas") {
     steps = [
-      { id: 1, title: jalurFaskes === "admin" ? "Data Fasilitas" : "Identitas Nakes", subtitle: jalurFaskes === "admin" ? "Profil & Izin" : "Profesi & STR", status: currentStep === 0 ? "proses" : currentStep > 0 ? "selesai" : "belum" },
-      { id: 2, title: jalurFaskes === "admin" ? "Legalitas" : "Penempatan", subtitle: jalurFaskes === "admin" ? "Unggah Berkas" : "Fasilitas Kerja", status: currentStep === 1 ? "proses" : currentStep > 1 ? "selesai" : "belum" },
-      { id: 3, title: "Akun Petugas", subtitle: "Sandi & Persetujuan", status: currentStep === 2 ? "proses" : currentStep > 2 ? "selesai" : "belum" },
+      { id: 1, title: jalurFaskes === "admin" ? "Data Fasilitas" : "Identitas Nakes", subtitle: jalurFaskes === "admin" ? "Profil & Izin" : "Profesi & STR", status: getStepStatus(0) },
+      { id: 2, title: jalurFaskes === "admin" ? "Legalitas" : "Penempatan", subtitle: jalurFaskes === "admin" ? "Unggah Berkas" : "Fasilitas Kerja", status: getStepStatus(1) },
+      { id: 3, title: "Akun Petugas", subtitle: "Sandi & Persetujuan", status: getStepStatus(2) },
     ];
   } else {
     // Verifikator
     steps = [
-      { id: 1, title: "Wilayah Tugas", subtitle: "Instansi Pemerintahan", status: currentStep === 0 ? "proses" : currentStep > 0 ? "selesai" : "belum" },
-      { id: 2, title: "Data Pegawai", subtitle: "Identitas & NIP", status: currentStep === 1 ? "proses" : currentStep > 1 ? "selesai" : "belum" },
-      { id: 3, title: "Legalitas & Sandi", subtitle: "SK & Kredensial", status: currentStep === 2 ? "proses" : currentStep > 2 ? "selesai" : "belum" },
+      { id: 1, title: "Wilayah Tugas", subtitle: "Instansi Pemerintahan", status: getStepStatus(0) },
+      { id: 2, title: "Data Pegawai", subtitle: "Identitas & NIP", status: getStepStatus(1) },
+      { id: 3, title: "Legalitas & Sandi", subtitle: "SK & Kredensial", status: getStepStatus(2) },
     ];
   }
 
@@ -213,24 +238,42 @@ export default function PendaftaranPage({ params }: PageProps) {
           newErrors.nik = "NIK harus terdiri dari 16 digit angka";
         }
         if (!pribadiData.nama.trim()) {
-          newErrors.nama = "Nama lengkap wajib diisi sesuai KTP";
+          newErrors.nama = "Nama lengkap wajib diisi sesuai kartu identitas";
         }
         if (!pribadiData.tanggalLahir) {
           newErrors.tanggalLahir = "Tanggal lahir wajib dipilih";
         }
-        if (!/^(08|62)\d{8,12}$/.test(pribadiData.noHp.replace(/\D/g, ""))) {
-          newErrors.noHp = "Nomor HP tidak valid (awalan 08 atau 62, 10-14 digit)";
+        if (!/^(08|62|\+62)\d{8,12}$/.test(pribadiData.noHp.replace(/\D/g, ""))) {
+          newErrors.noHp = "Nomor HP tidak valid, gunakan format 08xx atau 62xx (10-14 digit)";
         }
       } else if (currentStep === 1) {
-        if (!pribadiData.alamatDetail.trim()) {
-          newErrors.alamatDetail = "Alamat jalan / RT / RW wajib diisi";
+        if (!pribadiData.provinsi) {
+          newErrors.provinsi = "Provinsi wajib dipilih";
+        }
+        if (!pribadiData.kota) {
+          newErrors.kota = "Kota / Kabupaten wajib dipilih";
+        }
+        if (!pribadiData.kecamatan) {
+          newErrors.kecamatan = "Kecamatan wajib dipilih";
+        }
+        if (!pribadiData.alamatDetail.trim() || pribadiData.alamatDetail.trim().length < 5) {
+          newErrors.alamatDetail = "Alamat lengkap wajib diisi minimal 5 karakter";
         }
         if (pribadiData.noBpjs && !/^\d{13}$/.test(pribadiData.noBpjs)) {
           newErrors.noBpjs = "Nomor BPJS harus 13 digit angka";
         }
       } else if (currentStep === 2) {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(pribadiData.email.trim())) {
+          newErrors.email = "Format email tidak valid, gunakan format seperti nama@contoh.com";
+        }
+        if (pribadiData.password.length < 6) {
+          newErrors.password = "Kata sandi minimal 6 karakter";
+        }
+        if (pribadiData.password !== pribadiData.konfirmasiPassword) {
+          newErrors.konfirmasiPassword = "Konfirmasi kata sandi tidak cocok";
+        }
         if (!pribadiData.setujuKetentuan) {
-          newErrors.setujuKetentuan = "Anda harus menyetujui pemrosesan data medis";
+          newErrors.setujuKetentuan = "Anda wajib menyetujui pemrosesan data medis untuk melanjutkan";
         }
         if (otpValue !== "123456") {
           newErrors.otp = "Kode OTP tidak cocok. Masukkan kode demo 123456";
@@ -242,14 +285,14 @@ export default function PendaftaranPage({ params }: PageProps) {
           newErrors.nikWali = "NIK wali harus 16 digit angka";
         }
         if (!keluargaData.namaWali.trim()) {
-          newErrors.namaWali = "Nama lengkap wali wajib diisi";
+          newErrors.namaWali = "Nama lengkap wali wajib diisi sesuai KTP";
         }
-        if (!/^(08|62)\d{8,12}$/.test(keluargaData.noHpWali.replace(/\D/g, ""))) {
-          newErrors.noHpWali = "Nomor HP wali tidak valid";
+        if (!/^(08|62|\+62)\d{8,12}$/.test(keluargaData.noHpWali.replace(/\D/g, ""))) {
+          newErrors.noHpWali = "Nomor HP wali tidak valid, gunakan format 08xx atau 62xx (10-14 digit)";
         }
       } else if (currentStep === 1) {
         if (!/^\d{16}$/.test(keluargaData.noKk)) {
-          newErrors.noKk = "Nomor KK harus 16 digit angka";
+          newErrors.noKk = "Nomor Kartu Keluarga harus 16 digit angka";
         }
         if (!uploadedFile) {
           newErrors.file = "Unggah foto atau scan Kartu Keluarga";
@@ -260,18 +303,27 @@ export default function PendaftaranPage({ params }: PageProps) {
         }
         anggotaKeluarga.forEach((ang, idx) => {
           if (!ang.nama.trim()) {
-            newErrors[`anggota_nama_${idx}`] = "Nama anggota wajib diisi";
+            newErrors[`anggota_nama_${idx}`] = "Nama anggota keluarga wajib diisi";
           }
           if (!/^\d{16}$/.test(ang.nik)) {
-            newErrors[`anggota_nik_${idx}`] = "NIK 16 digit";
+            newErrors[`anggota_nik_${idx}`] = "NIK anggota harus 16 digit angka";
           }
           if (!ang.tanggalLahir) {
-            newErrors[`anggota_tgl_${idx}`] = "Tanggal lahir wajib";
+            newErrors[`anggota_tgl_${idx}`] = "Tanggal lahir anggota wajib dipilih";
           }
         });
       } else if (currentStep === 3) {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(keluargaData.emailWali.trim())) {
+          newErrors.emailWali = "Format email tidak valid, gunakan format seperti nama@contoh.com";
+        }
+        if (keluargaData.passwordWali.length < 6) {
+          newErrors.passwordWali = "Kata sandi minimal 6 karakter";
+        }
+        if (keluargaData.passwordWali !== keluargaData.konfirmasiPasswordWali) {
+          newErrors.konfirmasiPasswordWali = "Konfirmasi kata sandi tidak cocok";
+        }
         if (!keluargaData.setujuKetentuan) {
-          newErrors.setujuKetentuan = "Anda harus menyetujui perwalian data keluarga";
+          newErrors.setujuKetentuan = "Anda wajib menyetujui perwalian data keluarga untuk melanjutkan";
         }
         if (otpValue !== "123456") {
           newErrors.otp = "Kode OTP tidak cocok. Masukkan kode demo 123456";
@@ -281,36 +333,42 @@ export default function PendaftaranPage({ params }: PageProps) {
       if (jalurFaskes === "admin") {
         if (currentStep === 0) {
           if (!faskesAdminData.namaFaskes.trim()) {
-            newErrors.namaFaskes = "Nama fasilitas kesehatan wajib diisi";
+            newErrors.namaFaskes = "Nama resmi fasilitas kesehatan wajib diisi";
           }
           if (!faskesAdminData.kodeFaskes.trim()) {
-            newErrors.kodeFaskes = "Kode faskes / izin operasional wajib diisi";
+            newErrors.kodeFaskes = "Kode faskes atau nomor izin operasional wajib diisi";
           }
-          if (!faskesAdminData.alamatLengkap.trim()) {
-            newErrors.alamatLengkap = "Alamat lengkap faskes wajib diisi";
+          if (!faskesAdminData.provinsi) {
+            newErrors.faskesProvinsi = "Provinsi faskes wajib dipilih";
           }
-          if (!faskesAdminData.noTelp.trim()) {
-            newErrors.noTelp = "Nomor telepon operasional wajib diisi";
+          if (!faskesAdminData.kota) {
+            newErrors.faskesKota = "Kota / Kabupaten faskes wajib dipilih";
+          }
+          if (!faskesAdminData.alamatLengkap.trim() || faskesAdminData.alamatLengkap.trim().length < 5) {
+            newErrors.alamatLengkap = "Alamat lengkap faskes wajib diisi minimal 5 karakter";
+          }
+          if (!faskesAdminData.noTelp.trim() || faskesAdminData.noTelp.trim().length < 6) {
+            newErrors.noTelp = "Nomor telepon operasional faskes wajib diisi";
           }
         } else if (currentStep === 1) {
           if (!uploadedFile) {
             newErrors.file = "Unggah dokumen izin operasional faskes";
           }
           if (!faskesAdminData.penanggungJawab.trim()) {
-            newErrors.penanggungJawab = "Nama kepala faskes / penanggung jawab wajib";
+            newErrors.penanggungJawab = "Nama kepala faskes atau penanggung jawab wajib diisi";
           }
-          if (!faskesAdminData.emailFaskes.includes("@")) {
-            newErrors.emailFaskes = "Email faskes tidak valid";
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(faskesAdminData.emailFaskes.trim())) {
+            newErrors.emailFaskes = "Format email tidak valid, gunakan format seperti nama@contoh.com";
           }
         } else if (currentStep === 2) {
-          if (faskesAdminData.password.length < 8) {
-            newErrors.password = "Kata sandi minimal 8 karakter";
+          if (faskesAdminData.password.length < 6) {
+            newErrors.password = "Kata sandi minimal 6 karakter";
           }
           if (faskesAdminData.password !== faskesAdminData.konfirmasiPassword) {
-            newErrors.konfirmasiPassword = "Kata sandi tidak cocok";
+            newErrors.konfirmasiPassword = "Konfirmasi kata sandi tidak cocok";
           }
           if (!faskesAdminData.setujuKetentuan) {
-            newErrors.setujuKetentuan = "Setujui ketentuan jaringan rujukan";
+            newErrors.setujuKetentuan = "Anda wajib menyetujui ketentuan jaringan rujukan untuk melanjutkan";
           }
         }
       } else {
@@ -320,67 +378,99 @@ export default function PendaftaranPage({ params }: PageProps) {
             newErrors.namaLengkap = "Nama lengkap beserta gelar wajib diisi";
           }
           if (!/^\d{16}$/.test(faskesNakesData.nik)) {
-            newErrors.nik = "NIK 16 digit angka";
+            newErrors.nik = "NIK harus 16 digit angka";
           }
-          if (!faskesNakesData.noStr.trim()) {
-            newErrors.noStr = "Nomor STR / SIP / STRA / SIPA wajib diisi";
+          if (!faskesNakesData.noStr.trim() || faskesNakesData.noStr.trim().length < 5) {
+            newErrors.noStr = "Nomor STR / SIP / STRA / SIPA aktif wajib diisi";
           }
         } else if (currentStep === 1) {
           if (faskesNakesData.metodeFaskes === "undangan" && !faskesNakesData.kodeUndangan.trim()) {
             newErrors.kodeUndangan = "Masukkan kode undangan fasilitas";
           }
         } else if (currentStep === 2) {
-          if (!faskesNakesData.email.includes("@")) {
-            newErrors.email = "Email tidak valid";
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(faskesNakesData.email.trim())) {
+            newErrors.email = "Format email tidak valid, gunakan format seperti nama@contoh.com";
           }
-          if (faskesNakesData.password.length < 8) {
-            newErrors.password = "Kata sandi minimal 8 karakter";
+          if (faskesNakesData.password.length < 6) {
+            newErrors.password = "Kata sandi minimal 6 karakter";
           }
           if (faskesNakesData.password !== faskesNakesData.konfirmasiPassword) {
-            newErrors.konfirmasiPassword = "Kata sandi tidak cocok";
+            newErrors.konfirmasiPassword = "Konfirmasi kata sandi tidak cocok";
           }
           if (!faskesNakesData.setujuSumpah) {
-            newErrors.setujuSumpah = "Anda wajib menyetujui sumpah profesi & kerahasiaan medis";
+            newErrors.setujuSumpah = "Anda wajib menyetujui sumpah profesi dan kerahasiaan medis untuk melanjutkan";
           }
         }
       }
     } else if (peran === "verifikator") {
       if (currentStep === 0) {
-        // Wilayah default valid
+        if (!verifikatorData.provinsi) {
+          newErrors.provinsiVerif = "Provinsi penugasan wajib dipilih";
+        }
+        if (!verifikatorData.kota) {
+          newErrors.kotaVerif = "Kota / Kabupaten penugasan wajib dipilih";
+        }
+        if (subperan !== "dinas-sosial" && !verifikatorData.kecamatan) {
+          newErrors.kecamatanVerif = "Kecamatan penugasan wajib dipilih";
+        }
+        if (subperan === "kelurahan" && !verifikatorData.kelurahan) {
+          newErrors.kelurahanVerif = "Kelurahan / Desa penugasan wajib dipilih";
+        }
       } else if (currentStep === 1) {
         if (!verifikatorData.namaLengkap.trim()) {
-          newErrors.namaLengkap = "Nama lengkap petugas wajib diisi";
+          newErrors.namaLengkap = "Nama lengkap petugas verifikator wajib diisi";
         }
         if (!/^\d{18}$/.test(verifikatorData.nip)) {
           newErrors.nip = "NIP harus 18 digit angka";
         }
         if (!verifikatorData.jabatan.trim()) {
-          newErrors.jabatan = "Jabatan / seksi penugasan wajib diisi";
+          newErrors.jabatan = "Jabatan atau seksi penugasan wajib diisi";
         }
-        if (!verifikatorData.emailDinas.includes("@")) {
-          newErrors.emailDinas = "Email dinas tidak valid";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(verifikatorData.emailDinas.trim())) {
+          newErrors.emailDinas = "Format email tidak valid, gunakan format seperti nama@contoh.com";
         }
       } else if (currentStep === 2) {
         if (!uploadedFile) {
           newErrors.file = "Unggah Surat Keputusan / Surat Tugas";
         }
-        if (verifikatorData.password.length < 8) {
-          newErrors.password = "Kata sandi minimal 8 karakter";
+        if (verifikatorData.password.length < 6) {
+          newErrors.password = "Kata sandi minimal 6 karakter";
         }
         if (verifikatorData.password !== verifikatorData.konfirmasiPassword) {
-          newErrors.konfirmasiPassword = "Kata sandi tidak cocok";
+          newErrors.konfirmasiPassword = "Konfirmasi kata sandi tidak cocok";
         }
         if (!verifikatorData.setujuIntegritas) {
-          newErrors.setujuIntegritas = "Setujui pakta integritas verifikasi data";
+          newErrors.setujuIntegritas = "Anda wajib menyetujui pakta integritas verifikasi data untuk melanjutkan";
         }
       }
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (Object.keys(newErrors).length > 0) {
+      setErrors((prev) => ({ ...prev, ...newErrors }));
+      setServerError(COMMON_VALIDATION_ERROR_BANNER);
+      const firstField = Object.keys(newErrors)[0];
+      const elementId = getFieldElementId(peran, subperan, jalurFaskes, firstField);
+      focusAndScrollToField(elementId);
+      return false;
+    }
+
+    // Bersihkan error untuk langkah ini bila isian sudah valid
+    setErrors((prev) => {
+      const next = { ...prev };
+      // Hapus kunci error yang berada di langkah aktif
+      for (const k of Object.keys(prev)) {
+        if (getFieldStep(peran, subperan, jalurFaskes, k) === currentStep) {
+          delete next[k];
+        }
+      }
+      return next;
+    });
+    setServerError("");
+    return true;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    setServerError("");
     if (!validateStep()) return;
 
     if (currentStep < steps.length - 1) {
@@ -388,7 +478,96 @@ export default function PendaftaranPage({ params }: PageProps) {
       setCurrentStep((prev) => prev + 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
-      // Final submit simulation -> redirect to /daftar/selesai
+      setSubmitting(true);
+      let payload: unknown = null;
+
+      if (peran === "pasien" && subperan === "pribadi") {
+        payload = {
+          peran: "pasien",
+          subperan: "pribadi",
+          ...pribadiData,
+        };
+      } else if (peran === "pasien" && subperan === "keluarga") {
+        payload = {
+          peran: "pasien",
+          subperan: "keluarga",
+          email: keluargaData.emailWali,
+          password: keluargaData.passwordWali,
+          nikWali: keluargaData.nikWali,
+          namaWali: keluargaData.namaWali,
+          noHpWali: keluargaData.noHpWali,
+          hubunganWali: keluargaData.hubunganWali,
+          noKk: keluargaData.noKk,
+          provinsi: keluargaData.provinsi,
+          kota: keluargaData.kota,
+          kecamatan: keluargaData.kecamatan,
+          kelurahan: keluargaData.kelurahan,
+          alamatWali: keluargaData.alamatWali,
+          anggotaKeluarga,
+          setujuKetentuan: keluargaData.setujuKetentuan,
+        };
+      } else if (peran === "fasilitas" && jalurFaskes === "admin") {
+        payload = {
+          peran: "fasilitas",
+          subperan,
+          tipe: "admin",
+          ...faskesAdminData,
+        };
+      } else if (peran === "fasilitas" && jalurFaskes === "nakes") {
+        payload = {
+          peran: "fasilitas",
+          subperan,
+          tipe: "nakes",
+          ...faskesNakesData,
+        };
+      } else if (peran === "verifikator") {
+        payload = {
+          peran: "verifikator",
+          subperan,
+          ...verifikatorData,
+        };
+      }
+
+      let submissionPayload: unknown = payload;
+      if (peran === "fasilitas" && jalurFaskes === "admin") {
+        const formData = new FormData();
+        formData.append("payload", JSON.stringify(payload));
+        if (uploadedFile) {
+          formData.append("file", uploadedFile);
+        }
+        submissionPayload = formData;
+      }
+
+      const res = await submitPendaftaranAction(submissionPayload);
+      setSubmitting(false);
+
+      if (!res.success) {
+        setServerError(res.error || COMMON_VALIDATION_ERROR_BANNER);
+        if (res.fieldErrors && Object.keys(res.fieldErrors).length > 0) {
+          const combinedErrors = { ...errors, ...res.fieldErrors };
+          setErrors(combinedErrors);
+
+          // Cari langkah yang memuat error pertama (terutama jika berada di langkah sebelumnya)
+          const errInfo = findFirstErrorStepAndField(
+            combinedErrors,
+            peran,
+            subperan,
+            jalurFaskes
+          );
+
+          if (errInfo) {
+            if (errInfo.targetStep !== currentStep) {
+              setDirection(errInfo.targetStep < currentStep ? "prev" : "next");
+              setCurrentStep(errInfo.targetStep);
+            }
+            focusAndScrollToField(errInfo.elementId);
+            return;
+          }
+        }
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
       let url = `/daftar/selesai?peran=${peran}&sub=${subperan}`;
       if (peran === "fasilitas") {
         url += `&tipe=${jalurFaskes}`;
@@ -424,17 +603,15 @@ export default function PendaftaranPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-[#FAF5F2] text-[#464858] pb-16">
-      {/* Top Bar with BackButton */}
+      {/* Top Bar: Logo kiri, BackButton kanan */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 flex items-center justify-between">
-        <BackButton href="/" label="← Kembali ke Beranda" />
-        <Link href="/" className="flex items-center gap-2 group" aria-label="Beranda Lytera">
-          <Logo tone="light" />
-        </Link>
+        <Logo tone="light" size="sm" />
+        <BackButton href="/" label="Kembali ke Beranda" />
       </div>
 
       {/* Main Card Container */}
       <main className="max-w-[720px] mx-auto px-4 sm:px-6 mt-6 sm:mt-8">
-        <div className="bg-white rounded-[24px] shadow-sm border border-[#E2E8F0] p-6 sm:p-10 transition-all">
+        <div className="bg-white rounded-[24px] shadow-sm border border-[#E2E8F0] p-6 sm:p-10">
           {/* Header Title & Subtitle */}
           <div className="border-b border-[#E2E8F0] pb-6 mb-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#EBF2F6] text-[#0F3040] mb-3">
@@ -458,9 +635,16 @@ export default function PendaftaranPage({ params }: PageProps) {
             </div>
           </div>
 
+          {serverError && (
+            <div className="mb-6 p-4 rounded-[14px] bg-[#FDECEA] border border-[#B3261E]/20 text-[#B3261E] text-xs sm:text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{serverError}</span>
+            </div>
+          )}
+
           {/* Form Step Content with Transition effect */}
           <div
-            className={`transition-all duration-300 transform ${
+            className={`transition-[opacity,transform] duration-300 transform ${
               direction === "next"
                 ? "animate-[fadeInRight_0.3s_ease-out]"
                 : "animate-[fadeInLeft_0.3s_ease-out]"
@@ -512,14 +696,13 @@ export default function PendaftaranPage({ params }: PageProps) {
                         <label htmlFor="tanggalLahir" className="block text-sm font-semibold text-[#0F3040] mb-1">
                           Tanggal Lahir *
                         </label>
-                        <input
+                        <DatePicker
                           id="tanggalLahir"
-                          type="date"
                           value={pribadiData.tanggalLahir}
-                          onChange={(e) =>
-                            setPribadiData({ ...pribadiData, tanggalLahir: e.target.value })
+                          onChange={(iso) =>
+                            setPribadiData({ ...pribadiData, tanggalLahir: iso })
                           }
-                          className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm"
+                          error={errors.tanggalLahir}
                         />
                         {errors.tanggalLahir && (
                           <p className="text-xs text-[#B3261E] mt-1">{errors.tanggalLahir}</p>
@@ -566,81 +749,69 @@ export default function PendaftaranPage({ params }: PageProps) {
 
                 {currentStep === 1 && (
                   <>
-                    <h2 className="text-lg font-bold text-[#0F3040]">Alamat Domisili & Informasi Medis</h2>
+                    <h2 className="text-lg font-bold text-[#0F3040]">Alamat Domisili &amp; Informasi Medis</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="provinsi" className="block text-sm font-semibold text-[#0F3040] mb-1">
-                          Provinsi
-                        </label>
-                        <select
-                          id="provinsi"
-                          value={pribadiData.provinsi}
-                          disabled
-                          className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] bg-slate-50 text-sm"
-                        >
-                          {DEMO_PROVINCES.map((p) => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                          ))}
-                        </select>
-                      </div>
+                      <RegionCombobox
+                        id="provinsi"
+                        label="Provinsi"
+                        placeholder="Ketik atau pilih provinsi..."
+                        level="province"
+                        value={pribadiData.provinsi}
+                        onChange={(val, item) => {
+                          setPribadiData({ ...pribadiData, provinsi: val, kota: "", kecamatan: "", kelurahan: "" });
+                          setPribadiCodes({ province: item?.code || "", regency: "", district: "" });
+                        }}
+                        required
+                        error={errors.provinsi}
+                      />
 
-                      <div>
-                        <label htmlFor="kota" className="block text-sm font-semibold text-[#0F3040] mb-1">
-                          Kota / Kabupaten
-                        </label>
-                        <select
-                          id="kota"
-                          value={pribadiData.kota}
-                          disabled
-                          className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] bg-slate-50 text-sm"
-                        >
-                          {DEMO_REGENCIES.map((r) => (
-                            <option key={r.id} value={r.id}>{r.name}</option>
-                          ))}
-                        </select>
-                      </div>
+                      <RegionCombobox
+                        id="kota"
+                        label="Kota / Kabupaten"
+                        placeholder={pribadiData.provinsi ? "Ketik atau pilih kota..." : "Pilih provinsi dulu"}
+                        level="regency"
+                        parentCode={pribadiCodes.province}
+                        value={pribadiData.kota}
+                        onChange={(val, item) => {
+                          setPribadiData({ ...pribadiData, kota: val, kecamatan: "", kelurahan: "" });
+                          setPribadiCodes((prev) => ({ ...prev, regency: item?.code || "", district: "" }));
+                        }}
+                        disabled={!pribadiData.provinsi}
+                        required
+                        error={errors.kota}
+                      />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="kecamatan" className="block text-sm font-semibold text-[#0F3040] mb-1">
-                          Kecamatan *
-                        </label>
-                        <select
-                          id="kecamatan"
-                          value={pribadiData.kecamatan}
-                          onChange={(e) => {
-                            const newKec = e.target.value;
-                            const firstSub = DEMO_SUBDISTRICTS.find((s) => s.districtId === newKec);
-                            setPribadiData({
-                              ...pribadiData,
-                              kecamatan: newKec,
-                              kelurahan: firstSub ? firstSub.id : "",
-                            });
-                          }}
-                          className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm bg-white"
-                        >
-                          {availableDistricts.map((d) => (
-                            <option key={d.id} value={d.id}>{d.name}</option>
-                          ))}
-                        </select>
-                      </div>
+                      <RegionCombobox
+                        id="kecamatan"
+                        label="Kecamatan"
+                        placeholder={pribadiData.kota ? "Ketik atau pilih kecamatan..." : "Pilih kota dulu"}
+                        level="district"
+                        parentCode={pribadiCodes.regency}
+                        value={pribadiData.kecamatan}
+                        onChange={(val, item) => {
+                          setPribadiData({ ...pribadiData, kecamatan: val, kelurahan: "" });
+                          setPribadiCodes((prev) => ({ ...prev, district: item?.code || "" }));
+                        }}
+                        disabled={!pribadiData.kota}
+                        required
+                        error={errors.kecamatan}
+                      />
 
-                      <div>
-                        <label htmlFor="kelurahan" className="block text-sm font-semibold text-[#0F3040] mb-1">
-                          Kelurahan / Desa *
-                        </label>
-                        <select
-                          id="kelurahan"
-                          value={pribadiData.kelurahan}
-                          onChange={(e) => setPribadiData({ ...pribadiData, kelurahan: e.target.value })}
-                          className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm bg-white"
-                        >
-                          {availableSubdistricts.map((s) => (
-                            <option key={s.id} value={s.id}>{s.name}</option>
-                          ))}
-                        </select>
-                      </div>
+                      <RegionCombobox
+                        id="kelurahan"
+                        label="Kelurahan / Desa"
+                        placeholder={pribadiData.kecamatan ? "Ketik atau pilih kelurahan..." : "Pilih kecamatan dulu"}
+                        level="village"
+                        parentCode={pribadiCodes.district}
+                        value={pribadiData.kelurahan}
+                        onChange={(val) => {
+                          setPribadiData({ ...pribadiData, kelurahan: val });
+                        }}
+                        disabled={!pribadiData.kecamatan}
+                        error={errors.kelurahan}
+                      />
                     </div>
 
                     <div>
@@ -710,6 +881,73 @@ export default function PendaftaranPage({ params }: PageProps) {
                             Data kesehatan Anda hanya dapat diakses oleh dokter dan faskes rujukan yang Anda setujui melalui token digital satu kali pakai.
                           </p>
                         </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="emailPribadi" className="block text-sm font-semibold text-[#0F3040] mb-1">
+                        Alamat Email Aktif *
+                      </label>
+                      <input
+                        id="emailPribadi"
+                        type="email"
+                        autoComplete="email"
+                        value={pribadiData.email}
+                        onChange={(e) =>
+                          setPribadiData({ ...pribadiData, email: e.target.value })
+                        }
+                        placeholder="nama@email.com"
+                        className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm"
+                      />
+                      {errors.email && (
+                        <p className="text-xs text-[#B3261E] mt-1">{errors.email}</p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="passwordPribadi" className="block text-sm font-semibold text-[#0F3040] mb-1">
+                          Kata Sandi Akun *
+                        </label>
+                        <input
+                          id="passwordPribadi"
+                          type="password"
+                          autoComplete="new-password"
+                          value={pribadiData.password}
+                          onChange={(e) =>
+                            setPribadiData({ ...pribadiData, password: e.target.value })
+                          }
+                          placeholder="Minimal 6 karakter"
+                          className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm"
+                        />
+                        {errors.password && (
+                          <p className="text-xs text-[#B3261E] mt-1">{errors.password}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label htmlFor="konfirmasiPasswordPribadi" className="block text-sm font-semibold text-[#0F3040] mb-1">
+                          Ulangi Kata Sandi *
+                        </label>
+                        <input
+                          id="konfirmasiPasswordPribadi"
+                          type="password"
+                          autoComplete="new-password"
+                          value={pribadiData.konfirmasiPassword}
+                          onChange={(e) =>
+                            setPribadiData({
+                              ...pribadiData,
+                              konfirmasiPassword: e.target.value,
+                            })
+                          }
+                          placeholder="Ketik ulang kata sandi"
+                          className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm"
+                        />
+                        {errors.konfirmasiPassword && (
+                          <p className="text-xs text-[#B3261E] mt-1">
+                            {errors.konfirmasiPassword}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -821,6 +1059,8 @@ export default function PendaftaranPage({ params }: PageProps) {
                           <option value="Kepala Keluarga">Kepala Keluarga</option>
                           <option value="Istri / Ibu">Istri / Ibu</option>
                           <option value="Orang Tua / Wali Sah">Orang Tua / Wali Sah</option>
+                          <option value="Anak">Anak</option>
+                          <option value="Kerabat">Kerabat</option>
                         </select>
                       </div>
                     </div>
@@ -846,6 +1086,78 @@ export default function PendaftaranPage({ params }: PageProps) {
                         className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none tabular-nums text-sm"
                       />
                       {errors.noKk && <p className="text-xs text-[#B3261E] mt-1">{errors.noKk}</p>}
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-[#0F3040] mb-3">Alamat Domisili Wali</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <RegionCombobox
+                          id="keluarga-provinsi"
+                          label="Provinsi"
+                          placeholder="Ketik atau pilih provinsi..."
+                          level="province"
+                          value={keluargaData.provinsi}
+                          onChange={(val, item) => {
+                            setKeluargaData({ ...keluargaData, provinsi: val, kota: "", kecamatan: "", kelurahan: "" });
+                            setKeluargaCodes({ province: item?.code || "", regency: "", district: "" });
+                          }}
+                          required
+                        />
+                        <RegionCombobox
+                          id="keluarga-kota"
+                          label="Kota / Kabupaten"
+                          placeholder={keluargaData.provinsi ? "Ketik atau pilih kota..." : "Pilih provinsi dulu"}
+                          level="regency"
+                          parentCode={keluargaCodes.province}
+                          value={keluargaData.kota}
+                          onChange={(val, item) => {
+                            setKeluargaData({ ...keluargaData, kota: val, kecamatan: "", kelurahan: "" });
+                            setKeluargaCodes((prev) => ({ ...prev, regency: item?.code || "", district: "" }));
+                          }}
+                          disabled={!keluargaData.provinsi}
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                        <RegionCombobox
+                          id="keluarga-kecamatan"
+                          label="Kecamatan"
+                          placeholder={keluargaData.kota ? "Ketik atau pilih kecamatan..." : "Pilih kota dulu"}
+                          level="district"
+                          parentCode={keluargaCodes.regency}
+                          value={keluargaData.kecamatan}
+                          onChange={(val, item) => {
+                            setKeluargaData({ ...keluargaData, kecamatan: val, kelurahan: "" });
+                            setKeluargaCodes((prev) => ({ ...prev, district: item?.code || "" }));
+                          }}
+                          disabled={!keluargaData.kota}
+                        />
+                        <RegionCombobox
+                          id="keluarga-kelurahan"
+                          label="Kelurahan / Desa"
+                          placeholder={keluargaData.kecamatan ? "Ketik atau pilih kelurahan..." : "Pilih kecamatan dulu"}
+                          level="village"
+                          parentCode={keluargaCodes.district}
+                          value={keluargaData.kelurahan}
+                          onChange={(val) => {
+                            setKeluargaData({ ...keluargaData, kelurahan: val });
+                          }}
+                          disabled={!keluargaData.kecamatan}
+                        />
+                      </div>
+                      <div className="mt-4">
+                        <label htmlFor="alamatWali" className="block text-sm font-semibold text-[#0F3040] mb-1">
+                          Detail Alamat (Jalan, RT/RW) (Opsional)
+                        </label>
+                        <input
+                          id="alamatWali"
+                          type="text"
+                          value={keluargaData.alamatWali}
+                          onChange={(e) => setKeluargaData({ ...keluargaData, alamatWali: e.target.value })}
+                          placeholder="Contoh: Jl. Melati No. 5 RT 02 / RW 03"
+                          className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm"
+                        />
+                      </div>
                     </div>
 
                     <div>
@@ -962,16 +1274,16 @@ export default function PendaftaranPage({ params }: PageProps) {
                               >
                                 Tanggal Lahir *
                               </label>
-                              <input
+                              <DatePicker
                                 id={`anggota-tgl-${idx}`}
-                                type="date"
+                                size="sm"
                                 value={item.tanggalLahir}
-                                onChange={(e) => {
+                                onChange={(iso) => {
                                   const next = [...anggotaKeluarga];
-                                  next[idx].tanggalLahir = e.target.value;
+                                  next[idx].tanggalLahir = iso;
                                   setAnggotaKeluarga(next);
                                 }}
-                                className="w-full h-10 px-3 rounded-[10px] border border-[#E2E8F0] bg-white text-xs outline-none focus:border-[#8F5A4E]"
+                                error={errors[`anggota_tgl_${idx}`]}
                               />
                               {errors[`anggota_tgl_${idx}`] && (
                                 <p className="text-[11px] text-[#B3261E] mt-0.5">
@@ -1014,6 +1326,73 @@ export default function PendaftaranPage({ params }: PageProps) {
                 {currentStep === 3 && (
                   <>
                     <h2 className="text-lg font-bold text-[#0F3040]">Persetujuan Perwalian & OTP</h2>
+                    <div>
+                      <label htmlFor="emailWali" className="block text-sm font-semibold text-[#0F3040] mb-1">
+                        Alamat Email Wali *
+                      </label>
+                      <input
+                        id="emailWali"
+                        type="email"
+                        autoComplete="email"
+                        value={keluargaData.emailWali}
+                        onChange={(e) =>
+                          setKeluargaData({ ...keluargaData, emailWali: e.target.value })
+                        }
+                        placeholder="wali@email.com"
+                        className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm"
+                      />
+                      {errors.emailWali || errors.email ? (
+                        <p className="text-xs text-[#B3261E] mt-1">{errors.emailWali || errors.email}</p>
+                      ) : null}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="passwordWali" className="block text-sm font-semibold text-[#0F3040] mb-1">
+                          Kata Sandi Akun *
+                        </label>
+                        <input
+                          id="passwordWali"
+                          type="password"
+                          autoComplete="new-password"
+                          value={keluargaData.passwordWali}
+                          onChange={(e) =>
+                            setKeluargaData({ ...keluargaData, passwordWali: e.target.value })
+                          }
+                          placeholder="Minimal 6 karakter"
+                          className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm"
+                        />
+                        {errors.passwordWali || errors.password ? (
+                          <p className="text-xs text-[#B3261E] mt-1">{errors.passwordWali || errors.password}</p>
+                        ) : null}
+                      </div>
+
+                      <div>
+                        <label htmlFor="konfirmasiPasswordWali" className="block text-sm font-semibold text-[#0F3040] mb-1">
+                          Ulangi Kata Sandi *
+                        </label>
+                        <input
+                          id="konfirmasiPasswordWali"
+                          type="password"
+                          autoComplete="new-password"
+                          value={keluargaData.konfirmasiPasswordWali}
+                          onChange={(e) =>
+                            setKeluargaData({
+                              ...keluargaData,
+                              konfirmasiPasswordWali: e.target.value,
+                            })
+                          }
+                          placeholder="Ketik ulang kata sandi"
+                          className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm"
+                        />
+                        {errors.konfirmasiPasswordWali && (
+                          <p className="text-xs text-[#B3261E] mt-1">
+                            {errors.konfirmasiPasswordWali}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="flex items-start gap-3 pt-2">
                       <input
                         id="setujuKeluarga"
@@ -1157,9 +1536,72 @@ export default function PendaftaranPage({ params }: PageProps) {
                           </div>
                         </div>
 
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <RegionCombobox
+                            id="faskesProvinsi"
+                            label="Provinsi"
+                            placeholder="Ketik atau pilih provinsi..."
+                            level="province"
+                            value={faskesAdminData.provinsi}
+                            onChange={(val, item) => {
+                              setFaskesAdminData({ ...faskesAdminData, provinsi: val, kota: "", kecamatan: "", kelurahan: "" });
+                              setFaskesCodes({ province: item?.code || "", regency: "", district: "" });
+                            }}
+                            required
+                            error={errors.faskesProvinsi}
+                          />
+
+                          <RegionCombobox
+                            id="faskesKota"
+                            label="Kota / Kabupaten"
+                            placeholder={faskesAdminData.provinsi ? "Ketik atau pilih kota..." : "Pilih provinsi dulu"}
+                            level="regency"
+                            parentCode={faskesCodes.province}
+                            value={faskesAdminData.kota}
+                            onChange={(val, item) => {
+                              setFaskesAdminData({ ...faskesAdminData, kota: val, kecamatan: "", kelurahan: "" });
+                              setFaskesCodes((prev) => ({ ...prev, regency: item?.code || "", district: "" }));
+                            }}
+                            disabled={!faskesAdminData.provinsi}
+                            required
+                            error={errors.faskesKota}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <RegionCombobox
+                            id="faskesKecamatan"
+                            label="Kecamatan"
+                            placeholder={faskesAdminData.kota ? "Ketik atau pilih kecamatan..." : "Pilih kota dulu"}
+                            level="district"
+                            parentCode={faskesCodes.regency}
+                            value={faskesAdminData.kecamatan}
+                            onChange={(val, item) => {
+                              setFaskesAdminData({ ...faskesAdminData, kecamatan: val, kelurahan: "" });
+                              setFaskesCodes((prev) => ({ ...prev, district: item?.code || "" }));
+                            }}
+                            disabled={!faskesAdminData.kota}
+                            error={errors.faskesKecamatan}
+                          />
+
+                          <RegionCombobox
+                            id="faskesKelurahan"
+                            label="Kelurahan / Desa"
+                            placeholder={faskesAdminData.kecamatan ? "Ketik atau pilih kelurahan..." : "Pilih kecamatan dulu"}
+                            level="village"
+                            parentCode={faskesCodes.district}
+                            value={faskesAdminData.kelurahan}
+                            onChange={(val) => {
+                              setFaskesAdminData({ ...faskesAdminData, kelurahan: val });
+                            }}
+                            disabled={!faskesAdminData.kecamatan}
+                            error={errors.faskesKelurahan}
+                          />
+                        </div>
+
                         <div>
                           <label htmlFor="alamatLengkapFaskes" className="block text-sm font-semibold text-[#0F3040] mb-1">
-                            Alamat Lengkap *
+                            Alamat Lengkap (Jalan, RT/RW) *
                           </label>
                           <textarea
                             id="alamatLengkapFaskes"
@@ -1289,9 +1731,9 @@ export default function PendaftaranPage({ params }: PageProps) {
                             placeholder="admin@puskesmas-contoh.go.id"
                             className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm"
                           />
-                          {errors.emailFaskes && (
-                            <p className="text-xs text-[#B3261E] mt-1">{errors.emailFaskes}</p>
-                          )}
+                          {errors.emailFaskes || errors.email ? (
+                            <p className="text-xs text-[#B3261E] mt-1">{errors.emailFaskes || errors.email}</p>
+                          ) : null}
                         </div>
                       </>
                     ) : (
@@ -1543,83 +1985,68 @@ export default function PendaftaranPage({ params }: PageProps) {
                   <>
                     <h2 className="text-lg font-bold text-[#0F3040]">Wilayah Instansi Penugasan</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="provinsiVerif" className="block text-sm font-semibold text-[#0F3040] mb-1">
-                          Provinsi
-                        </label>
-                        <select
-                          id="provinsiVerif"
-                          value={verifikatorData.provinsi}
-                          disabled
-                          className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] bg-slate-50 text-sm"
-                        >
-                          {DEMO_PROVINCES.map((p) => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                          ))}
-                        </select>
-                      </div>
+                      <RegionCombobox
+                        id="provinsiVerif"
+                        label="Provinsi"
+                        placeholder="Ketik atau pilih provinsi..."
+                        level="province"
+                        value={verifikatorData.provinsi}
+                        onChange={(val, item) => {
+                          setVerifikatorData({ ...verifikatorData, provinsi: val, kota: "", kecamatan: "", kelurahan: "" });
+                          setVerifikatorCodes({ province: item?.code || "", regency: "", district: "" });
+                        }}
+                        required
+                        error={errors.provinsiVerif}
+                      />
 
-                      <div>
-                        <label htmlFor="kotaVerif" className="block text-sm font-semibold text-[#0F3040] mb-1">
-                          Kota / Kabupaten
-                        </label>
-                        <select
-                          id="kotaVerif"
-                          value={verifikatorData.kota}
-                          disabled
-                          className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] bg-slate-50 text-sm"
-                        >
-                          {DEMO_REGENCIES.map((r) => (
-                            <option key={r.id} value={r.id}>{r.name}</option>
-                          ))}
-                        </select>
-                      </div>
+                      <RegionCombobox
+                        id="kotaVerif"
+                        label="Kota / Kabupaten"
+                        placeholder={verifikatorData.provinsi ? "Ketik atau pilih kota..." : "Pilih provinsi dulu"}
+                        level="regency"
+                        parentCode={verifikatorCodes.province}
+                        value={verifikatorData.kota}
+                        onChange={(val, item) => {
+                          setVerifikatorData({ ...verifikatorData, kota: val, kecamatan: "", kelurahan: "" });
+                          setVerifikatorCodes((prev) => ({ ...prev, regency: item?.code || "", district: "" }));
+                        }}
+                        disabled={!verifikatorData.provinsi}
+                        required
+                        error={errors.kotaVerif}
+                      />
                     </div>
 
                     {subperan !== "dinas-sosial" && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor="kecamatanVerif" className="block text-sm font-semibold text-[#0F3040] mb-1">
-                            Kecamatan *
-                          </label>
-                          <select
-                            id="kecamatanVerif"
-                            value={verifikatorData.kecamatan}
-                            onChange={(e) => {
-                              const newKec = e.target.value;
-                              const firstSub = DEMO_SUBDISTRICTS.find((s) => s.districtId === newKec);
-                              setVerifikatorData({
-                                ...verifikatorData,
-                                kecamatan: newKec,
-                                kelurahan: firstSub ? firstSub.id : "",
-                              });
-                            }}
-                            className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm bg-white"
-                          >
-                            {availableDistricts.map((d) => (
-                              <option key={d.id} value={d.id}>{d.name}</option>
-                            ))}
-                          </select>
-                        </div>
+                        <RegionCombobox
+                          id="kecamatanVerif"
+                          label="Kecamatan"
+                          placeholder={verifikatorData.kota ? "Ketik atau pilih kecamatan..." : "Pilih kota dulu"}
+                          level="district"
+                          parentCode={verifikatorCodes.regency}
+                          value={verifikatorData.kecamatan}
+                          onChange={(val, item) => {
+                            setVerifikatorData({ ...verifikatorData, kecamatan: val, kelurahan: "" });
+                            setVerifikatorCodes((prev) => ({ ...prev, district: item?.code || "" }));
+                          }}
+                          disabled={!verifikatorData.kota}
+                          error={errors.kecamatanVerif}
+                        />
 
                         {subperan === "kelurahan" && (
-                          <div>
-                            <label htmlFor="kelurahanVerif" className="block text-sm font-semibold text-[#0F3040] mb-1">
-                              Kelurahan / Desa *
-                            </label>
-                            <select
-                              id="kelurahanVerif"
-                              value={verifikatorData.kelurahan}
-                              onChange={(e) =>
-                                setVerifikatorData({ ...verifikatorData, kelurahan: e.target.value })
-                              }
-                              className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm bg-white"
-                            >
-                              {availableSubdistricts.map((s) => (
-                                <option key={s.id} value={s.id}>{s.name}</option>
-                              ))}
-                            </select>
-                          </div>
+                          <RegionCombobox
+                            id="kelurahanVerif"
+                            label="Kelurahan / Desa"
+                            placeholder={verifikatorData.kecamatan ? "Ketik atau pilih kelurahan..." : "Pilih kecamatan dulu"}
+                            level="village"
+                            parentCode={verifikatorCodes.district}
+                            value={verifikatorData.kelurahan}
+                            onChange={(val) => {
+                              setVerifikatorData({ ...verifikatorData, kelurahan: val });
+                            }}
+                            disabled={!verifikatorData.kecamatan}
+                            error={errors.kelurahanVerif}
+                          />
                         )}
                       </div>
                     )}
@@ -1704,9 +2131,9 @@ export default function PendaftaranPage({ params }: PageProps) {
                         placeholder="petugas@semarangkota.go.id"
                         className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm"
                       />
-                      {errors.emailDinas && (
-                        <p className="text-xs text-[#B3261E] mt-1">{errors.emailDinas}</p>
-                      )}
+                      {errors.emailDinas || errors.email ? (
+                        <p className="text-xs text-[#B3261E] mt-1">{errors.emailDinas || errors.email}</p>
+                      ) : null}
                     </div>
                   </>
                 )}
@@ -1813,10 +2240,20 @@ export default function PendaftaranPage({ params }: PageProps) {
             <button
               type="button"
               onClick={handleNext}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-[14px] text-sm font-semibold bg-[#8F5A4E] text-white hover:bg-[#A56F63] active:bg-[#7B4B40] transition-colors shadow-sm ml-auto"
+              disabled={submitting}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-[14px] text-sm font-semibold bg-[#8F5A4E] text-white hover:bg-[#A56F63] active:bg-[#7B4B40] transition-colors shadow-sm ml-auto disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <span>{currentStep === steps.length - 1 ? "Selesaikan Pendaftaran" : "Lanjutkan"}</span>
-              <ArrowRight className="w-4 h-4" />
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Mendaftarkan...</span>
+                </>
+              ) : (
+                <>
+                  <span>{currentStep === steps.length - 1 ? "Selesaikan Pendaftaran" : "Lanjutkan"}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </div>
         </div>

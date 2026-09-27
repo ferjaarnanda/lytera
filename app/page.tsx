@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   UserRound,
@@ -23,10 +23,65 @@ import { HeroSection } from "@/components/HeroSection";
 import { RolePickerDialog } from "@/components/RolePickerDialog";
 import { RoleId } from "@/lib/roles";
 
+const CARA_KERJA_STEPS = [
+  {
+    step: 1,
+    title: "Faskes membuat rujukan",
+    desc: "Dokter faskes setelah memeriksa pasien, mengisi anamnesis, dan menerbitkan rujukan digital.",
+  },
+  {
+    step: 2,
+    title: "Verifikasi administrasi",
+    desc: "Kelurahan atau Dinsos memverifikasi syarat domisili dan SKTM secara paralel bila diperlukan.",
+  },
+  {
+    step: 3,
+    title: "Rumah sakit menjadwalkan",
+    desc: "Fasilitas rujukan menerima dokumen klinis dan menetapkan tanggal serta jam temu dokter spesialis.",
+  },
+  {
+    step: 4,
+    title: "Hasil dikirim balik",
+    desc: "Setelah penanganan di rumah sakit, laporan resume medis dikirimkan kembali ke puskesmas perujuk.",
+  },
+];
+
 export default function HomePage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerMode, setPickerMode] = useState<"daftar" | "masuk">("daftar");
   const [pickerRole, setPickerRole] = useState<RoleId | null>(null);
+
+  // --- ANIMASI ACTIVE STEP CARA KERJA: 5s -> 5s -> 5s -> 5s -> 2s (TOTAL 22 DETIK) ---
+  const [activeStep, setActiveStep] = useState<number | null>(1);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+
+    if (activeStep === 1) {
+      timer = setTimeout(() => setActiveStep(2), 5000);
+    } else if (activeStep === 2) {
+      timer = setTimeout(() => setActiveStep(3), 5000);
+    } else if (activeStep === 3) {
+      timer = setTimeout(() => setActiveStep(4), 5000);
+    } else if (activeStep === 4) {
+      timer = setTimeout(() => setActiveStep(null), 5000);
+    } else {
+      // Semua step nonaktif selama 2 detik
+      timer = setTimeout(() => setActiveStep(1), 2000);
+    }
+
+    return () => clearTimeout(timer);
+  }, [activeStep]);
+
+  // Handler navigasi smooth scroll ke section masuk-peran
+  const handleMulaiSekarang = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const target = document.getElementById("masuk-peran");
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth" });
+      window.history.pushState(null, "", "#masuk-peran");
+    }
+  }, []);
 
   const openPicker = (role: RoleId, mode: "daftar" | "masuk") => {
     setPickerRole(role);
@@ -35,11 +90,11 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A2230] text-[#464858] font-sans antialiased selection:bg-[#8F5A4E] selection:text-white">
+    <div className="min-h-screen bg-[#F7F8FA] text-[#464858] font-sans antialiased selection:bg-[#8F5A4E] selection:text-white w-full max-w-full overflow-x-hidden relative">
       {/* 1. NAVBAR KONTINU DINAMIS */}
       <Navbar variant="landing" activeItem="Beranda" />
 
-      <main className="w-full bg-[#0A2230]">
+      <main className="w-full max-w-full overflow-x-hidden bg-[#F7F8FA]">
         <div className="flex flex-col w-full">
           {/* ============================================================ */}
           {/* SECTION 1: HERO SECTION (TYPEWRITER & SEQUENTIAL STAGGER) */}
@@ -70,7 +125,7 @@ export default function HomePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Kartu 1: Pasien */}
                 <Reveal delay={0}>
-                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#8F5A4E]/35 shadow-sm hover:shadow-md transition-all duration-[220ms] ease-out hover:-translate-y-1">
+                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#8F5A4E]/35 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
                     <div>
                       <div className="w-12 h-12 rounded-full bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-4 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
                         <UserRound className="w-6 h-6 text-[#0A2230]" strokeWidth={1.75} />
@@ -95,7 +150,7 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => openPicker("pasien", "daftar")}
-                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#8F5A4E] hover:bg-[#A56F63] text-white text-sm font-semibold transition-all duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
+                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#8F5A4E] hover:bg-[#A56F63] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
                       >
                         Daftar sebagai Pasien
                       </button>
@@ -117,7 +172,7 @@ export default function HomePage() {
 
                 {/* Kartu 2: Fasilitas Kesehatan */}
                 <Reveal delay={80}>
-                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#8F5A4E]/35 shadow-sm hover:shadow-md transition-all duration-[220ms] ease-out hover:-translate-y-1">
+                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#8F5A4E]/35 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
                     <div>
                       <div className="w-12 h-12 rounded-full bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-4 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
                         <Hospital className="w-6 h-6 text-[#0A2230]" strokeWidth={1.75} />
@@ -147,7 +202,7 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => openPicker("fasilitas", "daftar")}
-                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#8F5A4E] hover:bg-[#A56F63] text-white text-sm font-semibold transition-all duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
+                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#8F5A4E] hover:bg-[#A56F63] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
                       >
                         Daftar Fasilitas
                       </button>
@@ -169,7 +224,7 @@ export default function HomePage() {
 
                 {/* Kartu 3: Verifikasi Administrasi */}
                 <Reveal delay={160}>
-                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#8F5A4E]/35 shadow-sm hover:shadow-md transition-all duration-[220ms] ease-out hover:-translate-y-1">
+                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#8F5A4E]/35 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
                     <div>
                       <div className="w-12 h-12 rounded-full bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-4 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
                         <ShieldCheck className="w-6 h-6 text-[#0A2230]" strokeWidth={1.75} />
@@ -196,7 +251,7 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => openPicker("verifikator", "daftar")}
-                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#8F5A4E] hover:bg-[#A56F63] text-white text-sm font-semibold transition-all duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
+                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#8F5A4E] hover:bg-[#A56F63] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
                       >
                         Daftar Verifikator
                       </button>
@@ -218,7 +273,7 @@ export default function HomePage() {
 
                 {/* Kartu 4: Dinas Kesehatan */}
                 <Reveal delay={240}>
-                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#8F5A4E]/35 shadow-sm hover:shadow-md transition-all duration-[220ms] ease-out hover:-translate-y-1">
+                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#8F5A4E]/35 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
                     <div>
                       <div className="w-12 h-12 rounded-full bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-4 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
                         <Landmark className="w-6 h-6 text-[#0A2230]" strokeWidth={1.75} />
@@ -242,7 +297,7 @@ export default function HomePage() {
                     <div>
                       <Link
                         href="/masuk/dinkes"
-                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#8F5A4E] hover:bg-[#A56F63] text-white text-sm font-semibold transition-all duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
+                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#8F5A4E] hover:bg-[#A56F63] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
                       >
                         Masuk
                       </Link>
@@ -280,71 +335,57 @@ export default function HomePage() {
               </Reveal>
 
               <div className="relative">
-                <div className="hidden lg:block absolute top-[28px] left-[40px] right-[40px] h-[2px] bg-[#E2E8F0] z-0" />
+                {/* Garis horizontal penghubung antar step di desktop */}
+                <div className="hidden lg:block absolute top-[24px] left-[60px] right-[60px] h-[2px] bg-[#E2E8F0] z-0" />
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
-                  {/* Langkah 1 */}
-                  <Reveal delay={0}>
-                    <div className="flex flex-col items-start bg-white p-4 rounded-[20px] border border-[#E2E8F0]/80 h-full">
-                      <div className="w-14 h-14 rounded-full bg-[#EBF2F6] text-[#8F5A4E] flex items-center justify-center text-xl font-bold mb-4">
-                        1
-                      </div>
-                      <h3 className="text-[17px] text-[#0A2230] mb-1 font-bold">
-                        Faskes membuat rujukan
-                      </h3>
-                      <p className="text-[13px] text-slate-600 leading-relaxed">
-                        Dokter faskes setelah memeriksa pasien, mengisi anamnesis,
-                        dan menerbitkan rujukan digital.
-                      </p>
-                    </div>
-                  </Reveal>
+                  {CARA_KERJA_STEPS.map((item, idx) => {
+                    const isActive = activeStep === item.step;
+                    return (
+                      <Reveal key={item.step} delay={idx * 80}>
+                        <div className="flex flex-col items-center h-full group">
+                          {/* NOMOR LANGKAH DI LUAR CARD */}
+                          <div className="flex flex-col items-center mb-3">
+                            <div
+                              className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold transition-colors transition-transform duration-500 ease-in-out z-10 ${
+                                isActive
+                                  ? "bg-[#8F5A4E] text-white shadow-md ring-4 ring-[#8F5A4E]/20 scale-105"
+                                  : "bg-[#EBF2F6] text-[#464858] border border-[#E2E8F0]"
+                              }`}
+                            >
+                              {item.step}
+                            </div>
+                            {/* Garis penghubung vertikal ke card di bawahnya */}
+                            <div
+                              className={`w-[2px] h-4 transition-colors duration-500 ${
+                                isActive ? "bg-[#8F5A4E]" : "bg-[#E2E8F0]"
+                              }`}
+                            />
+                          </div>
 
-                  {/* Langkah 2 */}
-                  <Reveal delay={80}>
-                    <div className="flex flex-col items-start bg-white p-4 rounded-[20px] border border-[#E2E8F0]/80 h-full">
-                      <div className="w-14 h-14 rounded-full bg-[#EBF2F6] text-[#8F5A4E] flex items-center justify-center text-xl font-bold mb-4">
-                        2
-                      </div>
-                      <h3 className="text-[17px] text-[#0A2230] mb-1 font-bold">
-                        Verifikasi administrasi
-                      </h3>
-                      <p className="text-[13px] text-slate-600 leading-relaxed">
-                        Kelurahan atau Dinsos memverifikasi syarat domisili dan
-                        SKTM secara paralel bila diperlukan.
-                      </p>
-                    </div>
-                  </Reveal>
-
-                  {/* Langkah 3 */}
-                  <Reveal delay={160}>
-                    <div className="flex flex-col items-start bg-white p-4 rounded-[20px] border border-[#E2E8F0]/80 h-full">
-                      <div className="w-14 h-14 rounded-full bg-[#EBF2F6] text-[#8F5A4E] flex items-center justify-center text-xl font-bold mb-4">
-                        3
-                      </div>
-                      <h3 className="text-[17px] text-[#0A2230] mb-1 font-bold">
-                        Rumah sakit menjadwalkan
-                      </h3>
-                      <p className="text-[13px] text-slate-600 leading-relaxed">
-                        Fasilitas rujukan menerima dokumen klinis dan menetapkan
-                        tanggal serta jam temu dokter spesialis.
-                      </p>
-                    </div>
-                  </Reveal>
-
-                  {/* Langkah 4 */}
-                  <Reveal delay={240}>
-                    <div className="flex flex-col items-start bg-white p-4 rounded-[20px] border border-[#E2E8F0]/80 h-full">
-                      <div className="w-14 h-14 rounded-full bg-[#EBF2F6] text-[#8F5A4E] flex items-center justify-center text-xl font-bold mb-4">
-                        4
-                      </div>
-                      <h3 className="text-[17px] text-[#0A2230] mb-1 font-bold">
-                        Hasil dikirim balik
-                      </h3>
-                      <p className="text-[13px] text-slate-600 leading-relaxed">
-                        Setelah penanganan di rumah sakit, laporan resume medis
-                        dikirimkan kembali ke puskesmas perujuk.
-                      </p>
-                    </div>
-                  </Reveal>
+                          {/* KARTU TEKS (HANYA JUDUL & DESKRIPSI) */}
+                          <div
+                            className={`w-full p-5 rounded-[20px] border transition-colors transition-shadow duration-500 ease-in-out flex flex-col justify-start h-full text-left ${
+                              isActive
+                                ? "bg-[#FAF5F2] border-[#8F5A4E] shadow-sm"
+                                : "bg-white border-[#E2E8F0]/80 shadow-none"
+                            }`}
+                          >
+                            <h3
+                              className={`text-[17px] mb-2 font-bold transition-colors duration-500 ${
+                                isActive ? "text-[#8F5A4E]" : "text-[#0A2230]"
+                              }`}
+                            >
+                              {item.title}
+                            </h3>
+                            <p className="text-[13px] text-slate-600 leading-relaxed">
+                              {item.desc}
+                            </p>
+                          </div>
+                        </div>
+                      </Reveal>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -356,7 +397,7 @@ export default function HomePage() {
           <section
             id="fitur"
             data-navbar-tone="light"
-            className="w-full bg-[#F8FAFC] py-[96px] overflow-x-clip text-left scroll-mt-20"
+            className="w-full bg-[#F8FAFC] py-[96px] overflow-hidden text-left scroll-mt-20"
           >
             <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
               <Reveal>
@@ -376,7 +417,7 @@ export default function HomePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {/* Fitur 1 */}
                   <Reveal delay={0}>
-                    <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full">
+                    <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full cursor-default transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
                       <div className="w-11 h-11 rounded-[12px] bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-3.5">
                         <ArrowLeftRight className="w-5 h-5 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
@@ -393,7 +434,7 @@ export default function HomePage() {
 
                   {/* Fitur 2 */}
                   <Reveal delay={80}>
-                    <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full">
+                    <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full cursor-default transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
                       <div className="w-11 h-11 rounded-[12px] bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-3.5">
                         <KeyRound className="w-5 h-5 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
@@ -410,7 +451,7 @@ export default function HomePage() {
 
                   {/* Fitur 3 */}
                   <Reveal delay={160}>
-                    <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full">
+                    <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full cursor-default transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
                       <div className="w-11 h-11 rounded-[12px] bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-3.5">
                         <AlertTriangle className="w-5 h-5 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
@@ -432,7 +473,7 @@ export default function HomePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {/* Fitur 4 */}
                   <Reveal delay={0}>
-                    <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full">
+                    <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full cursor-default transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
                       <div className="w-11 h-11 rounded-[12px] bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-3.5">
                         <Bed className="w-5 h-5 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
@@ -449,7 +490,7 @@ export default function HomePage() {
 
                   {/* Fitur 5 */}
                   <Reveal delay={80}>
-                    <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full">
+                    <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full cursor-default transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
                       <div className="w-11 h-11 rounded-[12px] bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-3.5">
                         <History className="w-5 h-5 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
@@ -465,7 +506,7 @@ export default function HomePage() {
 
                   {/* Fitur 6 */}
                   <Reveal delay={160}>
-                    <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full">
+                    <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full cursor-default transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
                       <div className="w-11 h-11 rounded-[12px] bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-3.5">
                         <Sparkles className="w-5 h-5 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
@@ -484,7 +525,7 @@ export default function HomePage() {
           </section>
 
           {/* ============================================================ */}
-          {/* SECTION 5: DAN KENAPA LYTERA? */}
+          {/* SECTION 5: Mengapa LYTERA? */}
           {/* ============================================================ */}
           <section
             id="kenapa-lytera"
@@ -495,7 +536,7 @@ export default function HomePage() {
               <Reveal>
                 <div className="flex flex-col text-left mb-16">
                   <h2 className="text-3xl sm:text-[32px] font-bold text-[#0A2230] tracking-tight">
-                    Dan kenapa Lytera?
+                    Mengapa Lytera?
                   </h2>
                   <p className="text-base text-slate-600 mt-2 max-w-3xl">
                     Lytera hadir untuk membantu mengatasi berbagai permasalahan
@@ -714,7 +755,7 @@ export default function HomePage() {
           {/* ============================================================ */}
           {/* SECTION 6: CTA CONTAINER */}
           {/* ============================================================ */}
-          <section data-navbar-tone="light" className="w-full py-[96px] bg-[#F8FAFC]">
+          <section data-navbar-tone="light" className="w-full max-w-full overflow-hidden py-[96px] bg-[#F8FAFC]">
             <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
               <Reveal>
                 <div className="w-full rounded-[24px] bg-[#0A2230] p-10 sm:p-14 text-center flex flex-col items-center">
@@ -724,12 +765,13 @@ export default function HomePage() {
                   <p className="text-base text-slate-300 max-w-xl mx-auto mt-3">
                     Pilih peranmu, lalu mulai dari rujukan pertama.
                   </p>
-                  <Link
+                  <a
                     href="#masuk-peran"
-                    className="inline-flex items-center justify-center px-8 py-4 rounded-[14px] bg-[#D99B7F] text-[#0A2230] font-bold text-[15px] hover:bg-[#E4AE94] hover:-translate-y-[1px] active:scale-[0.98] transition-all mt-6 shadow-none"
+                    onClick={handleMulaiSekarang}
+                    className="inline-flex items-center justify-center px-8 py-4 rounded-[14px] bg-[#D99B7F] text-[#0A2230] font-bold text-[15px] hover:bg-[#E4AE94] hover:-translate-y-[1px] active:scale-[0.98] transition-colors duration-200 mt-6 shadow-none cursor-pointer"
                   >
                     Mulai Sekarang
-                  </Link>
+                  </a>
                 </div>
               </Reveal>
             </div>
@@ -740,7 +782,7 @@ export default function HomePage() {
       {/* FOOTER */}
       <footer
         data-navbar-tone="dark"
-        className="w-full bg-[#0A2230] border-t border-white/[0.08] py-8 text-left"
+        className="w-full max-w-full overflow-hidden bg-[#0A2230] border-t border-white/[0.08] py-8 text-left"
       >
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6">

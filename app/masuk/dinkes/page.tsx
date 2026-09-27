@@ -2,49 +2,80 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Landmark, ArrowRight, AlertCircle, ShieldAlert } from "lucide-react";
+import { Landmark, ArrowRight, AlertCircle, ShieldAlert, Loader2 } from "lucide-react";
 import { BackButton } from "@/components/BackButton";
 import { Logo } from "@/components/Logo";
-import { OtpInput } from "@/components/OtpInput";
+import { createClient } from "@/lib/supabase/client";
 
 export default function MasukDinkesPage() {
   const router = useRouter();
 
-  const [accountId, setAccountId] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [otp, setOtp] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleMasuk = (e: React.FormEvent) => {
+  const handleMasuk = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
 
-    if (!accountId.trim()) {
-      setErrorMsg("Masukkan ID Petugas atau Email Dinas Kesehatan");
+    if (!email.trim()) {
+      setErrorMsg("Masukkan Email Dinas Kesehatan");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setErrorMsg("Format email tidak valid");
       return;
     }
     if (password.length < 6) {
       setErrorMsg("Kata sandi minimal 6 karakter");
       return;
     }
-    if (otp !== "123456") {
-      setErrorMsg("Kode keamanan OTP salah. Masukkan kode demo: 123456");
-      return;
-    }
 
-    // Submit simulation -> redirect to portal dinkes
-    router.push("/portal/dinkes");
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) {
+        if (
+          error.message.toLowerCase().includes("invalid login") ||
+          error.message.toLowerCase().includes("invalid credentials") ||
+          error.message.toLowerCase().includes("invalid email or password")
+        ) {
+          setErrorMsg("Email atau kata sandi salah. Silakan coba lagi.");
+        } else if (error.message.toLowerCase().includes("email not confirmed")) {
+          setErrorMsg(
+            "Email belum dikonfirmasi. Periksa kotak masuk Anda dan klik tautan verifikasi."
+          );
+        } else if (error.message.toLowerCase().includes("too many requests")) {
+          setErrorMsg(
+            "Terlalu banyak percobaan masuk. Tunggu beberapa menit lalu coba lagi."
+          );
+        } else {
+          setErrorMsg("Gagal masuk: " + error.message);
+        }
+        return;
+      }
+
+      // Berhasil — arahkan ke portal dinkes
+      router.push("/portal/dinkes");
+    } catch {
+      setErrorMsg("Terjadi kesalahan jaringan. Periksa koneksi internet Anda.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#FAF5F2] text-[#464858] pb-16">
-      {/* Top Navigation */}
+      {/* Top Navigation: Logo kiri, BackButton kanan */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 flex items-center justify-between">
-        <BackButton href="/" label="← Kembali ke Beranda" />
-        <Link href="/" className="flex items-center gap-2 group" aria-label="Beranda Lytera">
-          <Logo tone="light" />
-        </Link>
+        <Logo tone="light" size="sm" />
+        <BackButton href="/" label="Kembali ke Beranda" />
       </div>
 
       {/* Main Login Card */}
@@ -54,7 +85,7 @@ export default function MasukDinkesPage() {
           <div className="text-center pb-6 border-b border-[#E2E8F0]">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#EBF2F6] text-[#0F3040] mb-3">
               <Landmark className="w-3.5 h-3.5 text-[#8F5A4E]" />
-              <span>Regulator & Pengawas</span>
+              <span>Regulator &amp; Pengawas</span>
             </div>
             <h1 className="text-2xl font-bold text-[#0F3040] tracking-tight">
               Portal Dinas Kesehatan
@@ -78,54 +109,72 @@ export default function MasukDinkesPage() {
             </div>
           )}
 
-          {/* Form Content */}
+          {/* Form */}
           <form onSubmit={handleMasuk} className="mt-6 space-y-4">
             <div>
-              <label htmlFor="accountId" className="block text-sm font-semibold text-[#0F3040] mb-1.5">
-                ID Petugas / Email Dinas Kesehatan
+              <label
+                htmlFor="emailDinkes"
+                className="block text-sm font-semibold text-[#0F3040] mb-1.5"
+              >
+                Email Dinas Kesehatan
               </label>
               <input
-                id="accountId"
-                type="text"
-                value={accountId}
-                onChange={(e) => setAccountId(e.target.value)}
+                id="emailDinkes"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="dinkes.semarang@jatengprov.go.id"
-                className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm"
+                className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm bg-white"
               />
             </div>
 
             <div>
-              <label htmlFor="passwordDinkes" className="block text-sm font-semibold text-[#0F3040] mb-1.5">
-                Kata Sandi
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label
+                  htmlFor="passwordDinkes"
+                  className="text-sm font-semibold text-[#0F3040]"
+                >
+                  Kata Sandi
+                </label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    alert("Hubungi administrator Dinas Kominfo / Dinas Kesehatan daerah.")
+                  }
+                  className="text-xs text-[#8F5A4E] hover:underline"
+                >
+                  Lupa kata sandi?
+                </button>
+              </div>
               <input
                 id="passwordDinkes"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm"
+                className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm bg-white"
               />
-            </div>
-
-            <div className="pt-2">
-              <OtpInput
-                value={otp}
-                onChange={setOtp}
-                label="Kode Keamanan 2FA (OTP)"
-              />
-              <p className="text-xs text-[#8F5A4E] font-medium mt-2">
-                💡 Kode demo 2FA: <span className="font-bold">123456</span>
-              </p>
             </div>
 
             <div className="pt-4">
               <button
                 type="submit"
-                className="w-full h-12 rounded-[14px] font-semibold text-sm bg-[#0F3040] text-white hover:bg-[#0A2230] active:bg-black transition-colors flex items-center justify-center gap-2 shadow-sm"
+                disabled={loading}
+                className="w-full h-12 rounded-[14px] font-semibold text-sm bg-[#0F3040] text-white hover:bg-[#0A2230] active:bg-black transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <span>Masuk ke Dashboard Dinkes</span>
-                <ArrowRight className="w-4 h-4" />
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Memproses...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Masuk ke Dashboard Dinkes</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
             </div>
           </form>

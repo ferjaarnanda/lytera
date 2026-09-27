@@ -177,12 +177,10 @@ function SelesaiContent() {
 export default function PendaftaranSelesaiPage() {
   return (
     <div className="min-h-screen bg-[#FAF5F2] text-[#464858] pb-16">
-      {/* Top Bar with BackButton */}
+      {/* Top Bar: Logo kiri, BackButton kanan */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 flex items-center justify-between">
-        <BackButton href="/" label="← Kembali ke Beranda" />
-        <Link href="/" className="flex items-center gap-2 group" aria-label="Beranda Lytera">
-          <Logo tone="light" />
-        </Link>
+        <Logo tone="light" size="sm" />
+        <BackButton href="/" label="Kembali ke Beranda" />
       </div>
 
       {/* Main Card Container */}

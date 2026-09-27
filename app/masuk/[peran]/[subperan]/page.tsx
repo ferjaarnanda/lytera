@@ -9,10 +9,10 @@ import {
   ShieldCheck,
   ArrowRight,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { BackButton } from "@/components/BackButton";
 import { Logo } from "@/components/Logo";
-import { OtpInput } from "@/components/OtpInput";
 import {
   isValidRole,
   isValidSubRole,
@@ -20,6 +20,7 @@ import {
   getSubRoleMeta,
   RoleId,
 } from "@/lib/roles";
+import { createClient } from "@/lib/supabase/client";
 
 interface PageProps {
   params: Promise<{
@@ -44,14 +45,10 @@ export default function MasukPage({ params }: PageProps) {
   const roleMeta = getRoleMeta(peran);
   const subRoleMeta = getSubRoleMeta(peran, subperan);
 
-  // Form states
-  const [nikOrKk, setNikOrKk] = useState("");
-  const [otp, setOtp] = useState("");
-  const [emailOrId, setEmailOrId] = useState("");
-  const [nip, setNip] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   if (!valid || !roleMeta || !subRoleMeta) {
     return (
@@ -61,57 +58,67 @@ export default function MasukPage({ params }: PageProps) {
     );
   }
 
-  const handleKirimOtp = (e: React.FormEvent) => {
+  const handleMasuk = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!/^\d{16}$/.test(nikOrKk)) {
-      setErrorMsg("Masukkan 16 digit NIK atau Nomor Kartu Keluarga yang terdaftar");
+    setErrorMsg("");
+
+    if (!email.trim()) {
+      setErrorMsg("Masukkan alamat email Anda");
       return;
     }
-    setErrorMsg("");
-    setOtpSent(true);
-  };
-
-  const handleMasuk = (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg("");
-
-    if (peran === "pasien") {
-      if (otp !== "123456") {
-        setErrorMsg("Kode OTP salah. Masukkan kode demo: 123456");
-        return;
-      }
-    } else if (peran === "fasilitas") {
-      if (!emailOrId.trim()) {
-        setErrorMsg("Masukkan email atau ID faskes yang terdaftar");
-        return;
-      }
-      if (password.length < 6) {
-        setErrorMsg("Kata sandi minimal 6 karakter");
-        return;
-      }
-    } else if (peran === "verifikator") {
-      if (!/^\d{18}$/.test(nip)) {
-        setErrorMsg("NIP harus 18 digit angka");
-        return;
-      }
-      if (password.length < 6) {
-        setErrorMsg("Kata sandi minimal 6 karakter");
-        return;
-      }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setErrorMsg("Format email tidak valid");
+      return;
+    }
+    if (password.length < 6) {
+      setErrorMsg("Kata sandi minimal 6 karakter");
+      return;
     }
 
-    // Submit simulation -> redirect to portal
-    router.push(`/portal/${peran}/${subperan}`);
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) {
+        if (
+          error.message.toLowerCase().includes("invalid login") ||
+          error.message.toLowerCase().includes("invalid credentials") ||
+          error.message.toLowerCase().includes("invalid email or password")
+        ) {
+          setErrorMsg("Email atau kata sandi salah. Silakan coba lagi.");
+        } else if (error.message.toLowerCase().includes("email not confirmed")) {
+          setErrorMsg(
+            "Email belum dikonfirmasi. Periksa kotak masuk Anda dan klik tautan verifikasi."
+          );
+        } else if (error.message.toLowerCase().includes("too many requests")) {
+          setErrorMsg(
+            "Terlalu banyak percobaan masuk. Tunggu beberapa menit lalu coba lagi."
+          );
+        } else {
+          setErrorMsg("Gagal masuk: " + error.message);
+        }
+        return;
+      }
+
+      // Berhasil — arahkan ke portal sesuai peran
+      router.push(`/portal/${peran}/${subperan}`);
+    } catch {
+      setErrorMsg("Terjadi kesalahan jaringan. Periksa koneksi internet Anda.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#FAF5F2] text-[#464858] pb-16">
-      {/* Top Navigation */}
+      {/* Top Navigation: Logo kiri, BackButton kanan */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 flex items-center justify-between">
-        <BackButton href="/" label="← Kembali ke Beranda" />
-        <Link href="/" className="flex items-center gap-2 group" aria-label="Beranda Lytera">
-          <Logo tone="light" />
-        </Link>
+        <Logo tone="light" size="sm" />
+        <BackButton href="/" label="Kembali ke Beranda" />
       </div>
 
       {/* Main Login Card */}
@@ -140,163 +147,86 @@ export default function MasukPage({ params }: PageProps) {
             </div>
           )}
 
-          {/* Form Content */}
-          <form onSubmit={peran === "pasien" && !otpSent ? handleKirimOtp : handleMasuk} className="mt-6 space-y-4">
-            {peran === "pasien" ? (
-              <>
-                <div>
-                  <label htmlFor="nikOrKk" className="block text-sm font-semibold text-[#0F3040] mb-1.5">
-                    {subperan === "keluarga" ? "Nomor Kartu Keluarga (KK)" : "Nomor Induk Kependudukan (NIK)"}
-                  </label>
-                  <input
-                    id="nikOrKk"
-                    type="text"
-                    maxLength={16}
-                    value={nikOrKk}
-                    disabled={otpSent}
-                    onChange={(e) => setNikOrKk(e.target.value.replace(/\D/g, ""))}
-                    placeholder="16 digit angka"
-                    className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none tabular-nums text-sm bg-white disabled:bg-slate-50 disabled:text-slate-500"
-                  />
-                  <p className="text-xs text-slate-400 mt-1">
-                    Kode verifikasi satu kali pakai (OTP) akan dikirimkan ke nomor HP terdaftar.
-                  </p>
-                </div>
+          {/* Form */}
+          <form onSubmit={handleMasuk} className="mt-6 space-y-4">
+            <div>
+              <label
+                htmlFor={`email-${peran}`}
+                className="block text-sm font-semibold text-[#0F3040] mb-1.5"
+              >
+                {peran === "pasien" ? "Alamat Email" : "Email Resmi"}
+              </label>
+              <input
+                id={`email-${peran}`}
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={
+                  peran === "pasien"
+                    ? "nama@email.com"
+                    : peran === "fasilitas"
+                    ? "nama@faskes.id"
+                    : "nama@instansi.go.id"
+                }
+                className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm bg-white"
+              />
+            </div>
 
-                {otpSent && (
-                  <div className="pt-2 animate-[fadeIn_0.3s_ease-out]">
-                    <OtpInput
-                      value={otp}
-                      onChange={setOtp}
-                      label="Kode Verifikasi OTP (6 Digit)"
-                    />
-                    <p className="text-xs text-[#8F5A4E] font-medium mt-2">
-                      💡 Kode demo untuk pengujian: <span className="font-bold">123456</span>
-                    </p>
-                  </div>
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label
+                  htmlFor={`password-${peran}`}
+                  className="text-sm font-semibold text-[#0F3040]"
+                >
+                  Kata Sandi
+                </label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    alert(
+                      peran === "pasien"
+                        ? "Hubungi administrator Lytera untuk atur ulang kata sandi."
+                        : peran === "fasilitas"
+                        ? "Fitur lupa kata sandi: Hubungi administrator faskes Anda."
+                        : "Hubungi administrator Dinas Kominfo / Dinas Kesehatan daerah."
+                    )
+                  }
+                  className="text-xs text-[#8F5A4E] hover:underline"
+                >
+                  Lupa kata sandi?
+                </button>
+              </div>
+              <input
+                id={`password-${peran}`}
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm bg-white"
+              />
+            </div>
+
+            <div className="pt-4">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full h-12 rounded-[14px] font-semibold text-sm bg-[#8F5A4E] text-white hover:bg-[#A56F63] active:bg-[#7B4B40] transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Memproses...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Masuk ke Portal</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
                 )}
-
-                <div className="pt-4">
-                  {!otpSent ? (
-                    <button
-                      type="submit"
-                      className="w-full h-12 rounded-[14px] font-semibold text-sm bg-[#8F5A4E] text-white hover:bg-[#A56F63] active:bg-[#7B4B40] transition-colors flex items-center justify-center gap-2 shadow-sm"
-                    >
-                      <span>Kirim Kode OTP</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  ) : (
-                    <button
-                      type="submit"
-                      className="w-full h-12 rounded-[14px] font-semibold text-sm bg-[#8F5A4E] text-white hover:bg-[#A56F63] active:bg-[#7B4B40] transition-colors flex items-center justify-center gap-2 shadow-sm"
-                    >
-                      <span>Masuk ke Portal</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </>
-            ) : peran === "fasilitas" ? (
-              <>
-                <div>
-                  <label htmlFor="emailOrId" className="block text-sm font-semibold text-[#0F3040] mb-1.5">
-                    Email Resmi atau ID Petugas Faskes
-                  </label>
-                  <input
-                    id="emailOrId"
-                    type="text"
-                    value={emailOrId}
-                    onChange={(e) => setEmailOrId(e.target.value)}
-                    placeholder="nama@faskes.id"
-                    className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label htmlFor="passwordFaskes" className="text-sm font-semibold text-[#0F3040]">
-                      Kata Sandi
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => alert("Fitur lupa kata sandi: Hubungi administrator faskes Anda.")}
-                      className="text-xs text-[#8F5A4E] hover:underline"
-                    >
-                      Lupa kata sandi?
-                    </button>
-                  </div>
-                  <input
-                    id="passwordFaskes"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm"
-                  />
-                </div>
-
-                <div className="pt-4">
-                  <button
-                    type="submit"
-                    className="w-full h-12 rounded-[14px] font-semibold text-sm bg-[#8F5A4E] text-white hover:bg-[#A56F63] active:bg-[#7B4B40] transition-colors flex items-center justify-center gap-2 shadow-sm"
-                  >
-                    <span>Masuk ke Portal Faskes</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Verifikator */}
-                <div>
-                  <label htmlFor="nipVerif" className="block text-sm font-semibold text-[#0F3040] mb-1.5">
-                    Nomor Induk Pegawai (NIP 18 Digit)
-                  </label>
-                  <input
-                    id="nipVerif"
-                    type="text"
-                    maxLength={18}
-                    value={nip}
-                    onChange={(e) => setNip(e.target.value.replace(/\D/g, ""))}
-                    placeholder="198701012010011001"
-                    className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none tabular-nums text-sm"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label htmlFor="passwordVerif" className="text-sm font-semibold text-[#0F3040]">
-                      Kata Sandi
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => alert("Hubungi administrator Dinas Kominfo / Dinas Kesehatan daerah.")}
-                      className="text-xs text-[#8F5A4E] hover:underline"
-                    >
-                      Lupa kata sandi?
-                    </button>
-                  </div>
-                  <input
-                    id="passwordVerif"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm"
-                  />
-                </div>
-
-                <div className="pt-4">
-                  <button
-                    type="submit"
-                    className="w-full h-12 rounded-[14px] font-semibold text-sm bg-[#8F5A4E] text-white hover:bg-[#A56F63] active:bg-[#7B4B40] transition-colors flex items-center justify-center gap-2 shadow-sm"
-                  >
-                    <span>Masuk ke Portal Verifikator</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </>
-            )}
+              </button>
+            </div>
           </form>
 
           {/* Footer Register Link */}

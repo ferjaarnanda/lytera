@@ -87,8 +87,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   className = "",
 }) => {
   const headerRef = useRef<HTMLElement>(null);
-  const darkToneRef = useRef(true);
-  const [isDarkTone, setIsDarkTone] = useState(true);
+  const darkToneRef = useRef(false);
+  const [isDarkTone, setIsDarkTone] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [rolePickerOpen, setRolePickerOpen] = useState(false);
 
@@ -110,8 +110,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       }
 
       // Deteksi warna teks dan tone latar:
-      // Ambang batas naik ke p >= 0.75 sesuai instruksi user
-      let currentDark = true;
+      let currentDark = false;
       if (p >= 0.75) {
         currentDark = false; // Latar kaca putih -> selalu teks Deep Navy
       } else {
@@ -128,7 +127,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         if (foundTone) {
           currentDark = foundTone === "dark";
         } else {
-          currentDark = scrollY < 400; // Fallback jika belum melewati hero
+          currentDark = false; // Hero sekarang berlatar terang (#F7F8FA)
         }
       }
 
@@ -291,7 +290,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <button
                     type="button"
                     onClick={handleDaftarClick}
-                    className={`px-4 py-2 rounded-[12px] text-[13.5px] font-semibold transition-all duration-300 shadow-sm ${
+                    className={`px-4 py-2 rounded-[12px] text-[13.5px] font-semibold transition-colors duration-300 shadow-sm ${
                       isDarkTone
                         ? "bg-[#D99B7F] text-[#0A2230] hover:bg-[#E4AE94]"
                         : "bg-[#8F5A4E] text-white hover:bg-[#A56F63]"

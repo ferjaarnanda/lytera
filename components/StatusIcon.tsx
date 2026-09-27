@@ -1,6 +1,6 @@
 import React from "react";
 
-export type StatusType = "selesai" | "proses" | "belum";
+export type StatusType = "selesai" | "proses" | "belum" | "error";
 export type StatusIconSize = "sm" | "md" | "lg" | "xl";
 
 export interface StatusIconProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -29,7 +29,33 @@ export const StatusIcon: React.FC<StatusIconProps> = ({
 
   const currentSize = sizeMap[size];
 
-  // 1. Selesai: Lingkaran hijau #1B6B4D bercentang putih
+  // 1. Error: Lingkaran merah #BA1A1A bertanda seru putih
+  if (status === "error") {
+    return (
+      <div
+        className={`${currentSize.box} rounded-full bg-[#BA1A1A] text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-[#FFDAD6] ${className}`.trim()}
+        title="Status: Terdapat Isian Belum Sesuai"
+        {...props}
+      >
+        <svg
+          width={currentSize.iconSize}
+          height={currentSize.iconSize}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={currentSize.strokeWidth + 0.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-label="Isian Belum Sesuai"
+        >
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+      </div>
+    );
+  }
+
+  // 2. Selesai: Lingkaran hijau #1B6B4D bercentang putih
   if (status === "selesai") {
     return (
       <div
@@ -54,7 +80,7 @@ export const StatusIcon: React.FC<StatusIconProps> = ({
     );
   }
 
-  // 2. Proses: Lingkaran kuning #E0A100 berjam putih
+  // 3. Proses: Lingkaran kuning #E0A100 berjam putih
   if (status === "proses") {
     return (
       <div
