@@ -21,12 +21,6 @@ import { Card, CardInner } from "@/components/Card";
 import { Badge } from "@/components/Badge";
 import { Navbar } from "@/components/Navbar";
 import { Reveal } from "@/components/Reveal";
-import {
-  DEMO_PROVINCES,
-  DEMO_REGENCIES,
-  DEMO_DISTRICTS,
-  DEMO_SUBDISTRICTS,
-} from "@/lib/demo-regions";
 
 interface PageProps {
   params: Promise<{
@@ -112,17 +106,16 @@ function maskNik(nik?: string | null): string {
   return `${clean.slice(0, 4)} •••• •••• ${clean.slice(-4)}`;
 }
 
+// Data wilayah pasien (province/city/district/village) disimpan dalam bentuk
+// NAMA teks langsung (bukan kode/ID) oleh RegionCombobox, jadi cukup
+// digabung apa adanya tanpa perlu tabel terjemahan kode -> nama.
 function resolveRegion(
-  provinceId?: string | null,
-  cityId?: string | null,
-  districtId?: string | null,
-  villageId?: string | null
+  province?: string | null,
+  city?: string | null,
+  district?: string | null,
+  village?: string | null
 ): string {
-  const sub = DEMO_SUBDISTRICTS.find((s) => s.id === villageId)?.name || villageId;
-  const dist = DEMO_DISTRICTS.find((d) => d.id === districtId)?.name || districtId;
-  const reg = DEMO_REGENCIES.find((r) => r.id === cityId)?.name || cityId;
-  const prov = DEMO_PROVINCES.find((p) => p.id === provinceId)?.name || provinceId;
-  const parts = [sub, dist, reg, prov].filter(Boolean);
+  const parts = [village, district, city, province].filter(Boolean);
   return parts.length > 0 ? parts.join(", ") : "-";
 }
 
