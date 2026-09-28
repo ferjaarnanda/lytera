@@ -86,6 +86,7 @@ export const RegionCombobox: React.FC<RegionComboboxProps> = ({
         if (controller.signal.aborted) return;
         setLoading(true);
         setFetchError(null);
+        setAsyncItems([]);
         return fetch(url, { signal: controller.signal });
       })
       .then((res) => {
@@ -95,7 +96,7 @@ export const RegionCombobox: React.FC<RegionComboboxProps> = ({
       })
       .then((json) => {
         if (!json || controller.signal.aborted) return;
-        const rawList: Array<{ code?: string; name: string }> = Array.isArray(json)
+        const rawList: Array<{ id?: string | number; code?: string | number; name: string }> = Array.isArray(json)
           ? json
           : Array.isArray(json?.data)
           ? json.data
@@ -104,7 +105,7 @@ export const RegionCombobox: React.FC<RegionComboboxProps> = ({
         const mapped: RegionItem[] = rawList
           .filter((item) => Boolean(item && item.name))
           .map((item) => ({
-            code: item.code || item.name,
+            code: String(item.code ?? item.id ?? item.name),
             name: item.name,
           }))
           .sort((a, b) => a.name.localeCompare(b.name, "id", { sensitivity: "base" }));
