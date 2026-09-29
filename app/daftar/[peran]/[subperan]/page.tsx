@@ -40,7 +40,7 @@ import {
   RoleId,
 } from "@/lib/roles";
 import { RegionCombobox } from "@/components/RegionCombobox";
-import { DEMO_FACILITIES } from "@/lib/demo-facilities";
+import { FacilityCombobox } from "@/components/FacilityCombobox";
 
 interface PageProps {
   params: Promise<{
@@ -146,7 +146,8 @@ export default function PendaftaranPage({ params }: PageProps) {
     nik: "",
     profesi: subperan === "apotek" ? "Apoteker" : "Dokter Umum",
     noStr: "",
-    faskesTujuan: DEMO_FACILITIES[0].name,
+    facilityId: "",
+    faskesTujuan: "",
     kodeUndangan: "",
     metodeFaskes: "cari" as "cari" | "undangan",
     email: "",
@@ -384,6 +385,9 @@ export default function PendaftaranPage({ params }: PageProps) {
             newErrors.noStr = "Nomor STR / SIP / STRA / SIPA aktif wajib diisi";
           }
         } else if (currentStep === 1) {
+          if (faskesNakesData.metodeFaskes === "cari" && !faskesNakesData.facilityId) {
+            newErrors.faskesTujuan = "Fasilitas kesehatan aktif tempat bertugas wajib dipilih";
+          }
           if (faskesNakesData.metodeFaskes === "undangan" && !faskesNakesData.kodeUndangan.trim()) {
             newErrors.kodeUndangan = "Masukkan kode undangan fasilitas";
           }
@@ -1771,24 +1775,25 @@ export default function PendaftaranPage({ params }: PageProps) {
                         {faskesNakesData.metodeFaskes === "cari" ? (
                           <div>
                             <label htmlFor="faskesTujuan" className="block text-sm font-semibold text-[#0F3040] mb-1">
-                              Daftar Fasilitas Kesehatan *
+                              Fasilitas Kesehatan Penugasan *
                             </label>
-                            <select
+                            <FacilityCombobox
                               id="faskesTujuan"
-                              value={faskesNakesData.faskesTujuan}
-                              onChange={(e) =>
-                                setFaskesNakesData({ ...faskesNakesData, faskesTujuan: e.target.value })
-                              }
-                              className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm bg-white"
-                            >
-                              {DEMO_FACILITIES.map((f, i) => (
-                                <option key={i} value={f.name}>
-                                  {f.name} ({f.type} - Tk {f.tier})
-                                </option>
-                              ))}
-                            </select>
+                              subperan={subperan}
+                              value={faskesNakesData.facilityId}
+                              selectedName={faskesNakesData.faskesTujuan}
+                              onChange={(facId, fac) => {
+                                setFaskesNakesData({
+                                  ...faskesNakesData,
+                                  facilityId: facId,
+                                  faskesTujuan: fac?.name || "",
+                                });
+                              }}
+                              error={errors.faskesTujuan}
+                              required
+                            />
                             <p className="text-xs text-[#464858]/70 mt-1.5">
-                              Setelah mendaftar, admin fasilitas ini akan menerima permohonan persetujuan Anda.
+                              Setelah mendaftar, admin fasilitas aktif ini akan menerima permohonan persetujuan Anda.
                             </p>
                           </div>
                         ) : (

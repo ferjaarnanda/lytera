@@ -10,7 +10,6 @@ import {
   Info,
   Building,
   UserCheck,
-  FileSpreadsheet,
   Plus,
 } from "lucide-react";
 import { LogoutButton } from "@/components/LogoutButton";
@@ -119,6 +118,15 @@ export default function PortalSimulasiPage({ params }: PageProps) {
               </div>
 
               <div className="flex flex-wrap items-center gap-2.5">
+                {peran === "fasilitas" && (
+                  <Link
+                    href={`/portal/${peran}/${subperan}/staf`}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-xs sm:text-sm font-semibold border border-[#E2E8F0] bg-white text-[#0F3040] hover:bg-slate-50 transition-colors shadow-2xs"
+                  >
+                    <UserCheck className="w-4 h-4 text-[#8F5A4E]" />
+                    <span>Dokter & Petugas</span>
+                  </Link>
+                )}
                 {(subperan === "puskesmas" || subperan === "klinik") && (
                   <Link
                     href={`/portal/${peran}/${subperan}/rujukan/baru`}
@@ -188,18 +196,25 @@ export default function PortalSimulasiPage({ params }: PageProps) {
                   </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-[24px] border border-[#E2E8F0] shadow-sm">
-                  <div className="w-10 h-10 rounded-2xl bg-[#FAF5F2] flex items-center justify-center text-[#8F5A4E] mb-4">
-                    <FileSpreadsheet className="w-5 h-5" />
+                <div className="bg-white p-6 rounded-[24px] border border-[#E2E8F0] shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div className="w-10 h-10 rounded-2xl bg-[#EBF2F6] flex items-center justify-center text-[#0F3040] mb-4">
+                      <UserCheck className="w-5 h-5 text-[#8F5A4E]" />
+                    </div>
+                    <h2 className="text-base font-bold text-[#0F3040]">Dokter & Petugas</h2>
+                    <p className="text-xs text-slate-500 mt-1 mb-4">
+                      Persetujuan dan kelola staf medis (dokter, petugas, apoteker) terafiliasi fasilitas ini.
+                    </p>
                   </div>
-                  <h2 className="text-base font-bold text-[#0F3040]">Interoperabilitas SatuSehat</h2>
-                  <p className="text-xs text-slate-500 mt-1 mb-4">
-                    Standar HL7 FHIR tersambung lancar ke Kemenkes RI.
-                  </p>
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#1B6B4D]">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Terhubung & Terverifikasi
-                  </span>
+                  <div className="pt-2">
+                    <Link
+                      href={`/portal/${peran}/${subperan}/staf`}
+                      className="w-full py-2.5 px-4 rounded-[12px] bg-[#0F3040] text-white text-xs font-semibold hover:bg-[#0A2230] transition-colors text-center inline-flex items-center justify-center gap-1.5 shadow-2xs"
+                    >
+                      <UserCheck className="w-3.5 h-3.5" />
+                      <span>Kelola Dokter & Petugas &rarr;</span>
+                    </Link>
+                  </div>
                 </div>
               </>
             ) : (

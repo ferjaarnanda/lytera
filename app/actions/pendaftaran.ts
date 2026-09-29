@@ -88,6 +88,7 @@ const FasilitasNakesSchema = z.object({
   nik: z.string().regex(/^\d{16}$/, "NIK harus 16 digit angka"),
   profesi: z.string().min(2, "Profesi tenaga kesehatan wajib diisi"),
   noStr: z.string().min(5, "Nomor STR / SIP aktif wajib diisi"),
+  facilityId: z.string().optional().nullable(),
   faskesTujuan: z.string().min(2, "Fasilitas kesehatan tempat bertugas wajib dipilih"),
   kodeUndangan: z.string().optional().or(z.literal("")),
   metodeFaskes: z.enum(["cari", "undangan"]),
@@ -366,6 +367,7 @@ export async function submitPendaftaranAction(
       nik: fasilitasNakesData.nik,
       profesi: fasilitasNakesData.profesi,
       noStr: fasilitasNakesData.noStr,
+      facilityId: fasilitasNakesData.facilityId || null,
       faskesTujuan: fasilitasNakesData.faskesTujuan,
       kodeUndangan: fasilitasNakesData.kodeUndangan || null,
       metodeFaskes: fasilitasNakesData.metodeFaskes,
@@ -716,7 +718,7 @@ export async function submitPendaftaranAction(
         .from("facility_staff")
         .insert({
           profile_id: userId,
-          facility_id: null,
+          facility_id: fasilitasNakesData.facilityId || null,
           staff_role: sRole,
           str_number: fasilitasNakesData.noStr,
           sip_number: null,

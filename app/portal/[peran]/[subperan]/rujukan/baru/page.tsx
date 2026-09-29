@@ -183,10 +183,10 @@ export default function BuatRujukanBaruPage({ params }: PageProps) {
           .eq("id", user.id)
           .maybeSingle();
 
-        // Ambil baris facility_staff
+        // Ambil baris facility_staff beserta status fasilitas asal
         const { data: staff, error: staffErr } = await supabase
           .from("facility_staff")
-          .select("id, staff_role, status, facility_id, facilities(id, name, type)")
+          .select("id, staff_role, status, facility_id, facilities(id, name, type, status)")
           .eq("profile_id", user.id)
           .maybeSingle();
 
@@ -204,28 +204,40 @@ export default function BuatRujukanBaruPage({ params }: PageProps) {
           return;
         }
 
-        if (staff.status !== "aktif") {
+        // Periksa peran staf: HANYA dokter yang berwenang
+        if (staff.staff_role !== "dokter") {
           setUnauthorizedMsg(
-            `Status kepegawaian Anda saat ini '${staff.status}'. Hanya staf aktif yang berwenang menerbitkan surat rujukan.`
+            `Hak akses terbatas: Halaman Buat Rujukan hanya dapat diakses oleh staf dengan peran Dokter. Peran akun Anda saat ini: '${staff.staff_role}'.`
           );
           setCheckingAuth(false);
           return;
         }
 
-        if (staff.staff_role !== "dokter" && staff.staff_role !== "petugas") {
+        // Periksa status kepegawaian staf: harus 'aktif'
+        if (staff.status !== "aktif") {
           setUnauthorizedMsg(
-            "Hak akses terbatas: Hanya dokter dan petugas fasilitas kesehatan yang berwenang membuat rujukan."
+            `Status kepegawaian Anda saat ini '${staff.status}'. Hanya dokter dengan status aktif yang berwenang menerbitkan surat rujukan digital.`
           );
           setCheckingAuth(false);
           return;
         }
 
         // Type cast facilities relationship safely
-        const f = staff.facilities as unknown as { id: string; name: string; type: string } | null;
+        const f = staff.facilities as unknown as { id: string; name: string; type: string; status: string } | null;
         const facName = f?.name || "Fasilitas Kesehatan";
+        const facStatus = f?.status || "tidak diketahui";
+
+        // Periksa status fasilitas kesehatan asal: harus 'aktif'
+        if (f?.status !== "aktif") {
+          setUnauthorizedMsg(
+            `Fasilitas kesehatan tempat Anda bertugas (${facName}) saat ini berstatus '${facStatus}'. Surat rujukan digital hanya dapat diterbitkan oleh dokter pada fasilitas kesehatan yang berstatus aktif.`
+          );
+          setCheckingAuth(false);
+          return;
+        }
 
         setStaffInfo({
-          staffName: profile?.full_name || "Tenaga Medis",
+          staffName: profile?.full_name || "Dokter",
           facilityName: facName,
           facilityId: staff.facility_id,
           staffRole: staff.staff_role,

@@ -91,17 +91,38 @@ export async function buatRujukanAction(payload: unknown): Promise<BuatRujukanRe
       };
     }
 
-    if (staff.status !== "aktif") {
+    if (staff.staff_role !== "dokter") {
       return {
         success: false,
-        error: `Akun staf Anda saat ini berstatus '${staff.status}'. Hanya staf aktif yang dapat membuat rujukan.`,
+        error: `Hak akses terbatas: Hanya staf dengan peran dokter yang berwenang membuat rujukan. Peran akun Anda: '${staff.staff_role}'.`,
       };
     }
 
-    if (staff.staff_role !== "dokter" && staff.staff_role !== "petugas") {
+    if (staff.status !== "aktif") {
       return {
         success: false,
-        error: "Hanya tenaga medis (dokter) atau petugas faskes yang berwenang membuat rujukan.",
+        error: `Akun staf Anda saat ini berstatus '${staff.status}'. Hanya dokter dengan status aktif yang berwenang menerbitkan rujukan.`,
+      };
+    }
+
+    // 4. Verifikasi status fasilitas kesehatan asal harus aktif
+    const { data: originFacility, error: originFacError } = await supabase
+      .from("facilities")
+      .select("id, name, status")
+      .eq("id", staff.facility_id)
+      .maybeSingle();
+
+    if (originFacError || !originFacility) {
+      return {
+        success: false,
+        error: "Fasilitas kesehatan asal tidak ditemukan pada basis data sistem Lytera.",
+      };
+    }
+
+    if (originFacility.status !== "aktif") {
+      return {
+        success: false,
+        error: `Fasilitas kesehatan asal (${originFacility.name}) saat ini berstatus '${originFacility.status}'. Surat rujukan hanya dapat diterbitkan dari fasilitas kesehatan yang berstatus aktif.`,
       };
     }
 
