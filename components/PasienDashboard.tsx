@@ -264,6 +264,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
           variant="pasien"
           userName="Memuat..."
           userRole={subperan === "keluarga" ? "Pasien Keluarga" : "Pasien Pribadi"}
+          forceGlass={true}
         />
         <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-16">
           <Card variant="white" className="p-10 text-center shadow-sm">
@@ -288,6 +289,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
           variant="pasien"
           userName="Pasien"
           userRole={subperan === "keluarga" ? "Pasien Keluarga" : "Pasien Pribadi"}
+          forceGlass={true}
         />
         <main className="max-w-xl mx-auto px-4 sm:px-6 pt-28 pb-16">
           <Card variant="white" className="p-8 text-center shadow-sm">
@@ -321,6 +323,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
           variant="pasien"
           userName={profile?.full_name || "Pasien"}
           userRole={subperan === "keluarga" ? "Pasien Keluarga" : "Pasien Pribadi"}
+          forceGlass={true}
         />
         <main className="max-w-2xl mx-auto px-4 sm:px-6 pt-28 pb-16">
           <Reveal>
@@ -405,6 +408,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
         variant="pasien"
         userName={profile.full_name}
         userRole={isKeluarga ? "Pasien Keluarga" : "Pasien Pribadi"}
+        forceGlass={true}
       />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-16">

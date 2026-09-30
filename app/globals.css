@@ -108,3 +108,25 @@ body {
   background-color: rgba(70, 72, 88, 0.75); /* Lebih pekat saat hover */
 }
 
+/* ============================================================================
+   PORTAL WALLPAPER INTEGRATION
+   - Membuat background kontainer terluar halaman menjadi transparan sehingga
+     wallpaper foto terlihat di sela-sela kartu/margin.
+   - Semua Card, formulir, tabel, dan navbar tetap solid dan kontras.
+   ============================================================================ */
+[data-portal-wallpaper="true"] .min-h-screen[class*="bg-[#FAF5F2]"],
+[data-portal-wallpaper="true"] .min-h-screen[class*="bg-[#F8FAFC]"] {
+  background-color: transparent !important;
+}
+
+/* Tombol kembali di atas halaman sub-portal (misal: Buat Rujukan, Daftar Rujukan) */
+[data-portal-wallpaper="true"] main > div.mb-6 > a[class*="text-[#0F3040]"] {
+  background-color: rgba(255, 255, 255, 0.92);
+  padding: 6px 16px;
+  border-radius: 9999px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  color: #0F3040 !important;
+  backdrop-filter: blur(8px);
+}
+

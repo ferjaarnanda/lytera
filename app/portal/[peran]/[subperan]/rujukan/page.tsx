@@ -333,6 +333,7 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
         facilityName={facilityInfo?.facilityName}
         userName={facilityInfo?.staffName || "Tenaga Medis"}
         userRole={facilityInfo?.staffRole === "dokter" ? "Dokter Faskes" : "Petugas Faskes"}
+        forceGlass={true}
       />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-20">

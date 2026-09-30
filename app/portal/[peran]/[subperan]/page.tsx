@@ -78,6 +78,7 @@ export default function PortalSimulasiPage({ params }: PageProps) {
         facilityName={peran === "fasilitas" ? `Faskes Terdaftar (${subRoleMeta.name})` : undefined}
         userName="Akun Demo Lytera"
         userRole={subRoleMeta.name}
+        forceGlass={peran === "fasilitas"}
       />
 
       {/* Main Container */}

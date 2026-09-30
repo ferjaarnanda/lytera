@@ -445,7 +445,7 @@ export default function BuatRujukanBaruPage({ params }: PageProps) {
   if (checkingAuth) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] text-[#464858]" data-navbar-tone="light">
-        <Navbar variant="dokter-puskesmas" userName="Tenaga Medis" userRole="Fasilitas Kesehatan" />
+        <Navbar variant="dokter-puskesmas" userName="Tenaga Medis" userRole="Fasilitas Kesehatan" forceGlass={true} />
         <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-28 pb-16 text-center">
           <Card variant="white" className="p-10 shadow-sm border border-[#E2E8F0]">
             <Loader2 className="w-8 h-8 text-[#8F5A4E] animate-spin mx-auto mb-3" />
@@ -460,7 +460,7 @@ export default function BuatRujukanBaruPage({ params }: PageProps) {
   if (unauthorizedMsg) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] text-[#464858]" data-navbar-tone="light">
-        <Navbar variant="dokter-puskesmas" userName="Tenaga Medis" userRole="Fasilitas Kesehatan" />
+        <Navbar variant="dokter-puskesmas" userName="Tenaga Medis" userRole="Fasilitas Kesehatan" forceGlass={true} />
         <main className="max-w-xl mx-auto px-4 sm:px-6 pt-28 pb-16 text-center">
           <Card variant="white" className="p-8 sm:p-10 shadow-sm border border-[#E2E8F0]">
             <div className="w-12 h-12 rounded-full bg-[#FDECEA] flex items-center justify-center text-[#B3261E] mx-auto mb-4">
@@ -489,6 +489,7 @@ export default function BuatRujukanBaruPage({ params }: PageProps) {
         facilityName={staffInfo?.facilityName}
         userName={staffInfo?.staffName || "Tenaga Medis"}
         userRole={staffInfo?.staffRole === "dokter" ? "Dokter Faskes" : "Petugas Faskes"}
+        forceGlass={true}
       />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-28 pb-20">

@@ -196,6 +196,7 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
         facilityName={facility?.name || `Fasilitas (${subRoleMeta?.name || ""})`}
         userName="Admin Fasilitas"
         userRole="Administrator"
+        forceGlass={true}
       />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-16">

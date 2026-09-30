@@ -640,7 +640,7 @@ export default function PendaftaranPage({ params }: PageProps) {
     <div className="min-h-screen bg-[#FAF5F2] text-[#464858] pb-16">
       {/* Top Bar: Logo kiri, BackButton kanan */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 flex items-center justify-between">
-        <Logo tone="light" size="sm" />
+        <Logo tone={peran === "verifikator" ? "light" : "dark"} size="sm" />
         <BackButton href="/" label="Kembali ke Beranda" />
       </div>
 
