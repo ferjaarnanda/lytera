@@ -297,6 +297,8 @@ export default function PendaftaranPage({ params }: PageProps) {
         }
         if (!uploadedFile) {
           newErrors.file = "Unggah foto atau scan Kartu Keluarga";
+        } else if (uploadedFile.size > 5 * 1024 * 1024) {
+          newErrors.file = "Ukuran berkas melebihi batas maksimal 5 MB. Silakan kompres atau pilih berkas yang lebih kecil.";
         }
       } else if (currentStep === 2) {
         if (anggotaKeluarga.length === 0) {
@@ -354,6 +356,8 @@ export default function PendaftaranPage({ params }: PageProps) {
         } else if (currentStep === 1) {
           if (!uploadedFile) {
             newErrors.file = "Unggah dokumen izin operasional faskes";
+          } else if (uploadedFile.size > 5 * 1024 * 1024) {
+            newErrors.file = "Ukuran berkas melebihi batas maksimal 5 MB. Silakan kompres atau pilih berkas yang lebih kecil.";
           }
           if (!faskesAdminData.penanggungJawab.trim()) {
             newErrors.penanggungJawab = "Nama kepala faskes atau penanggung jawab wajib diisi";
@@ -436,6 +440,8 @@ export default function PendaftaranPage({ params }: PageProps) {
       } else if (currentStep === 2) {
         if (!uploadedFile) {
           newErrors.file = "Unggah Surat Keputusan / Surat Tugas";
+        } else if (uploadedFile.size > 5 * 1024 * 1024) {
+          newErrors.file = "Ukuran berkas melebihi batas maksimal 5 MB. Silakan kompres atau pilih berkas yang lebih kecil.";
         }
         if (verifikatorData.password.length < 6) {
           newErrors.password = "Kata sandi minimal 6 karakter";
@@ -534,6 +540,15 @@ export default function PendaftaranPage({ params }: PageProps) {
 
       let submissionPayload: unknown = payload;
       if (peran === "fasilitas" && jalurFaskes === "admin") {
+        if (uploadedFile && uploadedFile.size > 5 * 1024 * 1024) {
+          setSubmitting(false);
+          setServerError("Ukuran dokumen izin operasional melebihi batas maksimal 5 MB. Silakan pilih atau kompres berkas Anda.");
+          setErrors((prev) => ({
+            ...prev,
+            file: "Ukuran berkas melebihi batas maksimal 5 MB",
+          }));
+          return;
+        }
         const formData = new FormData();
         formData.append("payload", JSON.stringify(payload));
         if (uploadedFile) {
@@ -542,41 +557,57 @@ export default function PendaftaranPage({ params }: PageProps) {
         submissionPayload = formData;
       }
 
-      const res = await submitPendaftaranAction(submissionPayload);
-      setSubmitting(false);
+      try {
+        const res = await submitPendaftaranAction(submissionPayload);
+        setSubmitting(false);
 
-      if (!res.success) {
-        setServerError(res.error || COMMON_VALIDATION_ERROR_BANNER);
-        if (res.fieldErrors && Object.keys(res.fieldErrors).length > 0) {
-          const combinedErrors = { ...errors, ...res.fieldErrors };
-          setErrors(combinedErrors);
+        if (!res.success) {
+          setServerError(res.error || COMMON_VALIDATION_ERROR_BANNER);
+          if (res.fieldErrors && Object.keys(res.fieldErrors).length > 0) {
+            const combinedErrors = { ...errors, ...res.fieldErrors };
+            setErrors(combinedErrors);
 
-          // Cari langkah yang memuat error pertama (terutama jika berada di langkah sebelumnya)
-          const errInfo = findFirstErrorStepAndField(
-            combinedErrors,
-            peran,
-            subperan,
-            jalurFaskes
-          );
+            // Cari langkah yang memuat error pertama (terutama jika berada di langkah sebelumnya)
+            const errInfo = findFirstErrorStepAndField(
+              combinedErrors,
+              peran,
+              subperan,
+              jalurFaskes
+            );
 
-          if (errInfo) {
-            if (errInfo.targetStep !== currentStep) {
-              setDirection(errInfo.targetStep < currentStep ? "prev" : "next");
-              setCurrentStep(errInfo.targetStep);
+            if (errInfo) {
+              if (errInfo.targetStep !== currentStep) {
+                setDirection(errInfo.targetStep < currentStep ? "prev" : "next");
+                setCurrentStep(errInfo.targetStep);
+              }
+              focusAndScrollToField(errInfo.elementId);
+              return;
             }
-            focusAndScrollToField(errInfo.elementId);
-            return;
           }
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          return;
+        }
+
+        let url = `/daftar/selesai?peran=${peran}&sub=${subperan}`;
+        if (peran === "fasilitas") {
+          url += `&tipe=${jalurFaskes}`;
+        }
+        router.push(url);
+      } catch (err: unknown) {
+        setSubmitting(false);
+        const errMsg = err instanceof Error ? err.message : String(err);
+        if (
+          errMsg.toLowerCase().includes("failed to fetch") ||
+          errMsg.toLowerCase().includes("network")
+        ) {
+          setServerError(
+            "Gagal mengirim dokumen ke server. Pastikan ukuran file tidak melebihi 5 MB dan koneksi internet Anda stabil."
+          );
+        } else {
+          setServerError(`Terjadi kendala saat memproses pendaftaran: ${errMsg}`);
         }
         window.scrollTo({ top: 0, behavior: "smooth" });
-        return;
       }
-
-      let url = `/daftar/selesai?peran=${peran}&sub=${subperan}`;
-      if (peran === "fasilitas") {
-        url += `&tipe=${jalurFaskes}`;
-      }
-      router.push(url);
     }
   };
 

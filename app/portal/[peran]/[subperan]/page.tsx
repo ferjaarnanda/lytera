@@ -90,10 +90,10 @@ export default function PortalSimulasiPage({ params }: PageProps) {
                 <Sparkles className="w-4 h-4" />
               </div>
               <div className="text-xs sm:text-sm text-[#0F3040]">
-                <span className="font-bold">Mode Simulasi Interaktif: </span>
+                <span className="font-bold">Simulasi: </span>
                 <span>
                   Portal ini menampilkan antarmuka kerja dan alur rujukan digital untuk peran{" "}
-                  <strong>{subRoleMeta.name}</strong> tanpa penyimpanan database permanen.
+                  <strong>{subRoleMeta.name}</strong> tanpa meyimpanan database permanen.
                 </span>
               </div>
             </div>

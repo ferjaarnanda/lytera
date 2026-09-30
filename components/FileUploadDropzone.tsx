@@ -52,13 +52,17 @@ export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
 
   const validate = useCallback(
     (file: File): string => {
-      if (!accept.includes(file.type)) {
-        return `Format tidak didukung. Gunakan: ${accept
-          .map((t) => t.split("/")[1].toUpperCase())
+      const ext = "." + (file.name.split(".").pop()?.toLowerCase() || "");
+      const isMimeValid = accept.includes(file.type);
+      const isExtValid = [".pdf", ".jpg", ".jpeg", ".png"].includes(ext);
+
+      if (!isMimeValid && !isExtValid) {
+        return `Format berkas tidak didukung. Gunakan: ${accept
+          .map((t) => t.split("/")[1]?.toUpperCase() || t)
           .join(", ")}`;
       }
       if (file.size > maxBytes) {
-        return `Ukuran file terlalu besar. Maks ${formatBytes(maxBytes)}.`;
+        return `Ukuran berkas (${formatBytes(file.size)}) melebihi batas maksimal ${formatBytes(maxBytes)}. Silakan kompres atau pilih berkas yang lebih kecil.`;
       }
       return "";
     },
