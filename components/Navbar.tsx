@@ -99,28 +99,23 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   // Scroll listener dengan requestAnimationFrame & passive listener
   useEffect(() => {
-    if (forceGlass) {
-      if (headerRef.current) {
-        headerRef.current.style.setProperty("--p", "1");
-      }
-      return;
-    }
-
     let ticking = false;
 
     const updateScrollProgress = () => {
       const scrollY = window.scrollY;
       const rawP = Math.min(Math.max(scrollY / 90, 0), 1);
-      const p = easeOutCubic(rawP);
+      const pShape = easeOutCubic(rawP);
+      const pColor = forceGlass ? 1 : pShape;
 
-      // Tuliskan ke CSS Variable --p pada elemen navbar secara langsung (tanpa re-render React)
+      // Tuliskan ke CSS Variables pada elemen navbar secara langsung (tanpa re-render React)
       if (headerRef.current) {
-        headerRef.current.style.setProperty("--p", p.toFixed(4));
+        headerRef.current.style.setProperty("--p-shape", pShape.toFixed(4));
+        headerRef.current.style.setProperty("--p-color", pColor.toFixed(4));
       }
 
       // Deteksi warna teks dan tone latar:
       let currentDark = false;
-      if (p >= 0.75) {
+      if (forceGlass || pColor >= 0.75) {
         currentDark = false; // Latar kaca putih -> selalu teks Deep Navy
       } else {
         // Cari elemen dengan data-navbar-tone pada posisi y=40
@@ -200,45 +195,28 @@ export const Navbar: React.FC<NavbarProps> = ({
           ref={headerRef}
           style={
             {
-              "--p": forceGlass ? "1" : "0",
-              width: forceGlass
-                ? "calc(100% - 32px)"
-                : "calc(100% - (var(--p, 0) * 32px))",
-              maxWidth: forceGlass
-                ? "1200px"
-                : "min(100%, calc(1200px + (1 - var(--p, 0)) * 1200px))",
-              marginTop: forceGlass
-                ? "16px"
-                : "calc(var(--p, 0) * 16px)",
-              height: forceGlass
-                ? "64px"
-                : "calc(72px - (var(--p, 0) * 8px))",
-              borderRadius: forceGlass
-                ? "32px"
-                : "calc(var(--p, 0) * 32px)",
-              backgroundColor: forceGlass
-                ? "rgba(255, 255, 255, 0.95)"
-                : "rgba(255, 255, 255, calc(var(--p, 0) * 0.62))",
-              backdropFilter: forceGlass
-                ? "blur(20px) saturate(160%)"
-                : "blur(calc(var(--p, 0) * 20px)) saturate(calc(100% + var(--p, 0) * 60%))",
-              WebkitBackdropFilter: forceGlass
-                ? "blur(20px) saturate(160%)"
-                : "blur(calc(var(--p, 0) * 20px)) saturate(calc(100% + var(--p, 0) * 60%))",
+              "--p-shape": "0",
+              "--p-color": forceGlass ? "1" : "0",
+              width: "calc(100% - (var(--p-shape, 0) * 32px))",
+              maxWidth: "min(100%, calc(1200px + (1 - var(--p-shape, 0)) * 1200px))",
+              marginTop: "calc(var(--p-shape, 0) * 16px)",
+              height: "calc(72px - (var(--p-shape, 0) * 8px))",
+              borderRadius: "calc(var(--p-shape, 0) * 32px)",
+              backgroundColor:
+                "rgba(255, 255, 255, calc(var(--p-color, 0) * 0.62))",
+              backdropFilter:
+                "blur(calc(var(--p-color, 0) * 20px)) saturate(calc(100% + var(--p-color, 0) * 60%))",
+              WebkitBackdropFilter:
+                "blur(calc(var(--p-color, 0) * 20px)) saturate(calc(100% + var(--p-color, 0) * 60%))",
               borderWidth: "1px",
               borderStyle: "solid",
-              borderColor: forceGlass
-                ? "rgba(15, 48, 64, 0.12)"
-                : isDarkTone
-                ? "rgba(255, 255, 255, calc(0.08 + var(--p, 0) * 0.47))"
-                : "rgba(15, 48, 64, calc(0.06 + var(--p, 0) * 0.15))",
-              boxShadow: forceGlass
-                ? "0 12px 32px -8px rgba(15, 48, 64, 0.12)"
-                : "0 calc(var(--p, 0) * 12px) calc(var(--p, 0) * 32px) -8px rgba(15, 48, 64, calc(var(--p, 0) * 0.18))",
+              borderColor:
+                "rgba(255, 255, 255, calc(0.08 + var(--p-color, 0) * 0.47))",
+              boxShadow:
+                "0 calc(var(--p-color, 0) * 12px) calc(var(--p-color, 0) * 32px) -8px rgba(15, 48, 64, calc(var(--p-color, 0) * 0.18))",
               willChange: "width, max-width, height, border-radius, transform",
-              transition: forceGlass
-                ? "none"
-                : "color 300ms ease, background-color 120ms linear, border-color 120ms linear",
+              transition:
+                "color 300ms ease, background-color 120ms linear, border-color 120ms linear",
             } as React.CSSProperties
           }
           className="pointer-events-auto flex items-center justify-between px-4 sm:px-6"

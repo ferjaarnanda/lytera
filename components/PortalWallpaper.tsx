@@ -27,30 +27,55 @@ export const PortalWallpaper: React.FC<PortalWallpaperProps> = ({
   return (
     <div
       data-portal-wallpaper="true"
-      className={`relative min-h-screen w-full isolate overflow-x-hidden ${className}`.trim()}
+      className={`relative min-h-screen w-full isolate ${className}`.trim()}
+      style={{ minHeight: "100vh" }}
     >
       {/* Background layer spanning full scrollable height */}
       <div
-        className="absolute inset-0 -z-10 pointer-events-none select-none overflow-hidden bg-[#0A2230]"
+        className="absolute inset-0 -z-10 pointer-events-none select-none bg-[#0A2230]"
         aria-hidden="true"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: -10,
+        }}
       >
-        {/* Hospital Photo with 5% blur effect & +15% brightness */}
+        {/* Hospital Photo with 100% auto width and repeat-y for seamless full height */}
         <div
-          className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
+          className="absolute inset-0 w-full h-full"
           style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
             backgroundImage: "url('/images/wallpaper-hospital.webp')",
+            backgroundSize: "100% auto",
+            backgroundRepeat: "repeat-y",
+            backgroundPosition: "top center",
             backgroundAttachment: "scroll",
             filter: "blur(2px) brightness(1.15)",
-            transform: "scale(1.02)",
           }}
         />
 
         {/* Semi-transparent dark overlay: Night (#0A2230) 60% opacity */}
-        <div className="absolute inset-0 w-full h-full bg-[#0A2230]/60" />
+        <div
+          className="absolute inset-0 w-full h-full bg-[#0A2230]/60"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+          }}
+        />
       </div>
 
       {/* Page Content Layer */}
-      <div className="relative z-10 w-full min-h-screen flex flex-col">
+      <div className="relative z-10 w-full min-h-screen flex flex-col flex-1">
         {children}
       </div>
     </div>
