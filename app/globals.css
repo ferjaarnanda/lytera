@@ -34,20 +34,19 @@
 }
 
 html {
-  scroll-behavior: smooth;
   max-width: 100%;
-  overflow-x: hidden;
-  background-color: #F7F8FA;
+  background-color: #0A2230;
+  overscroll-behavior-y: none;
 }
 
 body {
-  background-color: var(--background);
+  background-color: #0A2230;
+  overscroll-behavior-y: none;
   color: var(--foreground);
   font-family: var(--font-plus-jakarta-sans), "Plus Jakarta Sans", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   max-width: 100%;
-  overflow-x: hidden;
   position: relative;
   width: 100%;
 }
@@ -109,20 +108,64 @@ body {
 }
 
 /* ============================================================================
-   PORTAL WALLPAPER INTEGRATION
-   - html dan body dibuat transparan saat ada elemen [data-portal-wallpaper]
-     di halaman, sehingga foto fixed di belakang bisa terlihat menembus.
-   - Semua Card, formulir, tabel, dan navbar tetap solid dan kontras.
+   PORTAL & HERO WALLPAPER INTEGRATION
+   - html memiliki background-color: #0A2230 sebagai fallback kanvas / overscroll
+   - body dan wrapper dibuat transparan saat ada elemen wallpaper
+     sehingga foto fixed di z-index: -10 terlihat menembus.
    ============================================================================ */
 html:has([data-portal-wallpaper]),
+html:has([data-hero-wallpaper]) {
+  background-color: #0A2230 !important;
+}
+
 body:has([data-portal-wallpaper]),
-html:has([data-hero-wallpaper]),
 body:has([data-hero-wallpaper]),
 [data-portal-wallpaper],
 [data-portal-wallpaper] .min-h-screen,
 [data-hero-wallpaper],
 [data-hero-wallpaper] .min-h-screen {
   background-color: transparent !important;
+}
+
+/* ============================================================================
+   SHARED LANDING GLASSMORPHISM TOKENS
+   - Kotak kaca panjang untuk judul & blok teks:
+     background: rgba(255,255,255,0.08)
+     backdrop-filter: blur(12px) saturate(140%)
+     border: 1px solid rgba(255,255,255,0.22)
+     box-shadow: 0 8px 32px rgba(0,0,0,0.18)
+     radius: 24px
+   ============================================================================ */
+.glass-panel,
+.glass-card {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  border-radius: 24px;
+}
+
+.glass-card-hover {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  transition: border-color 220ms ease-out, box-shadow 220ms ease-out, transform 220ms ease-out;
+}
+
+.glass-card-hover:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.24);
+  transform: translateY(-4px);
+}
+
+.glass-tag {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 /* Tombol kembali di atas halaman sub-portal (misal: Buat Rujukan, Daftar Rujukan) */

@@ -92,7 +92,7 @@ export default function HomePage() {
   return (
     <div
       data-hero-wallpaper="true"
-      className="min-h-screen text-[#464858] font-sans antialiased selection:bg-[#8F5A4E] selection:text-white w-full max-w-full overflow-x-hidden relative"
+      className="min-h-screen text-[#464858] font-sans antialiased selection:bg-[#8F5A4E] selection:text-white w-full max-w-full relative [overflow-x:clip]"
     >
       {/* 1. Lapisan Foto Hero Wallpaper Tetap di Layar (Fixed Viewport) */}
       <div
@@ -106,6 +106,8 @@ export default function HomePage() {
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
           filter: "blur(2px) brightness(1.15)",
+          transform: "translateZ(0)",
+          willChange: "transform",
         }}
         aria-hidden="true"
       />
@@ -118,6 +120,7 @@ export default function HomePage() {
           zIndex: -9,
           pointerEvents: "none",
           backgroundColor: "rgba(10, 34, 48, 0.55)",
+          transform: "translateZ(0)",
         }}
         aria-hidden="true"
       />
@@ -125,7 +128,7 @@ export default function HomePage() {
       {/* 1. NAVBAR KONTINU DINAMIS */}
       <Navbar variant="landing" activeItem="Beranda" />
 
-      <main className="w-full max-w-full overflow-x-hidden">
+      <main className="w-full max-w-full">
         <div className="flex flex-col w-full">
           {/* ============================================================ */}
           {/* SECTION 1: HERO SECTION (TYPEWRITER & SEQUENTIAL STAGGER) */}
@@ -137,16 +140,17 @@ export default function HomePage() {
           {/* ============================================================ */}
           <section
             id="masuk-peran"
-            data-navbar-tone="light"
-            className="w-full bg-[#FAF5F2] py-[96px] text-left scroll-mt-20"
+            data-navbar-tone="dark"
+            className="w-full bg-transparent py-[96px] text-left scroll-mt-20"
           >
             <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+              {/* Kotak Kaca Panjang untuk Judul & Sub-judul */}
               <Reveal>
-                <div className="flex flex-col text-left mb-12">
-                  <h2 className="text-3xl sm:text-[32px] font-bold text-[#0A2230] tracking-tight">
+                <div className="glass-panel p-6 sm:p-8 md:py-8 md:px-10 mb-12">
+                  <h2 className="text-3xl sm:text-[32px] font-bold text-white tracking-tight">
                     Masuk sesuai peran
                   </h2>
-                  <p className="text-base text-slate-600 mt-2">
+                  <p className="text-base text-white/88 mt-2">
                     Pilih peranmu untuk masuk ke ruang kerja yang dirancang khusus
                     sesuai kebutuhan.
                   </p>
@@ -154,7 +158,7 @@ export default function HomePage() {
               </Reveal>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Kartu 1: Pasien */}
+                {/* Kartu 1: Pasien (Solid Putih) */}
                 <Reveal delay={0}>
                   <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#8F5A4E]/35 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
                     <div>
@@ -201,7 +205,7 @@ export default function HomePage() {
                   </div>
                 </Reveal>
 
-                {/* Kartu 2: Fasilitas Kesehatan */}
+                {/* Kartu 2: Fasilitas Kesehatan (Solid Putih) */}
                 <Reveal delay={80}>
                   <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#8F5A4E]/35 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
                     <div>
@@ -253,7 +257,7 @@ export default function HomePage() {
                   </div>
                 </Reveal>
 
-                {/* Kartu 3: Verifikasi Administrasi */}
+                {/* Kartu 3: Verifikasi Administrasi (Solid Putih) */}
                 <Reveal delay={160}>
                   <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#8F5A4E]/35 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
                     <div>
@@ -302,7 +306,7 @@ export default function HomePage() {
                   </div>
                 </Reveal>
 
-                {/* Kartu 4: Dinas Kesehatan */}
+                {/* Kartu 4: Dinas Kesehatan (Solid Putih) */}
                 <Reveal delay={240}>
                   <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#8F5A4E]/35 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
                     <div>
@@ -349,16 +353,17 @@ export default function HomePage() {
           {/* ============================================================ */}
           <section
             id="cara-kerja"
-            data-navbar-tone="light"
-            className="w-full bg-white py-[96px] text-left border-y border-[#E2E8F0] scroll-mt-20"
+            data-navbar-tone="dark"
+            className="w-full bg-transparent py-[96px] text-left scroll-mt-20"
           >
             <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+              {/* Kotak Kaca Panjang untuk Judul & Sub-judul */}
               <Reveal>
-                <div className="flex flex-col text-left mb-14">
-                  <h2 className="text-3xl sm:text-[32px] font-bold text-[#0A2230] tracking-tight">
+                <div className="glass-panel p-6 sm:p-8 md:py-8 md:px-10 mb-14">
+                  <h2 className="text-3xl sm:text-[32px] font-bold text-white tracking-tight">
                     Cara kerja
                   </h2>
-                  <p className="text-base text-slate-600 mt-2">
+                  <p className="text-base text-white/88 mt-2">
                     Alur rujukan berjenjang yang tertib, transparan, dan terhubung
                     antar faskes.
                   </p>
@@ -366,8 +371,8 @@ export default function HomePage() {
               </Reveal>
 
               <div className="relative">
-                {/* Garis horizontal penghubung antar step di desktop */}
-                <div className="hidden lg:block absolute top-[24px] left-[60px] right-[60px] h-[2px] bg-[#E2E8F0] z-0" />
+                {/* Garis horizontal penghubung antar step di desktop: tetap jelas di atas wallpaper */}
+                <div className="hidden lg:block absolute top-[24px] left-[60px] right-[60px] h-[2px] bg-white/40 z-0" />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
                   {CARA_KERJA_STEPS.map((item, idx) => {
@@ -389,12 +394,12 @@ export default function HomePage() {
                             {/* Garis penghubung vertikal ke card di bawahnya */}
                             <div
                               className={`w-[2px] h-4 transition-colors duration-500 ${
-                                isActive ? "bg-[#8F5A4E]" : "bg-[#E2E8F0]"
+                                isActive ? "bg-[#8F5A4E]" : "bg-white/40"
                               }`}
                             />
                           </div>
 
-                          {/* KARTU TEKS (HANYA JUDUL & DESKRIPSI) */}
+                          {/* KARTU TEKS SOLID (HANYA JUDUL & DESKRIPSI) */}
                           <div
                             className={`w-full p-5 rounded-[20px] border transition-colors transition-shadow duration-500 ease-in-out flex flex-col justify-start h-full text-left ${
                               isActive
@@ -427,16 +432,17 @@ export default function HomePage() {
           {/* ============================================================ */}
           <section
             id="fitur"
-            data-navbar-tone="light"
-            className="w-full bg-[#F8FAFC] py-[96px] overflow-hidden text-left scroll-mt-20"
+            data-navbar-tone="dark"
+            className="w-full bg-transparent py-[96px] overflow-hidden text-left scroll-mt-20"
           >
             <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+              {/* Kotak Kaca Panjang untuk Judul & Sub-judul */}
               <Reveal>
-                <div className="flex flex-col text-left mb-12">
-                  <h2 className="text-3xl sm:text-[36px] font-extrabold text-[#0A2230] leading-tight mb-2 tracking-tight">
+                <div className="glass-panel p-6 sm:p-8 md:py-8 md:px-10 mb-12">
+                  <h2 className="text-3xl sm:text-[36px] font-extrabold text-white leading-tight mb-2 tracking-tight">
                     Fitur utama platform Lytera
                   </h2>
-                  <p className="text-base text-slate-600 max-w-[640px]">
+                  <p className="text-base text-white/88 max-w-[640px]">
                     Dirancang khusus untuk keandalan klinis, kepatuhan regulasi,
                     serta kemudahan adopsi tenaga medis.
                   </p>
@@ -446,7 +452,7 @@ export default function HomePage() {
               {/* PEMBUNGKUS BARIS ATAS: Geser 32px ke KIRI di layar lg ke atas */}
               <div className="lg:-translate-x-8 transition-transform duration-300">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {/* Fitur 1 */}
+                  {/* Fitur 1 (Solid Putih) */}
                   <Reveal delay={0}>
                     <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full cursor-default transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
                       <div className="w-11 h-11 rounded-[12px] bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-3.5">
@@ -463,7 +469,7 @@ export default function HomePage() {
                     </div>
                   </Reveal>
 
-                  {/* Fitur 2 */}
+                  {/* Fitur 2 (Solid Putih) */}
                   <Reveal delay={80}>
                     <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full cursor-default transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
                       <div className="w-11 h-11 rounded-[12px] bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-3.5">
@@ -480,7 +486,7 @@ export default function HomePage() {
                     </div>
                   </Reveal>
 
-                  {/* Fitur 3 */}
+                  {/* Fitur 3 (Solid Putih) */}
                   <Reveal delay={160}>
                     <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full cursor-default transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
                       <div className="w-11 h-11 rounded-[12px] bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-3.5">
@@ -502,7 +508,7 @@ export default function HomePage() {
               {/* PEMBUNGKUS BARIS BAWAH: Geser 32px ke KANAN di layar lg ke atas */}
               <div className="mt-5 lg:translate-x-8 transition-transform duration-300">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {/* Fitur 4 */}
+                  {/* Fitur 4 (Solid Putih) */}
                   <Reveal delay={0}>
                     <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full cursor-default transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
                       <div className="w-11 h-11 rounded-[12px] bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-3.5">
@@ -519,7 +525,7 @@ export default function HomePage() {
                     </div>
                   </Reveal>
 
-                  {/* Fitur 5 */}
+                  {/* Fitur 5 (Solid Putih) */}
                   <Reveal delay={80}>
                     <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full cursor-default transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
                       <div className="w-11 h-11 rounded-[12px] bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-3.5">
@@ -535,7 +541,7 @@ export default function HomePage() {
                     </div>
                   </Reveal>
 
-                  {/* Fitur 6 */}
+                  {/* Fitur 6 (Solid Putih) */}
                   <Reveal delay={160}>
                     <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full cursor-default transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
                       <div className="w-11 h-11 rounded-[12px] bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-3.5">
@@ -560,16 +566,16 @@ export default function HomePage() {
           {/* ============================================================ */}
           <section
             id="kenapa-lytera"
-            data-navbar-tone="light"
-            className="w-full bg-[#FAF5F2] py-[96px] text-left scroll-mt-20"
+            data-navbar-tone="dark"
+            className="w-full bg-transparent py-[96px] text-left scroll-mt-20"
           >
             <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
               <Reveal>
-                <div className="flex flex-col text-left mb-16">
-                  <h2 className="text-3xl sm:text-[32px] font-bold text-[#0A2230] tracking-tight">
+                <div className="glass-panel p-6 sm:p-8 md:py-8 md:px-10 mb-16">
+                  <h2 className="text-3xl sm:text-[32px] font-bold text-white tracking-tight">
                     Mengapa Lytera?
                   </h2>
-                  <p className="text-base text-slate-600 mt-2 max-w-3xl">
+                  <p className="text-base text-white/88 mt-2 max-w-3xl">
                     Lytera hadir untuk membantu mengatasi berbagai permasalahan
                     dalam proses rujukan dan pengelolaan rekam medis. Selain
                     mengurangi penumpukan rujukan dan risiko tercecernya rekam
@@ -580,67 +586,70 @@ export default function HomePage() {
                 </div>
               </Reveal>
 
-              <div className="space-y-16">
-                {/* Baris 1: Pasien yang pegang kendali */}
+              <div className="space-y-12">
+                {/* Baris 1: Pasien yang pegang kendali - Kotak Kaca Rounded */}
                 <Reveal>
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                    <div className="lg:col-span-6">
-                      <h3 className="text-2xl font-bold text-[#0A2230] mb-3">
-                        Pasien yang pegang kendali
-                      </h3>
-                      <p className="text-base text-slate-600 leading-relaxed">
-                        Rekam medismu dilindungi token 6 digit yang bisa kamu
-                        berikan saat periksa dan cabut kapan saja. Setiap pembukaan
-                        data tercatat rapi di log akses.
-                      </p>
-                    </div>
-                    <div className="lg:col-span-6">
-                      <div className="bg-white rounded-[24px] p-6 shadow-sm border border-[#E2E8F0]">
-                        <div className="flex items-center justify-between pb-2 mb-4 border-b border-[#E2E8F0]/60">
-                          <span className="text-[16px] font-bold text-[#0A2230]">
-                            Otorisasi Akses Pasien
-                          </span>
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-medium bg-[#FAF5F2] text-[#8F5A4E]">
-                            Aman &amp; Terenkripsi
-                          </span>
-                        </div>
-                        <div className="bg-[#FAF5F2] rounded-[16px] p-4 flex items-center justify-between mb-4">
-                          <div>
-                            <span className="text-[12px] text-slate-500 block">
-                              Token Sesi Pemeriksaan
+                  <div className="glass-card rounded-[28px] p-6 sm:p-8 lg:p-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                      <div className="lg:col-span-6">
+                        <h3 className="text-2xl font-bold text-white mb-3">
+                          Pasien yang pegang kendali
+                        </h3>
+                        <p className="text-base text-white/86 leading-relaxed">
+                          Rekam medismu dilindungi token 6 digit yang bisa kamu
+                          berikan saat periksa dan cabut kapan saja. Setiap pembukaan
+                          data tercatat rapi di log akses.
+                        </p>
+                      </div>
+                      <div className="lg:col-span-6">
+                        {/* Mockup putih solid dipertahankan agar jelas terbaca */}
+                        <div className="bg-white rounded-[24px] p-6 shadow-sm border border-[#E2E8F0]">
+                          <div className="flex items-center justify-between pb-2 mb-4 border-b border-[#E2E8F0]/60">
+                            <span className="text-[16px] font-bold text-[#0A2230]">
+                              Otorisasi Akses Pasien
                             </span>
-                            <span className="text-[26px] font-bold text-[#0A2230] tabular-nums">
-                              492 810
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-medium bg-[#FAF5F2] text-[#8F5A4E]">
+                              Aman &amp; Terenkripsi
                             </span>
                           </div>
-                          <button
-                            type="button"
-                            className="px-4 py-2 bg-white text-[#B3261E] rounded-[12px] text-[13px] font-semibold hover:bg-[#FDECEA] transition-colors border border-[#E2E8F0]"
-                          >
-                            Cabut Izin
-                          </button>
-                        </div>
-                        <div className="space-y-2">
-                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                            Catatan Akses Terakhir
-                          </span>
-                          <div className="flex items-center justify-between py-2 text-[13px] text-slate-600 border-b border-[#E2E8F0]/40">
-                            <div className="flex items-center gap-2">
-                              <Eye className="w-4 h-4 text-[#1B6B4D] shrink-0" />
-                              <span>dr. Anita Wijaya (Poli Jantung RSUD)</span>
+                          <div className="bg-[#FAF5F2] rounded-[16px] p-4 flex items-center justify-between mb-4">
+                            <div>
+                              <span className="text-[12px] text-slate-500 block">
+                                Token Sesi Pemeriksaan
+                              </span>
+                              <span className="text-[26px] font-bold text-[#0A2230] tabular-nums">
+                                492 810
+                              </span>
                             </div>
-                            <span className="tabular-nums text-slate-400">
-                              10:14 WIB
-                            </span>
+                            <button
+                              type="button"
+                              className="px-4 py-2 bg-white text-[#B3261E] rounded-[12px] text-[13px] font-semibold hover:bg-[#FDECEA] transition-colors border border-[#E2E8F0]"
+                            >
+                              Cabut Izin
+                            </button>
                           </div>
-                          <div className="flex items-center justify-between py-2 text-[13px] text-slate-600">
-                            <div className="flex items-center gap-2">
-                              <CheckCircle2 className="w-4 h-4 text-slate-400 shrink-0" />
-                              <span>Petugas Adm. Kelurahan Sukamaju</span>
-                            </div>
-                            <span className="tabular-nums text-slate-400">
-                              09:12 WIB
+                          <div className="space-y-2">
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                              Catatan Akses Terakhir
                             </span>
+                            <div className="flex items-center justify-between py-2 text-[13px] text-slate-600 border-b border-[#E2E8F0]/40">
+                              <div className="flex items-center gap-2">
+                                <Eye className="w-4 h-4 text-[#1B6B4D] shrink-0" />
+                                <span>dr. Anita Wijaya (Poli Jantung RSUD)</span>
+                              </div>
+                              <span className="tabular-nums text-slate-400">
+                                10:14 WIB
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between py-2 text-[13px] text-slate-600">
+                              <div className="flex items-center gap-2">
+                                <CheckCircle2 className="w-4 h-4 text-slate-400 shrink-0" />
+                                <span>Petugas Adm. Kelurahan Sukamaju</span>
+                              </div>
+                              <span className="tabular-nums text-slate-400">
+                                09:12 WIB
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -648,77 +657,80 @@ export default function HomePage() {
                   </div>
                 </Reveal>
 
-                {/* Baris 2: Prioritas dan kuota terlihat */}
+                {/* Baris 2: Prioritas dan kuota terlihat - Kotak Kaca Rounded */}
                 <Reveal>
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                    <div className="lg:col-span-6 lg:order-2">
-                      <h3 className="text-2xl font-bold text-[#0A2230] mb-3">
-                        Prioritas dan kuota terlihat
-                      </h3>
-                      <p className="text-base text-slate-600 leading-relaxed">
-                        Sistem triase terstandarisasi (Gawat Darurat, Urgent,
-                        Elektif) dan informasi ketersediaan jadwal dokter
-                        disajikan transparan agar penanganan pasien lebih terarah.
-                      </p>
-                    </div>
-                    <div className="lg:col-span-6 lg:order-1">
-                      <div className="bg-white rounded-[24px] p-6 shadow-sm border border-[#E2E8F0]">
-                        <div className="flex items-center justify-between pb-2 mb-4 border-b border-[#E2E8F0]/60">
-                          <span className="text-[16px] font-bold text-[#0A2230]">
-                            Ketersediaan &amp; Triase
-                          </span>
-                          <span className="text-[12px] text-slate-400">
-                            RSUD Kartika Husada
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 mb-4">
-                          <div className="p-2.5 rounded-[12px] bg-[#FDECEA] border-l-4 border-[#B3261E]">
-                            <span className="text-[11px] font-bold text-[#B3261E] block">
-                              Gawat Darurat
+                  <div className="glass-card rounded-[28px] p-6 sm:p-8 lg:p-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                      <div className="lg:col-span-6 lg:order-2">
+                        <h3 className="text-2xl font-bold text-white mb-3">
+                          Prioritas dan kuota terlihat
+                        </h3>
+                        <p className="text-base text-white/86 leading-relaxed">
+                          Sistem triase terstandarisasi (Gawat Darurat, Urgent,
+                          Elektif) dan informasi ketersediaan jadwal dokter
+                          disajikan transparan agar penanganan pasien lebih terarah.
+                        </p>
+                      </div>
+                      <div className="lg:col-span-6 lg:order-1">
+                        {/* Mockup putih solid dipertahankan agar jelas terbaca */}
+                        <div className="bg-white rounded-[24px] p-6 shadow-sm border border-[#E2E8F0]">
+                          <div className="flex items-center justify-between pb-2 mb-4 border-b border-[#E2E8F0]/60">
+                            <span className="text-[16px] font-bold text-[#0A2230]">
+                              Ketersediaan &amp; Triase
                             </span>
-                            <span className="text-[12px] text-slate-700">
-                              Langsung IGD
+                            <span className="text-[12px] text-slate-400">
+                              RSUD Kartika Husada
                             </span>
                           </div>
-                          <div className="p-2.5 rounded-[12px] bg-[#FFF4D6] border-l-4 border-[#E0A100]">
-                            <span className="text-[11px] font-bold text-[#7A5200] block">
-                              Urgen
-                            </span>
-                            <span className="text-[12px] text-slate-700">
-                              &lt; 24 Jam
-                            </span>
-                          </div>
-                          <div className="p-2.5 rounded-[12px] bg-white border border-[#E2E8F0]">
-                            <span className="text-[11px] font-bold text-slate-700 block">
-                              Elektif
-                            </span>
-                            <span className="text-[12px] text-slate-600">
-                              Sesuai Jadwal
-                            </span>
-                          </div>
-                        </div>
-                        <div className="p-4 rounded-[16px] bg-[#FAF5F2] space-y-3">
-                          <div>
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="text-[14px] font-semibold text-[#0A2230]">
-                                Poli Jantung &amp; Pembuluh Darah
+                          <div className="grid grid-cols-3 gap-2 mb-4">
+                            <div className="p-2.5 rounded-[12px] bg-[#FDECEA] border-l-4 border-[#B3261E]">
+                              <span className="text-[11px] font-bold text-[#B3261E] block">
+                                Gawat Darurat
                               </span>
-                              <span className="text-[12px] font-semibold text-[#1B6B4D] tabular-nums">
-                                Tersisa 8 Kuota
+                              <span className="text-[12px] text-slate-700">
+                                Langsung IGD
                               </span>
                             </div>
-                            <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
-                              <div
-                                className="h-full bg-[#8F5A4E] rounded-full"
-                                style={{ width: "73%" }}
-                              />
+                            <div className="p-2.5 rounded-[12px] bg-[#FFF4D6] border-l-4 border-[#E0A100]">
+                              <span className="text-[11px] font-bold text-[#7A5200] block">
+                                Urgen
+                              </span>
+                              <span className="text-[12px] text-slate-700">
+                                &lt; 24 Jam
+                              </span>
+                            </div>
+                            <div className="p-2.5 rounded-[12px] bg-white border border-[#E2E8F0]">
+                              <span className="text-[11px] font-bold text-slate-700 block">
+                                Elektif
+                              </span>
+                              <span className="text-[12px] text-slate-600">
+                                Sesuai Jadwal
+                              </span>
                             </div>
                           </div>
-                          <div className="flex justify-between items-center text-[12px] text-slate-500 pt-1">
-                            <span>dr. Anita Wijaya, Sp.JP</span>
-                            <span className="tabular-nums">
-                              Jadwal: Besok, 09:00 - 13:00
-                            </span>
+                          <div className="p-4 rounded-[16px] bg-[#FAF5F2] space-y-3">
+                            <div>
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="text-[14px] font-semibold text-[#0A2230]">
+                                  Poli Jantung &amp; Pembuluh Darah
+                                </span>
+                                <span className="text-[12px] font-semibold text-[#1B6B4D] tabular-nums">
+                                  Tersisa 8 Kuota
+                                </span>
+                              </div>
+                              <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+                                <div
+                                  className="h-full bg-[#8F5A4E] rounded-full"
+                                  style={{ width: "73%" }}
+                                />
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-center text-[12px] text-slate-500 pt-1">
+                              <span>dr. Anita Wijaya, Sp.JP</span>
+                              <span className="tabular-nums">
+                                Jadwal: Besok, 09:00 - 13:00
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -726,53 +738,56 @@ export default function HomePage() {
                   </div>
                 </Reveal>
 
-                {/* Baris 3: Asisten Lytera AI */}
+                {/* Baris 3: Asisten Lytera AI - Kotak Kaca Rounded */}
                 <Reveal>
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                    <div className="lg:col-span-6">
-                      <h3 className="text-2xl font-bold text-[#0A2230] mb-3">
-                        Asisten Lytera AI
-                      </h3>
-                      <p className="text-base text-slate-600 leading-relaxed">
-                        Membantu pasien memahami istilah resume medis, jadwal
-                        rujukan, dan dokumen yang harus disiapkan. Lytera AI
-                        menjawab pertanyaan panduan tanpa pernah menggantikan
-                        diagnosis dokter.
-                      </p>
-                    </div>
-                    <div className="lg:col-span-6">
-                      <div className="bg-white rounded-[24px] p-6 shadow-sm border border-[#E2E8F0]">
-                        <div className="flex items-center gap-3 pb-2 mb-4 border-b border-[#E2E8F0]/60">
-                          <div className="w-8 h-8 rounded-full bg-[#8F5A4E] text-white flex items-center justify-center">
-                            <Sparkles className="w-4 h-4 text-white" />
+                  <div className="glass-card rounded-[28px] p-6 sm:p-8 lg:p-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                      <div className="lg:col-span-6">
+                        <h3 className="text-2xl font-bold text-white mb-3">
+                          Asisten Lytera AI
+                        </h3>
+                        <p className="text-base text-white/86 leading-relaxed">
+                          Membantu pasien memahami istilah resume medis, jadwal
+                          rujukan, dan dokumen yang harus disiapkan. Lytera AI
+                          menjawab pertanyaan panduan tanpa pernah menggantikan
+                          diagnosis dokter.
+                        </p>
+                      </div>
+                      <div className="lg:col-span-6">
+                        {/* Mockup putih solid dipertahankan agar jelas terbaca */}
+                        <div className="bg-white rounded-[24px] p-6 shadow-sm border border-[#E2E8F0]">
+                          <div className="flex items-center gap-3 pb-2 mb-4 border-b border-[#E2E8F0]/60">
+                            <div className="w-8 h-8 rounded-full bg-[#8F5A4E] text-white flex items-center justify-center">
+                              <Sparkles className="w-4 h-4 text-white" />
+                            </div>
+                            <div>
+                              <span className="text-[15px] text-[#0A2230] block font-semibold">
+                                Asisten Panduan Lytera
+                              </span>
+                              <span className="text-[11px] text-slate-500">
+                                Bukan pengganti saran medis langsung dokter
+                              </span>
+                            </div>
                           </div>
-                          <div>
-                            <span className="text-[15px] text-[#0A2230] block font-semibold">
-                              Asisten Panduan Lytera
-                            </span>
-                            <span className="text-[11px] text-slate-500">
-                              Bukan pengganti saran medis langsung dokter
-                            </span>
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="bg-[#FAF5F2] rounded-[16px] p-3 text-left">
-                            <p className="text-[13px] text-[#0A2230]">
-                              &ldquo;Halo! Saya menerima rujukan ke Poli Jantung
-                              besok. Apa saja berkas yang wajib saya bawa?&rdquo;
-                            </p>
-                          </div>
-                          <div className="bg-[#EBF2F6] rounded-[16px] p-3 text-left">
-                            <p className="text-[13px] text-[#0A2230] leading-relaxed">
-                              Siapkan 3 hal berikut:
-                              <br />
-                              1. KTP fisik asli
-                              <br />
-                              2. Surat Rujukan Digital (buka di aplikasi Lytera)
-                              <br />
-                              3. Token Akses Medis aktif yang bisa kamu bagikan di
-                              meja administrasi rumah sakit.
-                            </p>
+                          <div className="space-y-3">
+                            <div className="bg-[#FAF5F2] rounded-[16px] p-3 text-left">
+                              <p className="text-[13px] text-[#0A2230]">
+                                &ldquo;Halo! Saya menerima rujukan ke Poli Jantung
+                                besok. Apa saja berkas yang wajib saya bawa?&rdquo;
+                              </p>
+                            </div>
+                            <div className="bg-[#EBF2F6] rounded-[16px] p-3 text-left">
+                              <p className="text-[13px] text-[#0A2230] leading-relaxed">
+                                Siapkan 3 hal berikut:
+                                <br />
+                                1. KTP fisik asli
+                                <br />
+                                2. Surat Rujukan Digital (buka di aplikasi Lytera)
+                                <br />
+                                3. Token Akses Medis aktif yang bisa kamu bagikan di
+                                meja administrasi rumah sakit.
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -786,20 +801,20 @@ export default function HomePage() {
           {/* ============================================================ */}
           {/* SECTION 6: CTA CONTAINER */}
           {/* ============================================================ */}
-          <section data-navbar-tone="light" className="w-full max-w-full overflow-hidden py-[96px] bg-[#F8FAFC]">
+          <section data-navbar-tone="dark" className="w-full max-w-full overflow-hidden py-[96px] bg-transparent">
             <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
               <Reveal>
-                <div className="w-full rounded-[24px] bg-[#0A2230] p-10 sm:p-14 text-center flex flex-col items-center">
+                <div className="w-full rounded-[24px] glass-card p-10 sm:p-14 text-center flex flex-col items-center">
                   <h2 className="text-3xl sm:text-[36px] leading-[44px] font-extrabold text-white tracking-tight">
                     Mulai dari peranmu
                   </h2>
-                  <p className="text-base text-slate-300 max-w-xl mx-auto mt-3">
+                  <p className="text-base text-white/86 max-w-xl mx-auto mt-3">
                     Pilih peranmu, lalu mulai dari rujukan pertama.
                   </p>
                   <a
                     href="#masuk-peran"
                     onClick={handleMulaiSekarang}
-                    className="inline-flex items-center justify-center px-8 py-4 rounded-[14px] bg-[#D99B7F] text-[#0A2230] font-bold text-[15px] hover:bg-[#E4AE94] hover:-translate-y-[1px] active:scale-[0.98] transition-colors duration-200 mt-6 shadow-none cursor-pointer"
+                    className="inline-flex items-center justify-center px-8 py-4 rounded-[14px] bg-[#D99B7F] text-[#0A2230] font-bold text-[15px] hover:bg-[#E4AE94] hover:-translate-y-[1px] active:scale-[0.98] transition-all duration-200 mt-6 shadow-none cursor-pointer"
                   >
                     Mulai Sekarang
                   </a>
@@ -813,38 +828,40 @@ export default function HomePage() {
       {/* FOOTER */}
       <footer
         data-navbar-tone="dark"
-        className="w-full max-w-full overflow-hidden bg-[#0A2230] border-t border-white/[0.08] py-8 text-left"
+        className="w-full max-w-full overflow-hidden bg-transparent pb-6 text-left"
       >
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6">
-            <div className="flex items-center gap-3">
-              <Logo tone="dark" size="sm" />
+          <div className="glass-card rounded-[24px] p-6 sm:p-8">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6">
+              <div className="flex items-center gap-3">
+                <Logo tone="dark" size="sm" />
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-6">
+                <a
+                  className="text-xs text-white/86 hover:text-white transition-colors"
+                  href="#fitur"
+                >
+                  Fitur Layanan
+                </a>
+                <a
+                  className="text-xs text-white/86 hover:text-white transition-colors"
+                  href="#cara-kerja"
+                >
+                  Cara Kerja
+                </a>
+                <a
+                  className="text-xs text-white/86 hover:text-white transition-colors"
+                  href="#kenapa-lytera"
+                >
+                  Kenapa Lytera?
+                </a>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-6">
-              <a
-                className="text-xs text-slate-300 hover:text-white transition-colors"
-                href="#fitur"
-              >
-                Fitur Layanan
-              </a>
-              <a
-                className="text-xs text-slate-300 hover:text-white transition-colors"
-                href="#cara-kerja"
-              >
-                Cara Kerja
-              </a>
-              <a
-                className="text-xs text-slate-300 hover:text-white transition-colors"
-                href="#kenapa-lytera"
-              >
-                Kenapa Lytera?
-              </a>
+            <div className="border-t border-white/[0.12] pt-4 text-center">
+              <p className="text-xs text-white/70">
+                Prototipe sistem rujukan dan rekam medis digital. Seluruh data adalah data simulasi.
+              </p>
             </div>
-          </div>
-          <div className="border-t border-white/[0.08] pt-4 text-center">
-            <p className="text-xs text-slate-400">
-              Prototipe sistem rujukan dan rekam medis digital. Seluruh data adalah data simulasi.
-            </p>
           </div>
         </div>
       </footer>

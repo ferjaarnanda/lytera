@@ -21,7 +21,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="id"
       className={`${plusJakartaSans.variable} font-sans min-h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#F7F8FA] text-slate font-sans w-full max-w-full overflow-x-hidden">
+      <body className="min-h-full flex flex-col bg-[#F7F8FA] text-slate font-sans w-full max-w-full">
         {children}
       </body>
     </html>

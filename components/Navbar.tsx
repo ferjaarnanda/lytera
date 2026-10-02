@@ -89,10 +89,17 @@ export const Navbar: React.FC<NavbarProps> = ({
   forceGlass = false,
 }) => {
   const headerRef = useRef<HTMLElement>(null);
-  const darkToneRef = useRef(variant === "landing");
-  const [isDarkTone, setIsDarkTone] = useState(variant === "landing");
+  const isLanding = variant === "landing";
+  // Landing: warna dikunci Deep Navy sejak render pertama (latar kaca putih konstan).
+  // Variant lain: deteksi dinamis berdasarkan tone section.
+  const darkToneRef = useRef(!isLanding);
+  const [isDarkTone, setIsDarkTone] = useState(!isLanding);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [rolePickerOpen, setRolePickerOpen] = useState(false);
+
+  // glassAlpha: opacity latar kaca putih.
+  // Landing = 0.48 (tipis, wallpaper samar terlihat). Variant lain = 0.62.
+  const glassAlpha = isLanding ? 0.48 : 0.62;
 
   // easeOutCubic(t) = 1 - (1 - t)^3
   const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
@@ -100,45 +107,56 @@ export const Navbar: React.FC<NavbarProps> = ({
   // Scroll listener dengan requestAnimationFrame & passive listener
   useEffect(() => {
     let ticking = false;
+    let lastPShape = -1;
+    let lastPColor = -1;
+    let lastToneCheck = 0;
 
     const updateScrollProgress = () => {
       const scrollY = window.scrollY;
       const rawP = Math.min(Math.max(scrollY / 90, 0), 1);
       const pShape = easeOutCubic(rawP);
-      const pColor = forceGlass ? 1 : pShape;
+      const pColor = (isLanding || forceGlass) ? 1 : pShape;
 
-      // Tuliskan ke CSS Variables pada elemen navbar secara langsung (tanpa re-render React)
+      // Hanya tulis ke CSS Variables bila nilainya benar-benar berubah (threshold 0.001)
       if (headerRef.current) {
-        headerRef.current.style.setProperty("--p-shape", pShape.toFixed(4));
-        headerRef.current.style.setProperty("--p-color", pColor.toFixed(4));
+        if (Math.abs(pShape - lastPShape) > 0.001) {
+          lastPShape = pShape;
+          headerRef.current.style.setProperty("--p-shape", pShape.toFixed(4));
+        }
+        if (Math.abs(pColor - lastPColor) > 0.001) {
+          lastPColor = pColor;
+          headerRef.current.style.setProperty("--p-color", pColor.toFixed(4));
+        }
       }
 
-      // Deteksi warna teks dan tone latar:
-      let currentDark = false;
-      if (forceGlass || pColor >= 0.75) {
-        currentDark = false; // Latar kaca putih -> selalu teks Deep Navy
+      // Deteksi tone latar:
+      // Landing: dikunci Deep Navy (isDarkTone = false), TIDAK ada elementsFromPoint.
+      if (isLanding || forceGlass || pColor >= 0.75) {
+        // Latar kaca putih -> selalu teks Deep Navy (darkTone = false)
+        if (darkToneRef.current !== false) {
+          darkToneRef.current = false;
+          setIsDarkTone(false);
+        }
       } else {
-        // Cari elemen dengan data-navbar-tone pada posisi y=40
-        const elements = document.elementsFromPoint(window.innerWidth / 2, 40);
-        let foundTone: string | null = null;
-        for (const el of elements) {
-          const tone = el.getAttribute("data-navbar-tone");
-          if (tone) {
-            foundTone = tone;
-            break;
+        // Throttle layout read (elementsFromPoint) maksimal 1x per 150ms saat pColor < 0.75
+        const now = performance.now();
+        if (now - lastToneCheck >= 150) {
+          lastToneCheck = now;
+          const elements = document.elementsFromPoint(window.innerWidth / 2, 40);
+          let foundTone: string | null = null;
+          for (const el of elements) {
+            const tone = el.getAttribute("data-navbar-tone");
+            if (tone) {
+              foundTone = tone;
+              break;
+            }
+          }
+          const currentDark = foundTone === "dark";
+          if (currentDark !== darkToneRef.current) {
+            darkToneRef.current = currentDark;
+            setIsDarkTone(currentDark);
           }
         }
-        if (foundTone) {
-          currentDark = foundTone === "dark";
-        } else {
-          currentDark = false; // Hero sekarang berlatar terang (#F7F8FA)
-        }
-      }
-
-      // Hanya ubah state jika terjadi pergantian tone (mencegah loop re-render tiap scroll)
-      if (currentDark !== darkToneRef.current) {
-        darkToneRef.current = currentDark;
-        setIsDarkTone(currentDark);
       }
 
       ticking = false;
@@ -161,7 +179,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
     };
-  }, [forceGlass]);
+  }, [forceGlass, isLanding]);
 
   const menuItems = VARIANT_MENUS[variant] || VARIANT_MENUS.landing;
   const currentActive = activeItem || menuItems[0]?.label;
@@ -194,30 +212,53 @@ export const Navbar: React.FC<NavbarProps> = ({
         <header
           ref={headerRef}
           style={
-            {
-              "--p-shape": "0",
-              "--p-color": forceGlass ? "1" : "0",
-              width: "calc(100% - (var(--p-shape, 0) * 32px))",
-              maxWidth: "min(100%, calc(1200px + (1 - var(--p-shape, 0)) * 1200px))",
-              marginTop: "calc(var(--p-shape, 0) * 16px)",
-              height: "calc(72px - (var(--p-shape, 0) * 8px))",
-              borderRadius: "calc(var(--p-shape, 0) * 32px)",
-              backgroundColor:
-                "rgba(255, 255, 255, calc(var(--p-color, 0) * 0.62))",
-              backdropFilter:
-                "blur(calc(var(--p-color, 0) * 20px)) saturate(calc(100% + var(--p-color, 0) * 60%))",
-              WebkitBackdropFilter:
-                "blur(calc(var(--p-color, 0) * 20px)) saturate(calc(100% + var(--p-color, 0) * 60%))",
-              borderWidth: "1px",
-              borderStyle: "solid",
-              borderColor:
-                "rgba(255, 255, 255, calc(0.08 + var(--p-color, 0) * 0.47))",
-              boxShadow:
-                "0 calc(var(--p-color, 0) * 12px) calc(var(--p-color, 0) * 32px) -8px rgba(15, 48, 64, calc(var(--p-color, 0) * 0.18))",
-              willChange: "width, max-width, height, border-radius, transform",
-              transition:
-                "color 300ms ease, background-color 120ms linear, border-color 120ms linear",
-            } as React.CSSProperties
+            (isLanding
+              ? {
+                  // LANDING: warna dikunci konstan sejak render pertama (--p-color = 1 tetap).
+                  // Hanya --p-shape yang beranimasi (bar rata → kapsul melayang saat scroll).
+                  "--p-shape": "0",
+                  "--p-color": "1",
+                  width: "calc(100% - (var(--p-shape, 0) * 32px))",
+                  maxWidth: "min(100%, calc(1200px + (1 - var(--p-shape, 0)) * 1200px))",
+                  marginTop: "calc(var(--p-shape, 0) * 16px)",
+                  height: "calc(72px - (var(--p-shape, 0) * 8px))",
+                  borderRadius: "calc(var(--p-shape, 0) * 32px)",
+                  backgroundColor: `rgba(255, 255, 255, ${glassAlpha})`,
+                  backdropFilter: "blur(20px) saturate(160%)",
+                  WebkitBackdropFilter: "blur(20px) saturate(160%)",
+                  borderWidth: "1px",
+                  borderStyle: "solid",
+                  borderColor: "rgba(255, 255, 255, 0.7)",
+                  boxShadow: "0 8px 28px -8px rgba(10, 34, 48, 0.25)",
+                  willChange: "width, max-width, height, border-radius",
+                  // Warna tidak berubah → tidak perlu transisi warna
+                  transition: "none",
+                }
+              : {
+                  // NON-LANDING: perilaku lama — warna fade-in dari 0 ke 1 saat scroll.
+                  "--p-shape": "0",
+                  "--p-color": forceGlass ? "1" : "0",
+                  width: "calc(100% - (var(--p-shape, 0) * 32px))",
+                  maxWidth: "min(100%, calc(1200px + (1 - var(--p-shape, 0)) * 1200px))",
+                  marginTop: "calc(var(--p-shape, 0) * 16px)",
+                  height: "calc(72px - (var(--p-shape, 0) * 8px))",
+                  borderRadius: "calc(var(--p-shape, 0) * 32px)",
+                  backgroundColor:
+                    `rgba(255, 255, 255, calc(var(--p-color, 0) * ${glassAlpha}))`,
+                  backdropFilter:
+                    "blur(calc(var(--p-color, 0) * 20px)) saturate(calc(100% + var(--p-color, 0) * 60%))",
+                  WebkitBackdropFilter:
+                    "blur(calc(var(--p-color, 0) * 20px)) saturate(calc(100% + var(--p-color, 0) * 60%))",
+                  borderWidth: "1px",
+                  borderStyle: "solid",
+                  borderColor:
+                    "rgba(255, 255, 255, calc(0.08 + var(--p-color, 0) * 0.47))",
+                  boxShadow:
+                    "0 calc(var(--p-color, 0) * 12px) calc(var(--p-color, 0) * 32px) -8px rgba(15, 48, 64, calc(var(--p-color, 0) * 0.18))",
+                  willChange: "width, max-width, height, border-radius, transform",
+                  transition:
+                    "color 300ms ease, background-color 120ms linear, border-color 120ms linear",
+                }) as unknown as React.CSSProperties
           }
           className="pointer-events-auto flex items-center justify-between px-4 sm:px-6"
         >
