@@ -87,8 +87,8 @@ export const HeroSection: React.FC = () => {
 
   return (
     <section
-      data-navbar-tone="light"
-      className="w-full max-w-full bg-[#F7F8FA] pt-[156px] sm:pt-[168px] pb-[72px] sm:pb-[96px] relative overflow-x-hidden text-left"
+      data-navbar-tone="dark"
+      className="w-full max-w-full bg-transparent pt-[156px] sm:pt-[168px] pb-[72px] sm:pb-[96px] relative overflow-x-hidden text-left"
     >
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
@@ -96,7 +96,7 @@ export const HeroSection: React.FC = () => {
           <div className="lg:col-span-7 flex flex-col z-10">
             {/* H1: Efek Mengetik Huruf per Huruf tanpa Layout Shift */}
             <h1
-              className="text-4xl sm:text-5xl lg:text-[54px] leading-[1.15] font-extrabold text-[#0A2230] tracking-tight relative"
+              className="text-4xl sm:text-5xl lg:text-[54px] leading-[1.15] font-extrabold text-white tracking-tight relative"
               aria-label={FULL_HEADING}
             >
               {/* Teks tak terlihat sebagai penahan tinggi layout */}
@@ -106,13 +106,13 @@ export const HeroSection: React.FC = () => {
 
               {/* Teks yang sedang diketik di atasnya */}
               <span
-                className="absolute inset-0 select-text block text-[#0A2230]"
+                className="absolute inset-0 select-text block text-white"
                 aria-hidden="true"
               >
                 {typedText}
                 {showCursor && (
                   <span
-                    className="inline-block w-[3px] h-[0.85em] bg-[#8F5A4E] ml-1.5 align-baseline animate-pulse"
+                    className="inline-block w-[3px] h-[0.85em] bg-[#D99B7F] ml-1.5 align-baseline animate-pulse"
                     aria-hidden="true"
                   />
                 )}
@@ -121,7 +121,7 @@ export const HeroSection: React.FC = () => {
 
             {/* Sub-headline: fade-up 600ms */}
             <p
-              className={`text-base sm:text-lg text-slate-600 leading-[1.6] max-w-[540px] mt-6 transition-[opacity,transform] duration-600 ease-out ${
+              className={`text-base sm:text-lg text-slate-200 leading-[1.6] max-w-[540px] mt-6 transition-[opacity,transform] duration-600 ease-out ${
                 animStage >= 1
                   ? "opacity-100 translate-y-0"
                   : "opacity-0 translate-y-4 pointer-events-none"
@@ -147,7 +147,7 @@ export const HeroSection: React.FC = () => {
               <a
                 href="#cara-kerja"
                 onClick={handleCaraKerja}
-                className={`inline-flex items-center justify-center px-7 py-3.5 rounded-[14px] bg-white text-[#0A2230] font-semibold text-[15px] hover:bg-slate-50 hover:-translate-y-[1px] active:scale-[0.98] transition-[opacity,transform,background-color] duration-200 border border-[#E2E8F0] shadow-sm cursor-pointer ${
+                className={`inline-flex items-center justify-center px-7 py-3.5 rounded-[14px] bg-white/10 text-white font-semibold text-[15px] hover:bg-white/20 hover:-translate-y-[1px] active:scale-[0.98] transition-[opacity,transform,background-color] duration-200 border border-white/25 shadow-sm cursor-pointer backdrop-blur-sm ${
                   animStage >= 3
                     ? "opacity-100 translate-y-0"
                     : "opacity-0 translate-y-3 pointer-events-none"

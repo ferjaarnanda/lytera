@@ -168,6 +168,37 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
         if (isCancelled) return;
 
         if (userError || !user) {
+          // Mode preview / testing visual: jika URL memiliki ?demo=1
+          const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+          if (urlParams?.get("demo") === "1") {
+            setProfile({
+              id: "demo-user-id",
+              full_name: "Budi Santoso",
+              role: "pasien",
+              sub_role: subperan,
+              status: "aktif",
+              email: "budi.santoso@example.com",
+            });
+            setPatient({
+              id: "demo-user-id",
+              nik: "3301012345670001",
+              patient_type: subperan === "keluarga" ? "keluarga" : "pribadi",
+              dob: "1995-05-15",
+              gender: "Laki-laki",
+              blood_type: "O+",
+              allergies: "Penisilin",
+              phone: "081234567890",
+              address: "Jl. Pemuda No. 12, Semarang",
+              village: "Pandansari",
+              district: "Semarang Tengah",
+              city: "Kota Semarang",
+              province: "Jawa Tengah",
+              bpjs_number: null,
+            });
+            setLoading(false);
+            return;
+          }
+
           router.replace("/");
           return;
         }
@@ -259,7 +290,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
   // ── 1. LOADING STATE ──
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] text-[#464858]" data-navbar-tone="light">
+      <div className="min-h-screen text-[#464858]" data-navbar-tone="light" data-portal-wallpaper="true">
         <Navbar
           variant="pasien"
           userName="Memuat..."
@@ -284,7 +315,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
   // ── 2. ERROR STATE ──
   if (errorMsg) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] text-[#464858]" data-navbar-tone="light">
+      <div className="min-h-screen text-[#464858]" data-navbar-tone="light" data-portal-wallpaper="true">
         <Navbar
           variant="pasien"
           userName="Pasien"
@@ -318,7 +349,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
   // ── 3. STATUS BUKAN 'aktif': TAMPILKAN "Akun kamu sedang ditinjau" ──
   if (!profile || profile.status !== "aktif") {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] text-[#464858]" data-navbar-tone="light">
+      <div className="min-h-screen text-[#464858]" data-navbar-tone="light" data-portal-wallpaper="true">
         <Navbar
           variant="pasien"
           userName={profile?.full_name || "Pasien"}
@@ -402,7 +433,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
   const isKeluarga = subperan === "keluarga" || profile.sub_role === "keluarga";
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#464858]" data-navbar-tone="light">
+    <div className="min-h-screen text-[#464858]" data-navbar-tone="light" data-portal-wallpaper="true">
       {/* Top Navbar */}
       <Navbar
         variant="pasien"

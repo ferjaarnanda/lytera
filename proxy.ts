@@ -47,9 +47,9 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Lindungi semua /portal/*
+  // Lindungi semua /portal/* (izinkan bypass jika ?demo=1 untuk testing/preview visual)
   if (pathname.startsWith("/portal")) {
-    if (!session) {
+    if (!session && request.nextUrl.searchParams.get("demo") !== "1") {
       const loginUrl = new URL("/", request.url);
       loginUrl.searchParams.set("from", pathname);
       return NextResponse.redirect(loginUrl);

@@ -10,74 +10,47 @@ export interface PortalWallpaperProps {
  * Ditampilkan di rute /masuk/pasien/*, /daftar/pasien/*, /portal/pasien/*,
  * dan /masuk/fasilitas/*, /daftar/fasilitas/*, /portal/fasilitas/*.
  *
- * Spesifikasi:
- * - Aset: public/images/wallpaper-hospital.webp
- * - background-size: cover
- * - background-attachment: scroll (bergerak bersama konten saat digulir)
- * - Menutupi TINGGI PENUH konten halaman (min-height mengikuti konten)
- * - Efek blur 60% (~18px)
- * - Overlay gelap semi-transparan Night (#0A2230 dengan opacity 60%)
- * - z-index di paling belakang (-z-10 dengan isolate)
- * - Tidak menghalangi interaksi pointer
+ * Menggunakan elemen fixed menempel pada viewport (diam saat scroll),
+ * dengan foto ber-filter blur(2px) brightness(1.15) dan overlay gelap Night.
  */
 export const PortalWallpaper: React.FC<PortalWallpaperProps> = ({
   children,
   className = "",
 }) => {
   return (
-    <div
-      data-portal-wallpaper="true"
-      className={`relative min-h-screen w-full isolate ${className}`.trim()}
-      style={{ minHeight: "100vh" }}
-    >
-      {/* Background layer spanning full scrollable height */}
+    <>
+      {/* 1. Lapisan Foto Wallpaper Tetap di Layar (Fixed Viewport) */}
       <div
-        className="absolute inset-0 -z-10 pointer-events-none select-none bg-[#0A2230]"
-        aria-hidden="true"
         style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
+          position: "fixed",
+          inset: 0,
           zIndex: -10,
+          pointerEvents: "none",
+          backgroundImage: "url('/images/wallpaper-hospital.webp')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          filter: "blur(2px) brightness(1.15)",
         }}
-      >
-        {/* Hospital Photo with 100% auto width and repeat-y for seamless full height */}
-        <div
-          className="absolute inset-0 w-full h-full"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundImage: "url('/images/wallpaper-hospital.webp')",
-            backgroundSize: "100% auto",
-            backgroundRepeat: "repeat-y",
-            backgroundPosition: "top center",
-            backgroundAttachment: "scroll",
-            filter: "blur(2px) brightness(1.15)",
-          }}
-        />
+        aria-hidden="true"
+      />
 
-        {/* Semi-transparent dark overlay: Night (#0A2230) 60% opacity */}
-        <div
-          className="absolute inset-0 w-full h-full bg-[#0A2230]/60"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-          }}
-        />
-      </div>
+      {/* 2. Lapisan Overlay Gelap Night rgba(10,34,48,0.6) di atas foto, di bawah konten */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: -9,
+          pointerEvents: "none",
+          backgroundColor: "rgba(10, 34, 48, 0.6)",
+        }}
+        aria-hidden="true"
+      />
 
-      {/* Page Content Layer */}
-      <div className="relative z-10 w-full min-h-screen flex flex-col flex-1">
+      {/* 3. Konten Halaman Mengalir Normal */}
+      <div data-portal-wallpaper="true" className={className || undefined}>
         {children}
       </div>
-    </div>
+    </>
   );
 };

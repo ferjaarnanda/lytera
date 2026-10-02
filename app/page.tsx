@@ -90,11 +90,42 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F8FA] text-[#464858] font-sans antialiased selection:bg-[#8F5A4E] selection:text-white w-full max-w-full overflow-x-hidden relative">
+    <div
+      data-hero-wallpaper="true"
+      className="min-h-screen text-[#464858] font-sans antialiased selection:bg-[#8F5A4E] selection:text-white w-full max-w-full overflow-x-hidden relative"
+    >
+      {/* 1. Lapisan Foto Hero Wallpaper Tetap di Layar (Fixed Viewport) */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: -10,
+          pointerEvents: "none",
+          backgroundImage: "url('/images/wallpaper-landing-hero.webp')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          filter: "blur(2px) brightness(1.15)",
+        }}
+        aria-hidden="true"
+      />
+
+      {/* 2. Lapisan Overlay Gelap Night rgba(10,34,48,0.55) di atas foto, di bawah konten */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: -9,
+          pointerEvents: "none",
+          backgroundColor: "rgba(10, 34, 48, 0.55)",
+        }}
+        aria-hidden="true"
+      />
+
       {/* 1. NAVBAR KONTINU DINAMIS */}
       <Navbar variant="landing" activeItem="Beranda" />
 
-      <main className="w-full max-w-full overflow-x-hidden bg-[#F7F8FA]">
+      <main className="w-full max-w-full overflow-x-hidden">
         <div className="flex flex-col w-full">
           {/* ============================================================ */}
           {/* SECTION 1: HERO SECTION (TYPEWRITER & SEQUENTIAL STAGGER) */}

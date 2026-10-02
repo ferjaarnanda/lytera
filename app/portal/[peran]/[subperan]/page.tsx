@@ -49,7 +49,7 @@ export default function PortalSimulasiPage({ params }: PageProps) {
 
   if (!valid || !roleMeta || !subRoleMeta) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
+      <div className="min-h-screen text-[#464858] flex items-center justify-center p-4" data-portal-wallpaper="true">
         <p className="text-sm text-[#464858]">Memuat portal...</p>
       </div>
     );
@@ -71,7 +71,7 @@ export default function PortalSimulasiPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#464858]" data-navbar-tone="light">
+    <div className="min-h-screen text-[#464858]" data-navbar-tone="light" data-portal-wallpaper="true">
       {/* Top Navbar with active portal variant */}
       <Navbar
         variant={navVariant}

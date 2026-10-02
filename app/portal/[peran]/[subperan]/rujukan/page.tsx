@@ -327,7 +327,7 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#464858]" data-navbar-tone="light">
+    <div className="min-h-screen text-[#464858]" data-navbar-tone="light" data-portal-wallpaper="true">
       <Navbar
         variant="dokter-puskesmas"
         facilityName={facilityInfo?.facilityName}

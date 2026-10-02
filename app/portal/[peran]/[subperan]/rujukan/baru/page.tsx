@@ -444,7 +444,7 @@ export default function BuatRujukanBaruPage({ params }: PageProps) {
   // Tampilan Memeriksa Otorisasi
   if (checkingAuth) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] text-[#464858]" data-navbar-tone="light">
+      <div className="min-h-screen text-[#464858]" data-navbar-tone="light" data-portal-wallpaper="true">
         <Navbar variant="dokter-puskesmas" userName="Tenaga Medis" userRole="Fasilitas Kesehatan" forceGlass={true} />
         <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-28 pb-16 text-center">
           <Card variant="white" className="p-10 shadow-sm border border-[#E2E8F0]">
@@ -459,7 +459,7 @@ export default function BuatRujukanBaruPage({ params }: PageProps) {
   // Tampilan Tidak Diizinkan
   if (unauthorizedMsg) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] text-[#464858]" data-navbar-tone="light">
+      <div className="min-h-screen text-[#464858]" data-navbar-tone="light" data-portal-wallpaper="true">
         <Navbar variant="dokter-puskesmas" userName="Tenaga Medis" userRole="Fasilitas Kesehatan" forceGlass={true} />
         <main className="max-w-xl mx-auto px-4 sm:px-6 pt-28 pb-16 text-center">
           <Card variant="white" className="p-8 sm:p-10 shadow-sm border border-[#E2E8F0]">
@@ -483,7 +483,7 @@ export default function BuatRujukanBaruPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#464858]" data-navbar-tone="light">
+    <div className="min-h-screen text-[#464858]" data-navbar-tone="light" data-portal-wallpaper="true">
       <Navbar
         variant="dokter-puskesmas"
         facilityName={staffInfo?.facilityName}

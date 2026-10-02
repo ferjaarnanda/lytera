@@ -89,8 +89,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   forceGlass = false,
 }) => {
   const headerRef = useRef<HTMLElement>(null);
-  const darkToneRef = useRef(false);
-  const [isDarkTone, setIsDarkTone] = useState(false);
+  const darkToneRef = useRef(variant === "landing");
+  const [isDarkTone, setIsDarkTone] = useState(variant === "landing");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [rolePickerOpen, setRolePickerOpen] = useState(false);
 

@@ -110,12 +110,18 @@ body {
 
 /* ============================================================================
    PORTAL WALLPAPER INTEGRATION
-   - Membuat background kontainer terluar halaman menjadi transparan sehingga
-     wallpaper foto terlihat di sela-sela kartu/margin.
+   - html dan body dibuat transparan saat ada elemen [data-portal-wallpaper]
+     di halaman, sehingga foto fixed di belakang bisa terlihat menembus.
    - Semua Card, formulir, tabel, dan navbar tetap solid dan kontras.
    ============================================================================ */
-[data-portal-wallpaper="true"] .min-h-screen[class*="bg-[#FAF5F2]"],
-[data-portal-wallpaper="true"] .min-h-screen[class*="bg-[#F8FAFC]"] {
+html:has([data-portal-wallpaper]),
+body:has([data-portal-wallpaper]),
+html:has([data-hero-wallpaper]),
+body:has([data-hero-wallpaper]),
+[data-portal-wallpaper],
+[data-portal-wallpaper] .min-h-screen,
+[data-hero-wallpaper],
+[data-hero-wallpaper] .min-h-screen {
   background-color: transparent !important;
 }
 
