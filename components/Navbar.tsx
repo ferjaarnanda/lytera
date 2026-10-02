@@ -281,11 +281,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             <nav className="hidden md:flex items-center gap-1.5" aria-label="Navigasi Utama">
               {menuItems.map((item) => {
                 const isActive = item.label === currentActive;
+                // Landing: font-bold (700) untuk keterbacaan di atas kaca transparan.
+                // Variant lain: font-semibold (600) seperti semula.
+                const fontWeight = isLanding ? "font-bold" : "font-semibold";
                 return item.href ? (
                   <a
                     key={item.label}
                     href={item.href}
-                    className={`px-3.5 py-1.5 rounded-full text-[13.5px] font-semibold transition-colors duration-300 ${
+                    className={`px-3.5 py-1.5 rounded-full text-[13.5px] ${fontWeight} transition-colors duration-300 ${
                       isActive
                         ? "bg-[#8F5A4E] text-white shadow-sm"
                         : isDarkTone
@@ -300,7 +303,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     key={item.label}
                     onClick={() => onItemClick?.(item.label)}
                     type="button"
-                    className={`px-3.5 py-1.5 rounded-full text-[13.5px] font-semibold transition-colors duration-300 ${
+                    className={`px-3.5 py-1.5 rounded-full text-[13.5px] ${fontWeight} transition-colors duration-300 ${
                       isActive
                         ? "bg-[#8F5A4E] text-white shadow-sm"
                         : isDarkTone
@@ -318,11 +321,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="flex items-center gap-3 shrink-0">
               {variant === "landing" ? (
                 <div className="hidden sm:flex items-center gap-2.5">
-                  {/* Tombol Masuk: membuka RolePickerDialog mode masuk */}
+                  {/* Tombol Masuk: font-bold (700) untuk landing */}
                   <button
                     type="button"
                     onClick={() => setRolePickerOpen(true)}
-                    className={`px-4 py-2 rounded-[12px] text-[13.5px] font-semibold transition-colors duration-300 ${
+                    className={`px-4 py-2 rounded-[12px] text-[13.5px] font-bold transition-colors duration-300 ${
                       isDarkTone
                         ? "text-white hover:bg-white/10"
                         : "text-[#0A2230] hover:bg-black/5"
@@ -331,11 +334,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                     Masuk
                   </button>
 
-                  {/* Tombol Daftar: Tone gelap = Soft Peach; Tone terang = Terracotta */}
+                  {/* Tombol Daftar: font-extrabold (800) untuk landing */}
                   <button
                     type="button"
                     onClick={handleDaftarClick}
-                    className={`px-4 py-2 rounded-[12px] text-[13.5px] font-semibold transition-colors duration-300 shadow-sm ${
+                    className={`px-4 py-2 rounded-[12px] text-[13.5px] font-extrabold transition-colors duration-300 shadow-sm ${
                       isDarkTone
                         ? "bg-[#D99B7F] text-[#0A2230] hover:bg-[#E4AE94]"
                         : "bg-[#8F5A4E] text-white hover:bg-[#A56F63]"
