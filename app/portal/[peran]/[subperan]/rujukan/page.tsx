@@ -129,7 +129,7 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
         const { data: profile } = await supabase
           .from("profiles").select("full_name").eq("id", user.id).maybeSingle();
 
-        const { data: staff, error: staffErr } = await supabase
+        const { data: staff } = await supabase
           .from("facility_staff")
           .select("id, staff_role, status, facility_id, facilities(id, name)")
           .eq("profile_id", user.id)
@@ -137,16 +137,36 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
 
         if (isCancelled) return;
 
-        if (staffErr) { setErrorMsg("Gagal memverifikasi staf: " + staffErr.message); setLoading(false); return; }
-        if (!staff || !staff.facility_id) { setErrorMsg("Akun belum terhubung ke faskes."); setLoading(false); return; }
+        let facId = staff?.facility_id;
+        let facName = (staff?.facilities as unknown as { id: string; name: string } | null)?.name;
+        let staffRole = staff?.staff_role || "Petugas";
 
-        const facData = staff.facilities as unknown as { id: string; name: string } | null;
-        const facId = staff.facility_id;
+        if (!facId) {
+          // Fallback: periksa apakah pengguna adalah admin terdaftar dari fasilitas
+          const { data: adminFac } = await supabase
+            .from("facilities")
+            .select("id, name")
+            .eq("admin_id", user.id)
+            .maybeSingle();
+
+          if (adminFac) {
+            facId = adminFac.id;
+            facName = adminFac.name;
+            staffRole = "Admin Faskes";
+          }
+        }
+
+        if (!facId) {
+          setErrorMsg("Akun belum terhubung ke fasilitas kesehatan.");
+          setLoading(false);
+          return;
+        }
+
         setFacilityInfo({
           facilityId: facId,
-          facilityName: facData?.name || "Fasilitas Kesehatan",
+          facilityName: facName || "Fasilitas Kesehatan",
           staffName: profile?.full_name || "Tenaga Medis",
-          staffRole: staff.staff_role,
+          staffRole: staffRole,
         });
 
         // Ambil data rujukan via RPC list_facility_referrals
