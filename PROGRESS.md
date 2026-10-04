@@ -7,8 +7,8 @@
 | Tahap 0: Persiapan | SELESAI | f6b836c | Verifikasi proyek Supabase lytera via MCP. Uji database impersonasi (a)-(e) lolos 100%. Security advisors diperiksa. |
 | Tahap 1: Perbaiki Buat Rujukan | SELESAI | f6b836c | find_patient_by_nik(NIK 1111…): mengembalikan iwak peyek, NIK dimasker, log tercatat di patient_lookup_logs (id dafa5d21, found=true, dokter dr. Andi, faskes puskemas kedung rejo). list_active_facilities('rumah_sakit','col'): mengembalikan rumah sakit colombia. Semua terbukti via MCP impersonasi tanpa rollback. |
 | Tahap 2: Halaman Staf | SELESAI | c0b0f56 | Riwayat Rujukan faskes primer (keluar), Rujukan Masuk RS, filter status, tab prioritas, panel detail dengan linimasa timeline (list_referral_events), dan aksi proses rujukan (terima, tolak, jadwalkan, selesai) teruji nyata dua sisi via SQL impersonasi. Fallback admin_id ditambahkan ke rujukan/page.tsx agar admin RS Colombia dapat langsung memproses rujukan di UI. |
-| Tahap 3: Halaman Pasien | BELUM | - | Kode sudah ditulis (PasienDashboard.tsx + listMyReferralsAction + listMyLookupLogsAction), build lolos, belum di-commit. Berikutnya: commit kode Tahap 3, uji impersonasi list_my_referrals pasien iwak peyek, cek RujukanCard di UI. |
-| Tahap 4: Token Akses, Riwayat Medis, Rekam Medis | BELUM | - | Skema token 6 digit hash, audit log, RPC security definer |
+| Tahap 3: Halaman Pasien | SELESAI | 488ad4d | Rujukan Saya (list_my_referrals), kartu Rujukan Aktif di dashboard (menampilkan rujukan aktif terbaru dengan timeline lengkap), tab navigasi Beranda / Rujukan Saya / Izin Akses, dan linimasa aktivitas rujukan (list_referral_events) teruji nyata via SQL impersonasi pasien Iwak Peyek (3cfd180a). Akun pasien siap uji UI. |
+| Tahap 4: Token Akses, Riwayat Medis, Rekam Medis | BELUM | - | Berikutnya: Skema token 6 digit hash (pgcrypto), tabel kunjungan medis minimal, audit log akses, RPC SECURITY DEFINER, UI buat & cabut token pasien, dokter buka rekam medis dengan token. |
 | Tahap 5: Penyesuaian Teks Verifikasi Administrasi | BELUM | - | Penyesuaian copy opsional non-BPJS |
 
 ---

@@ -15,6 +15,8 @@ import {
   Eye,
   ChevronDown,
   ChevronUp,
+  Loader2,
+  CalendarCheck,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardInner } from "@/components/Card";
@@ -26,8 +28,10 @@ import { Reveal } from "@/components/Reveal";
 import {
   listMyReferralsAction,
   listMyLookupLogsAction,
+  listReferralEventsAction,
   MyReferralItem,
   LookupLogItem,
+  ReferralEventItem,
 } from "@/app/actions/rujukan";
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -181,10 +185,29 @@ function isRujukanAktif(status: string): boolean {
 // Sub-Komponen: Kartu Satu Rujukan
 // ──────────────────────────────────────────────────────────────────────────────
 
-function RujukanCard({ ref: _ref, item }: { ref?: never; item: MyReferralItem }) {
-  const [open, setOpen] = useState(false);
+function RujukanCard({ item, defaultOpen = false }: { item: MyReferralItem; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const [events, setEvents] = useState<ReferralEventItem[] | null>(null);
+  const [loadingEvents, setLoadingEvents] = useState(false);
+
   const statusVariant = STATUS_BADGE[item.status] ?? "info";
   const priorityVariant = PRIORITY_BADGE[item.priority] ?? "info";
+
+  useEffect(() => {
+    if (open && events === null && !loadingEvents) {
+      setLoadingEvents(true);
+      listReferralEventsAction(item.id)
+        .then((res) => {
+          if (res.success && res.events) {
+            setEvents(res.events);
+          } else {
+            setEvents([]);
+          }
+        })
+        .catch(() => setEvents([]))
+        .finally(() => setLoadingEvents(false));
+    }
+  }, [open, events, loadingEvents, item.id]);
 
   return (
     <CardInner
@@ -195,7 +218,7 @@ function RujukanCard({ ref: _ref, item }: { ref?: never; item: MyReferralItem })
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full text-left px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+        className="w-full text-left px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/50 transition-colors"
       >
         <div className="flex items-start gap-3 min-w-0">
           <StatusIcon
@@ -240,7 +263,7 @@ function RujukanCard({ ref: _ref, item }: { ref?: never; item: MyReferralItem })
 
       {/* Detail expandable */}
       {open && (
-        <div className="px-5 pb-5 border-t border-[#E2E8F0]/70 pt-4 space-y-3">
+        <div className="px-5 pb-5 border-t border-[#E2E8F0]/70 pt-4 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div>
               <span className="text-[11px] text-slate-500 uppercase tracking-wide block">
@@ -271,9 +294,44 @@ function RujukanCard({ ref: _ref, item }: { ref?: never; item: MyReferralItem })
                 <span className="text-[11px] text-slate-500 uppercase tracking-wide block">
                   Jadwal Pemeriksaan
                 </span>
-                <span className="font-semibold text-[#0F3040]">
+                <span className="font-semibold text-[#16A34A] flex items-center gap-1.5">
+                  <CalendarCheck className="w-3.5 h-3.5" />
                   {formatDateTimeIndo(item.jadwal_pemeriksaan)}
                 </span>
+              </div>
+            )}
+          </div>
+
+          {/* Linimasa / Timeline Rujukan */}
+          <div className="pt-3 border-t border-[#E2E8F0]/70">
+            <span className="text-[11px] font-bold text-[#0F3040] uppercase tracking-wider block mb-2.5">
+              Linimasa & Riwayat Perkembangan
+            </span>
+
+            {loadingEvents ? (
+              <div className="py-2.5 flex items-center gap-2 text-xs text-slate-500">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-[#0F3040]" />
+                <span>Memuat riwayat linimasa rujukan...</span>
+              </div>
+            ) : !events || events.length === 0 ? (
+              <p className="text-xs text-slate-400 italic">Belum ada catatan aktivitas.</p>
+            ) : (
+              <div className="relative pl-4 space-y-3 before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#E2E8F0]">
+                {events.map((ev, idx) => (
+                  <div key={ev.id || idx} className="relative flex items-start gap-2.5 text-xs">
+                    <div className="absolute -left-4 top-1 w-2.5 h-2.5 rounded-full bg-[#0F3040] border-2 border-white ring-1 ring-[#0F3040]/30 shrink-0" />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-[#0F3040] capitalize">{ev.status}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">{formatDateTimeIndo(ev.created_at)}</span>
+                      </div>
+                      {ev.catatan && <p className="text-slate-600 mt-0.5 leading-relaxed">{ev.catatan}</p>}
+                      {ev.actor_name && (
+                        <span className="text-[10px] text-slate-400 block mt-0.5">Oleh: {ev.actor_name}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -303,6 +361,17 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
   const [familyMembers, setFamilyMembers] = useState<FamilyMemberData[]>([]);
   const [referrals, setReferrals] = useState<MyReferralItem[]>([]);
   const [lookupLogs, setLookupLogs] = useState<LookupLogItem[]>([]);
+  const [activeTab, setActiveTab] = useState<string>("Beranda");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      const tabParam = searchParams.get("tab");
+      if (tabParam === "rujukan") setActiveTab("Rujukan Saya");
+      else if (tabParam === "izin-akses") setActiveTab("Izin Akses");
+      else if (tabParam === "riwayat-medis") setActiveTab("Riwayat Medis");
+    }
+  }, []);
 
   const handleRefetch = () => {
     setLoading(true);
@@ -620,13 +689,15 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
         variant="pasien"
         userName={profile.full_name}
         userRole={isKeluarga ? "Pasien Keluarga" : "Pasien Pribadi"}
+        activeItem={activeTab}
+        onItemClick={(item) => setActiveTab(item)}
         forceGlass={true}
       />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-16">
         {/* ── KARTU SAPAAN ── */}
         <Reveal>
-          <Card variant="white" className="p-6 sm:p-8 shadow-sm mb-8 border border-[#E2E8F0]">
+          <Card variant="white" className="p-6 sm:p-8 shadow-sm mb-6 border border-[#E2E8F0]">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
               <div>
                 <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -651,6 +722,31 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
               </div>
             </div>
           </Card>
+        </Reveal>
+
+        {/* ── TAB NAVIGASI CEPAT ── */}
+        <Reveal delayMs={50}>
+          <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-1">
+            {["Beranda", "Rujukan Saya", "Izin Akses", "Riwayat Medis"].map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
+                  activeTab === tab
+                    ? "bg-[#0F3040] text-white shadow-2xs"
+                    : "bg-white text-slate-600 border border-[#E2E8F0] hover:bg-slate-50"
+                }`}
+              >
+                {tab}
+                {tab === "Rujukan Saya" && rujukanAktif.length > 0 && (
+                  <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] bg-[#8F5A4E] text-white">
+                    {rujukanAktif.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </Reveal>
 
         {/* ── KARTU RINGKASAN IDENTITAS ── */}
@@ -823,166 +919,330 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
           </Reveal>
         )}
 
-        {/* ── TOKEN AKSES & RUJUKAN AKTIF ── */}
-        <Reveal delayMs={200}>
-          <div className="flex flex-col gap-6 mb-8">
-            {/* 1. KARTU TOKEN AKSES MEDIS */}
-            <Card variant="white" className="p-5 sm:p-6 rounded-[22px] border border-[#E2E8F0] shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-[#EDF7F2] flex items-center justify-center text-[#1B6B4D] shrink-0">
-                    <ShieldCheck className="w-5 h-5" />
+        {/* ── TAB BERANDA ── */}
+        {activeTab === "Beranda" && (
+          <>
+            {/* TOKEN AKSES & RUJUKAN AKTIF */}
+            <Reveal delayMs={200}>
+              <div className="flex flex-col gap-6 mb-8">
+                {/* 1. KARTU TOKEN AKSES MEDIS */}
+                <Card variant="white" className="p-5 sm:p-6 rounded-[22px] border border-[#E2E8F0] shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-[#EDF7F2] flex items-center justify-center text-[#1B6B4D] shrink-0">
+                        <ShieldCheck className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-base font-bold text-[#0F3040]">Token Akses Medis</h2>
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                            Belum ada token aktif
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Kendali otorisasi 6-digit untuk membuka catatan rekam medis saat berkunjung ke faskes rujukan.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-xs text-slate-400 shrink-0 sm:border-l sm:border-[#E2E8F0] sm:pl-4">
+                      <span>Perlindungan UU PDP</span>
+                      <span className="font-semibold text-[#1B6B4D]">● Terenkripsi</span>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* 2. KARTU RUJUKAN AKTIF — data nyata */}
+                <Card variant="white" className="p-6 sm:p-8 rounded-[24px] border border-[#E2E8F0] shadow-sm">
+                  <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#E2E8F0]">
+                    <div className="w-10 h-10 rounded-2xl bg-[#FAF5F2] flex items-center justify-center text-[#8F5A4E] shrink-0">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-[#0F3040]">Rujukan Aktif</h2>
+                      <p className="text-xs text-slate-500">
+                        Surat rujukan klinis dan antrean ke rumah sakit lanjutan.
+                      </p>
+                    </div>
+                    {rujukanAktif.length > 0 && (
+                      <div className="ml-auto flex items-center gap-2">
+                        <Badge variant="proses" showDot>
+                          {rujukanAktif.length} aktif
+                        </Badge>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("Rujukan Saya")}
+                          className="text-xs font-semibold text-[#8F5A4E] hover:underline hidden sm:inline"
+                        >
+                          Lihat Semua &rarr;
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {rujukanAktif.length > 0 ? (
+                    <div className="space-y-3">
+                      {rujukanAktif.map((item, idx) => (
+                        <RujukanCard key={item.id} item={item} defaultOpen={idx === 0} />
+                      ))}
+                    </div>
+                  ) : (
+                    <CardInner variant="cream" className="p-6 sm:p-8 rounded-[20px] border border-[#E2E8F0] text-center">
+                      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center mx-auto mb-2.5 text-slate-400 border border-[#E2E8F0]">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-sm font-bold text-[#0F3040]">Belum ada rujukan aktif</h3>
+                      <p className="text-xs text-slate-600 mt-1 leading-relaxed max-w-md mx-auto">
+                        Saat ini kamu tidak memiliki surat rujukan aktif. Surat rujukan digital akan
+                        otomatis tampil di sini setelah diterbitkan oleh dokter di faskes tingkat pertama
+                        (Puskesmas atau Klinik).
+                      </p>
+                    </CardInner>
+                  )}
+
+                  <div className="pt-3.5 border-t border-[#E2E8F0]/70 flex items-center justify-between text-xs text-slate-400 mt-4">
+                    <span>Interkoneksi Sistem: Realtime</span>
+                    <span className="font-semibold text-[#1B6B4D]">● Siap Menerima</span>
+                  </div>
+                </Card>
+              </div>
+            </Reveal>
+
+            {/* RINGKASAN IZIN AKSES DI BERANDA */}
+            <Reveal delayMs={250}>
+              <Card variant="white" className="p-6 sm:p-8 shadow-sm border border-[#E2E8F0]">
+                <div className="flex items-center justify-between pb-4 mb-5 border-b border-[#E2E8F0]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-[#EBF2F6] flex items-center justify-center text-[#0F3040] shrink-0">
+                      <Eye className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-[#0F3040]">Izin Akses & Pencarian</h2>
+                      <p className="text-xs text-slate-500">
+                        Tenaga medis yang pernah mencari data identitasmu lewat sistem Lytera.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("Izin Akses")}
+                    className="text-xs font-semibold text-[#0F3040] hover:underline"
+                  >
+                    Buka Lengkap &rarr;
+                  </button>
+                </div>
+
+                {lookupLogs.length > 0 ? (
+                  <div className="space-y-2">
+                    {lookupLogs.slice(0, 3).map((log, idx) => (
+                      <CardInner
+                        key={idx}
+                        variant="cream"
+                        className="px-4 py-3 rounded-[14px] border border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                      >
+                        <div className="min-w-0">
+                          <span className="text-sm font-semibold text-[#0F3040] block">
+                            {log.doctor_name}
+                          </span>
+                          <span className="text-xs text-slate-500">
+                            {log.facility_name}
+                            {log.subject_name ? ` · Data: ${log.subject_name}` : ""}
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-mono text-slate-400 shrink-0 whitespace-nowrap">
+                          {formatDateTimeIndo(log.created_at)}
+                        </span>
+                      </CardInner>
+                    ))}
+                  </div>
+                ) : (
+                  <CardInner variant="cream" className="p-6 text-center border border-[#E2E8F0]">
+                    <p className="text-xs text-slate-500">Belum ada riwayat pencarian data identitas.</p>
+                  </CardInner>
+                )}
+              </Card>
+            </Reveal>
+          </>
+        )}
+
+        {/* ── TAB RUJUKAN SAYA ── */}
+        {activeTab === "Rujukan Saya" && (
+          <Reveal>
+            <div className="space-y-8">
+              {/* Bagian Rujukan Aktif */}
+              <Card variant="white" className="p-6 sm:p-8 shadow-sm border border-[#E2E8F0]">
+                <div className="flex items-center justify-between pb-4 mb-5 border-b border-[#E2E8F0]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-[#FAF5F2] flex items-center justify-center text-[#8F5A4E] shrink-0">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-[#0F3040]">Rujukan Aktif ({rujukanAktif.length})</h2>
+                      <p className="text-xs text-slate-500">
+                        Surat rujukan yang sedang dalam proses verifikasi atau penjadwalan rumah sakit.
+                      </p>
+                    </div>
+                  </div>
+                  {rujukanAktif.length > 0 && (
+                    <Badge variant="proses" showDot>
+                      {rujukanAktif.length} Berjalan
+                    </Badge>
+                  )}
+                </div>
+
+                {rujukanAktif.length > 0 ? (
+                  <div className="space-y-3">
+                    {rujukanAktif.map((item, idx) => (
+                      <RujukanCard key={item.id} item={item} defaultOpen={idx === 0} />
+                    ))}
+                  </div>
+                ) : (
+                  <CardInner variant="cream" className="p-8 text-center border border-[#E2E8F0]">
+                    <p className="text-sm font-semibold text-[#0F3040]">Tidak ada rujukan aktif</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Saat ini seluruh rujukanmu telah selesai atau belum ada pengajuan baru dari faskes primer.
+                    </p>
+                  </CardInner>
+                )}
+              </Card>
+
+              {/* Bagian Riwayat Rujukan Terdahulu */}
+              <Card variant="white" className="p-6 sm:p-8 shadow-sm border border-[#E2E8F0]">
+                <div className="flex items-center gap-3 pb-4 mb-5 border-b border-[#E2E8F0]">
+                  <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 shrink-0">
+                    <FileText className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-base font-bold text-[#0F3040]">Token Akses Medis</h2>
-                      <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
-                        Belum ada token aktif
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Kendali otorisasi 6-digit untuk membuka catatan rekam medis saat berkunjung ke faskes rujukan.
+                    <h2 className="text-lg font-bold text-[#0F3040]">Riwayat Rujukan ({rujukanLalu.length})</h2>
+                    <p className="text-xs text-slate-500">
+                      Arsip rujukan pemeriksaan yang telah selesai atau ditolak.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 text-xs text-slate-400 shrink-0 sm:border-l sm:border-[#E2E8F0] sm:pl-4">
-                  <span>Perlindungan UU PDP</span>
-                  <span className="font-semibold text-[#1B6B4D]">● Terenkripsi</span>
-                </div>
-              </div>
-            </Card>
-
-            {/* 2. KARTU RUJUKAN AKTIF — data nyata */}
-            <Card variant="white" className="p-6 sm:p-8 rounded-[24px] border border-[#E2E8F0] shadow-sm">
-              <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#E2E8F0]">
-                <div className="w-10 h-10 rounded-2xl bg-[#FAF5F2] flex items-center justify-center text-[#8F5A4E] shrink-0">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-[#0F3040]">Rujukan Aktif</h2>
-                  <p className="text-xs text-slate-500">
-                    Surat rujukan klinis dan antrean ke rumah sakit lanjutan.
-                  </p>
-                </div>
-                {rujukanAktif.length > 0 && (
-                  <Badge variant="proses" showDot className="ml-auto">
-                    {rujukanAktif.length} aktif
-                  </Badge>
-                )}
-              </div>
-
-              {rujukanAktif.length > 0 ? (
-                <div className="space-y-3">
-                  {rujukanAktif.map((item) => (
-                    <RujukanCard key={item.id} item={item} />
-                  ))}
-                </div>
-              ) : (
-                <CardInner variant="cream" className="p-6 sm:p-8 rounded-[20px] border border-[#E2E8F0] text-center">
-                  <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center mx-auto mb-2.5 text-slate-400 border border-[#E2E8F0]">
-                    <FileText className="w-5 h-5" />
+                {rujukanLalu.length > 0 ? (
+                  <div className="space-y-3">
+                    {rujukanLalu.map((item) => (
+                      <RujukanCard key={item.id} item={item} />
+                    ))}
                   </div>
-                  <h3 className="text-sm font-bold text-[#0F3040]">Belum ada rujukan aktif</h3>
-                  <p className="text-xs text-slate-600 mt-1 leading-relaxed max-w-md mx-auto">
-                    Saat ini kamu tidak memiliki surat rujukan aktif. Surat rujukan digital akan
-                    otomatis tampil di sini setelah diterbitkan oleh dokter di faskes tingkat pertama
-                    (Puskesmas atau Klinik).
-                  </p>
-                </CardInner>
-              )}
+                ) : (
+                  <CardInner variant="cream" className="p-8 text-center border border-[#E2E8F0]">
+                    <p className="text-sm font-semibold text-[#0F3040]">Belum ada riwayat rujukan terdahulu</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Rujukan yang berstatus selesai atau ditolak akan terarsip rapi di sini.
+                    </p>
+                  </CardInner>
+                )}
+              </Card>
+            </div>
+          </Reveal>
+        )}
 
-              <div className="pt-3.5 border-t border-[#E2E8F0]/70 flex items-center justify-between text-xs text-slate-400 mt-4">
-                <span>Interkoneksi Sistem: Realtime</span>
-                <span className="font-semibold text-[#1B6B4D]">● Siap Menerima</span>
-              </div>
-            </Card>
-          </div>
-        </Reveal>
+        {/* ── TAB IZIN AKSES ── */}
+        {activeTab === "Izin Akses" && (
+          <Reveal>
+            <div className="space-y-6">
+              <Card variant="white" className="p-6 sm:p-8 shadow-sm border border-[#E2E8F0]">
+                <div className="flex items-center gap-3 pb-4 mb-6 border-b border-[#E2E8F0]">
+                  <div className="w-10 h-10 rounded-2xl bg-[#EBF2F6] flex items-center justify-center text-[#0F3040] shrink-0">
+                    <Eye className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-[#0F3040]">Izin Akses & Transparansi Pencarian Data</h2>
+                    <p className="text-xs text-slate-500">
+                      Sesuai amanat UU Perlindungan Data Pribadi (PDP), Anda berhak mengetahui seluruh tenaga medis yang mengakses data Anda.
+                    </p>
+                  </div>
+                </div>
 
-        {/* ── RIWAYAT RUJUKAN (selesai & ditolak) ── */}
-        {rujukanLalu.length > 0 && (
-          <Reveal delayMs={250}>
-            <Card variant="white" className="p-6 sm:p-8 shadow-sm mb-8 border border-[#E2E8F0]">
-              <div className="flex items-center gap-3 pb-4 mb-5 border-b border-[#E2E8F0]">
-                <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 shrink-0">
-                  <FileText className="w-5 h-5" />
+                {lookupLogs.length > 0 ? (
+                  <div className="space-y-3">
+                    {lookupLogs.map((log, idx) => (
+                      <CardInner
+                        key={idx}
+                        variant="cream"
+                        className="p-4 rounded-[16px] border border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-[#0F3040] block">
+                              {log.doctor_name}
+                            </span>
+                            <Badge variant="info">Pencarian NIK</Badge>
+                          </div>
+                          <span className="text-xs text-slate-600 font-medium block mt-0.5">
+                            Fasilitas: {log.facility_name}
+                            {log.subject_name ? ` · Subjek Data: ${log.subject_name}` : ""}
+                          </span>
+                          {log.purpose && (
+                            <span className="text-xs text-slate-500 italic block mt-0.5">
+                              Tujuan Klinis: {log.purpose}
+                            </span>
+                          )}
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <span className="text-[11px] font-mono text-slate-500 bg-white px-2.5 py-1 rounded-full border border-[#E2E8F0] inline-block">
+                            {formatDateTimeIndo(log.created_at)}
+                          </span>
+                        </div>
+                      </CardInner>
+                    ))}
+                  </div>
+                ) : (
+                  <CardInner variant="cream" className="p-10 text-center border border-[#E2E8F0]">
+                    <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center mx-auto mb-3 text-slate-400 border border-[#E2E8F0]">
+                      <Eye className="w-6 h-6" />
+                    </div>
+                    <p className="text-base font-bold text-[#0F3040]">Belum ada riwayat pencarian data</p>
+                    <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                      Belum ada dokter atau fasilitas kesehatan yang melakukan pencarian NIK Anda. Riwayat akan dicatat secara otomatis realtime.
+                    </p>
+                  </CardInner>
+                )}
+              </Card>
+
+              {/* Kartu Edukasi UU PDP */}
+              <Card variant="white" className="p-6 rounded-[20px] border border-[#E2E8F0] shadow-sm bg-gradient-to-r from-white to-[#F9FAF8]">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-9 h-9 rounded-xl bg-[#EDF7F2] flex items-center justify-center text-[#1B6B4D] shrink-0 mt-0.5">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-[#0F3040]">Kedaulatan Data Medis Pasien</h3>
+                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                      Di platform Lytera, tenaga medis faskes primer hanya dapat mencari identitas dasar dengan NIK untuk keperluan pembuatan rujukan. Akses rekam medis lengkap di rumah sakit rujukan nantinya wajib menggunakan otorisasi Token 6-digit pasien.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-lg font-bold text-[#0F3040]">Riwayat Rujukan</h2>
-                  <p className="text-xs text-slate-500">
-                    Rujukan yang telah selesai atau ditolak.
-                  </p>
-                </div>
+              </Card>
+            </div>
+          </Reveal>
+        )}
+
+        {/* ── TAB RIWAYAT MEDIS ── */}
+        {activeTab === "Riwayat Medis" && (
+          <Reveal>
+            <Card variant="white" className="p-8 sm:p-10 text-center shadow-sm border border-[#E2E8F0] rounded-[24px]">
+              <div className="w-12 h-12 rounded-full bg-[#EBF2F6] flex items-center justify-center mx-auto mb-4 text-[#0F3040]">
+                <Clock className="w-6 h-6 text-[#8F5A4E]" />
               </div>
-              <div className="space-y-3">
-                {rujukanLalu.map((item) => (
-                  <RujukanCard key={item.id} item={item} />
-                ))}
+              <h2 className="text-xl font-bold text-[#0F3040]">Riwayat Medis Terintegrasi</h2>
+              <p className="text-sm text-slate-600 mt-2 max-w-lg mx-auto leading-relaxed">
+                Fitur riwayat rekam medis dan otorisasi berkunjung dengan Token 6-digit akan aktif pada implementasi <strong>Tahap 4</strong>.
+              </p>
+              <div className="mt-6 flex justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("Rujukan Saya")}
+                  className="px-5 py-2.5 rounded-full bg-[#0F3040] text-white text-xs font-semibold hover:bg-[#0A2230] transition-colors"
+                >
+                  Lihat Rujukan Saya
+                </button>
               </div>
             </Card>
           </Reveal>
         )}
-
-        {/* ── IZIN AKSES: SIAPA YANG MENCARI DATA SAYA ── */}
-        <Reveal delayMs={300}>
-          <Card variant="white" className="p-6 sm:p-8 shadow-sm border border-[#E2E8F0]">
-            <div className="flex items-center gap-3 pb-4 mb-6 border-b border-[#E2E8F0]">
-              <div className="w-10 h-10 rounded-2xl bg-[#EBF2F6] flex items-center justify-center text-[#0F3040] shrink-0">
-                <Eye className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-[#0F3040]">Izin Akses & Pencarian</h2>
-                <p className="text-xs text-slate-500">
-                  Daftar dokter yang pernah mencari data identitasmu lewat sistem Lytera.
-                </p>
-              </div>
-            </div>
-
-            {lookupLogs.length > 0 ? (
-              <div className="space-y-2">
-                {lookupLogs.map((log, idx) => (
-                  <CardInner
-                    key={idx}
-                    variant="cream"
-                    className="px-4 py-3 rounded-[14px] border border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-2"
-                  >
-                    <div className="min-w-0">
-                      <span className="text-sm font-semibold text-[#0F3040] block">
-                        {log.doctor_name}
-                      </span>
-                      <span className="text-xs text-slate-500">
-                        {log.facility_name}
-                        {log.subject_name ? ` · Data: ${log.subject_name}` : ""}
-                      </span>
-                      {log.purpose && (
-                        <span className="text-xs text-slate-400 italic block">
-                          Keperluan: {log.purpose}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[11px] font-mono text-slate-400 shrink-0 whitespace-nowrap">
-                      {formatDateTimeIndo(log.created_at)}
-                    </span>
-                  </CardInner>
-                ))}
-              </div>
-            ) : (
-              <CardInner variant="cream" className="p-8 text-center border border-[#E2E8F0]">
-                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center mx-auto mb-2.5 text-slate-400 border border-[#E2E8F0]">
-                  <Eye className="w-5 h-5" />
-                </div>
-                <p className="text-sm font-semibold text-[#0F3040]">
-                  Belum ada pencarian data
-                </p>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed max-w-xs mx-auto">
-                  Setiap kali dokter mencari data identitasmu lewat sistem Lytera, riwayatnya akan
-                  tercatat di sini secara otomatis.
-                </p>
-              </CardInner>
-            )}
-          </Card>
-        </Reveal>
       </main>
     </div>
   );

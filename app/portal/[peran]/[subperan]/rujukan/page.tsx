@@ -80,6 +80,12 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
   const isHospital = subperan === "rumah-sakit" || subperan === "rumah_sakit";
   const direction = isHospital ? "masuk" : "keluar";
 
+  useEffect(() => {
+    if (peran === "pasien") {
+      router.replace(`/portal/pasien/${subperan}?tab=rujukan`);
+    }
+  }, [peran, subperan, router]);
+
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
