@@ -90,10 +90,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const headerRef = useRef<HTMLElement>(null);
   const isLanding = variant === "landing";
-  // Landing: warna dikunci Deep Navy sejak render pertama (latar kaca putih konstan).
-  // Variant lain: deteksi dinamis berdasarkan tone section.
-  const darkToneRef = useRef(!isLanding);
-  const [isDarkTone, setIsDarkTone] = useState(!isLanding);
+  // Landing atau forceGlass: warna dikunci Deep Navy sejak render pertama (latar kaca putih konstan).
+  // Variant lain tanpa forceGlass: deteksi dinamis berdasarkan tone section.
+  const isNavyToneInitial = isLanding || forceGlass;
+  const darkToneRef = useRef(!isNavyToneInitial);
+  const [isDarkTone, setIsDarkTone] = useState(!isNavyToneInitial);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [rolePickerOpen, setRolePickerOpen] = useState(false);
 

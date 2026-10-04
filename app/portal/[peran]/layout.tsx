@@ -12,12 +12,23 @@ export default async function PortalPeranLayout({
 }: PortalPeranLayoutProps) {
   const { peran } = await params;
 
-  // Hanya terapkan wallpaper foto untuk pasien dan fasilitas kesehatan
+  // Terapkan wallpaper rumah sakit untuk pasien dan fasilitas kesehatan
   // (termasuk semua sub-halaman: dashboard, rujukan, rujukan/baru, staf, dokter-petugas, dll)
   if (peran === "pasien" || peran === "fasilitas") {
     return <PortalWallpaper>{children}</PortalWallpaper>;
   }
 
-  // Verifikasi Administrasi (verifikator) dan lainnya tidak memakai wallpaper foto
+  // Terapkan wallpaper khusus verifikasi & dinkes untuk verifikator
+  if (peran === "verifikator") {
+    return (
+      <PortalWallpaper
+        src="/images/wallpaper-verifikasi-dinkes.webp"
+        brightness={1.3}
+      >
+        {children}
+      </PortalWallpaper>
+    );
+  }
+
   return <>{children}</>;
 }

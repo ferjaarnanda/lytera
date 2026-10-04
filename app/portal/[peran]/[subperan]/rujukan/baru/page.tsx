@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect, useCallback, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft,
   Search,
   User,
   Building2,
@@ -14,44 +13,28 @@ import {
   CheckCircle2,
   Loader2,
   ShieldAlert,
+  ChevronDown,
+  X,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { buatRujukanAction } from "@/app/actions/rujukan";
-import { Card, CardInner } from "@/components/Card";
+import {
+  buatRujukanAction,
+  cariPasienAction,
+  cariFaskesAction,
+  listDokterAction,
+  type PatientSearchResult,
+  type FasilitasOption,
+  type DokterOption,
+} from "@/app/actions/rujukan";
+import { Card } from "@/components/Card";
 import { Badge } from "@/components/Badge";
 import { Navbar } from "@/components/Navbar";
-import { Reveal } from "@/components/Reveal";
 
 interface PageProps {
   params: Promise<{
     peran: string;
     subperan: string;
   }>;
-}
-
-interface FoundPatient {
-  id: string;
-  nik: string;
-  nama: string;
-  dob: string | null;
-  gender: string | null;
-  phone: string | null;
-  alamat: string | null;
-  bpjsNumber: string | null;
-  wilayah: string;
-}
-
-interface HospitalOption {
-  id: string;
-  name: string;
-  address: string | null;
-  city: string | null;
-}
-
-interface DoctorOption {
-  id: string;
-  name: string;
-  specialization: string | null;
 }
 
 const POLI_OPTIONS = [
@@ -71,18 +54,8 @@ const POLI_OPTIONS = [
 ];
 
 const BULAN_NAMES = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 
 function formatDateIndo(dateStr?: string | null): string {
@@ -99,32 +72,135 @@ function formatDateIndo(dateStr?: string | null): string {
   return dateStr;
 }
 
-function maskNik(nik?: string | null): string {
-  if (!nik) return "-";
-  const clean = nik.trim();
-  if (clean.length < 8) return clean;
-  return `${clean.slice(0, 4)} •••• •••• ${clean.slice(-4)}`;
+// ============================================================================
+// FacilityCombobox — kotak ketik + dropdown daftar RS
+// ============================================================================
+interface FacilityComboboxProps {
+  value: FasilitasOption | null;
+  onChange: (fac: FasilitasOption | null) => void;
 }
 
-// Data wilayah pasien (province/city/district/village) disimpan dalam bentuk
-// NAMA teks langsung (bukan kode/ID) oleh RegionCombobox, jadi cukup
-// digabung apa adanya tanpa perlu tabel terjemahan kode -> nama.
-function resolveRegion(
-  province?: string | null,
-  city?: string | null,
-  district?: string | null,
-  village?: string | null
-): string {
-  const parts = [village, district, city, province].filter(Boolean);
-  return parts.length > 0 ? parts.join(", ") : "-";
+function FacilityCombobox({ value, onChange }: FacilityComboboxProps) {
+  const [query, setQuery] = useState(value?.name ?? "");
+  const [options, setOptions] = useState<FasilitasOption[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const doSearch = useCallback(async (q: string) => {
+    setLoading(true);
+    const res = await cariFaskesAction(q, 20);
+    setLoading(false);
+    if (res.success && res.results) {
+      setOptions(res.results);
+    } else {
+      setOptions([]);
+    }
+  }, []);
+
+  const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const q = e.target.value;
+    setQuery(q);
+    onChange(null); // reset pilihan saat user mengetik
+    setOpen(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => doSearch(q), 350);
+  };
+
+  const handleFocus = () => {
+    setOpen(true);
+    if (options.length === 0) doSearch(query || (value?.name ?? ""));
+  };
+
+  const handleSelect = (fac: FasilitasOption) => {
+    onChange(fac);
+    setQuery(fac.name);
+    setOpen(false);
+  };
+
+  const handleClear = () => {
+    onChange(null);
+    setQuery("");
+    setOptions([]);
+    setOpen(false);
+  };
+
+  // Tutup dropdown saat klik di luar
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  const displayValue = open ? query : (value?.name ?? query);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="relative flex items-center">
+        <Building2 className="absolute left-3 w-4 h-4 text-slate-400 pointer-events-none" />
+        <input
+          type="text"
+          value={displayValue}
+          onChange={handleInput}
+          onFocus={handleFocus}
+          placeholder="Ketik nama rumah sakit..."
+          className="w-full pl-9 pr-16 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-sm text-[#0F3040] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#8F5A4E]/40 focus:border-[#8F5A4E]"
+        />
+        <div className="absolute right-3 flex items-center gap-1">
+          {loading && <Loader2 className="w-4 h-4 text-[#8F5A4E] animate-spin" />}
+          {value && !loading && (
+            <button type="button" onClick={handleClear} className="text-slate-400 hover:text-slate-600">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+          {!value && !loading && (
+            <ChevronDown className="w-4 h-4 text-slate-400" />
+          )}
+        </div>
+      </div>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-xl border border-[#E2E8F0] bg-white shadow-lg max-h-60 overflow-y-auto">
+          {options.length === 0 && !loading ? (
+            <p className="px-4 py-3 text-sm text-slate-500">
+              {query.length === 0
+                ? "Ketik nama rumah sakit untuk mencari..."
+                : "Tidak ada rumah sakit aktif yang cocok."}
+            </p>
+          ) : (
+            options.map((fac) => (
+              <button
+                key={fac.id}
+                type="button"
+                onClick={() => handleSelect(fac)}
+                className="w-full text-left px-4 py-2.5 hover:bg-[#EBF2F6] transition-colors border-b border-[#F0F4F8] last:border-0"
+              >
+                <p className="text-sm font-semibold text-[#0F3040]">{fac.name}</p>
+                <p className="text-xs text-slate-500">{fac.city ?? ""}{fac.district ? `, ${fac.district}` : ""}</p>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
+
+// ============================================================================
+// Main Page
+// ============================================================================
 
 export default function BuatRujukanBaruPage({ params }: PageProps) {
   const router = useRouter();
   const resolvedParams = use(params);
   const { peran, subperan } = resolvedParams;
 
-  // State Verifikasi Staf & Faskes Asal
+  // --- Verifikasi Staf ---
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [staffInfo, setStaffInfo] = useState<{
     staffName: string;
@@ -134,314 +210,188 @@ export default function BuatRujukanBaruPage({ params }: PageProps) {
   } | null>(null);
   const [unauthorizedMsg, setUnauthorizedMsg] = useState<string | null>(null);
 
-  // State Formulir (a) Pencarian Pasien
+  // --- (a) Pencarian Pasien ---
   const [searchNik, setSearchNik] = useState("");
   const [searchingPatient, setSearchingPatient] = useState(false);
   const [patientSearchError, setPatientSearchError] = useState<string | null>(null);
-  const [selectedPatient, setSelectedPatient] = useState<FoundPatient | null>(null);
+  const [patientResults, setPatientResults] = useState<PatientSearchResult[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<PatientSearchResult | null>(null);
 
-  // State Formulir (b) Faskes Tujuan
-  const [hospitals, setHospitals] = useState<HospitalOption[]>([]);
-  const [loadingHospitals, setLoadingHospitals] = useState(false);
-  const [selectedHospitalId, setSelectedHospitalId] = useState("");
+  // --- (b) Faskes Tujuan ---
+  const [selectedHospital, setSelectedHospital] = useState<FasilitasOption | null>(null);
 
-  // State Formulir (c) Dokter Tujuan (Opsional)
-  const [doctors, setDoctors] = useState<DoctorOption[]>([]);
+  // --- (c) Dokter Tujuan (Opsional) ---
+  const [doctors, setDoctors] = useState<DokterOption[]>([]);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
   const [selectedDoctorId, setSelectedDoctorId] = useState("");
 
-  // State Formulir (d) Detail Klinis
+  // --- (d) Detail Klinis ---
   const [poli, setPoli] = useState("Poli Penyakit Dalam");
   const [priority, setPriority] = useState<"elektif" | "urgent" | "gawat_darurat">("elektif");
   const [diagnosisIcd10, setDiagnosisIcd10] = useState("");
   const [catatanKlinis, setCatatanKlinis] = useState("");
 
-  // State Submit
+  // --- Submit ---
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  // 1. Periksa Otorisasi Staf saat komponen dimuat
+  // 1. Cek otentikasi staf
   useEffect(() => {
     async function checkStaffAuth() {
       setCheckingAuth(true);
       try {
         const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { router.replace("/"); return; }
 
-        if (!user) {
-          router.replace("/");
-          return;
-        }
-
-        // Ambil profil
         const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("id", user.id)
-          .maybeSingle();
+          .from("profiles").select("full_name").eq("id", user.id).maybeSingle();
 
-        // Ambil baris facility_staff beserta status fasilitas asal
         const { data: staff, error: staffErr } = await supabase
           .from("facility_staff")
           .select("id, staff_role, status, facility_id, facilities(id, name, type, status)")
           .eq("profile_id", user.id)
           .maybeSingle();
 
-        if (staffErr) {
-          setUnauthorizedMsg("Gagal memverifikasi status staf: " + staffErr.message);
-          setCheckingAuth(false);
-          return;
-        }
+        if (staffErr) { setUnauthorizedMsg("Gagal memverifikasi status staf: " + staffErr.message); return; }
 
         if (!staff || !staff.facility_id) {
-          setUnauthorizedMsg(
-            "Akun Anda belum terdaftar sebagai staf pada fasilitas kesehatan mana pun di sistem Lytera."
-          );
-          setCheckingAuth(false);
+          setUnauthorizedMsg("Akun Anda belum terdaftar sebagai staf pada fasilitas kesehatan mana pun di sistem Lytera.");
           return;
         }
-
-        // Periksa peran staf: HANYA dokter yang berwenang
         if (staff.staff_role !== "dokter") {
-          setUnauthorizedMsg(
-            `Hak akses terbatas: Halaman Buat Rujukan hanya dapat diakses oleh staf dengan peran Dokter. Peran akun Anda saat ini: '${staff.staff_role}'.`
-          );
-          setCheckingAuth(false);
+          setUnauthorizedMsg(`Halaman Buat Rujukan hanya dapat diakses oleh Dokter. Peran akun Anda: '${staff.staff_role}'.`);
           return;
         }
-
-        // Periksa status kepegawaian staf: harus 'aktif'
         if (staff.status !== "aktif") {
-          setUnauthorizedMsg(
-            `Status kepegawaian Anda saat ini '${staff.status}'. Hanya dokter dengan status aktif yang berwenang menerbitkan surat rujukan digital.`
-          );
-          setCheckingAuth(false);
+          setUnauthorizedMsg(`Status kepegawaian Anda saat ini '${staff.status}'. Hanya dokter berstatus aktif yang berwenang menerbitkan rujukan digital.`);
           return;
         }
 
-        // Type cast facilities relationship safely
         const f = staff.facilities as unknown as { id: string; name: string; type: string; status: string } | null;
-        const facName = f?.name || "Fasilitas Kesehatan";
-        const facStatus = f?.status || "tidak diketahui";
-
-        // Periksa status fasilitas kesehatan asal: harus 'aktif'
         if (f?.status !== "aktif") {
-          setUnauthorizedMsg(
-            `Fasilitas kesehatan tempat Anda bertugas (${facName}) saat ini berstatus '${facStatus}'. Surat rujukan digital hanya dapat diterbitkan oleh dokter pada fasilitas kesehatan yang berstatus aktif.`
-          );
-          setCheckingAuth(false);
+          setUnauthorizedMsg(`Fasilitas Anda (${f?.name ?? "-"}) berstatus '${f?.status ?? "-"}'. Rujukan hanya dapat diterbitkan dari fasilitas aktif.`);
           return;
         }
 
         setStaffInfo({
           staffName: profile?.full_name || "Dokter",
-          facilityName: facName,
+          facilityName: f?.name || "Fasilitas Kesehatan",
           facilityId: staff.facility_id,
           staffRole: staff.staff_role,
         });
-
-        // Muat daftar rumah sakit tujuan (inline agar tidak ada hoisting issue)
-        setLoadingHospitals(true);
-        try {
-          const { data: hData, error: hError } = await supabase
-            .from("facilities")
-            .select("id, name, address, city")
-            .eq("type", "rumah_sakit")
-            .eq("status", "aktif")
-            .order("name", { ascending: true });
-
-          if (hError) {
-            console.error("Gagal memuat rumah sakit:", hError.message);
-          } else if (hData) {
-            setHospitals(hData as HospitalOption[]);
-            if (hData.length > 0) {
-              setSelectedHospitalId(hData[0].id);
-            }
-          }
-        } finally {
-          setLoadingHospitals(false);
-        }
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        setUnauthorizedMsg("Terjadi kendala pemeriksaan otorisasi: " + msg);
+        setUnauthorizedMsg("Terjadi kendala pemeriksaan otorisasi: " + (err instanceof Error ? err.message : String(err)));
       } finally {
         setCheckingAuth(false);
       }
     }
-
     checkStaffAuth();
   }, [router]);
 
-  // Muat Dokter Spesialis saat Rumah Sakit Tujuan Dipilih
+  const handleHospitalChange = (fac: FasilitasOption | null) => {
+    setSelectedHospital(fac);
+    setSelectedDoctorId("");
+    setDoctors([]);
+    if (fac) setLoadingDoctors(true);
+  };
+
+  // 2. Muat dokter saat RS tujuan berubah
   useEffect(() => {
-    interface RawDoctorRow {
-      id: string;
-      specialization?: string | null;
-      profiles?: { full_name: string } | { full_name: string }[] | null;
-    }
+    let ignore = false;
+    if (!selectedHospital) return;
 
-    async function loadDoctors() {
-      if (!selectedHospitalId) {
-        setDoctors([]);
-        setSelectedDoctorId("");
-        return;
-      }
-      setLoadingDoctors(true);
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("facility_staff")
-          .select("id, specialization, profiles(full_name)")
-          .eq("facility_id", selectedHospitalId)
-          .eq("staff_role", "dokter")
-          .eq("status", "aktif");
-
-        if (error) {
-          console.error("Gagal memuat dokter tujuan:", error.message);
-          setDoctors([]);
-        } else if (data) {
-          const docList: DoctorOption[] = (data as unknown as RawDoctorRow[]).map((d) => {
-            const pf = Array.isArray(d.profiles) ? d.profiles[0] : d.profiles;
-            return {
-              id: d.id,
-              name: pf?.full_name ? `dr. ${pf.full_name}` : "Dokter Spesialis",
-              specialization: d.specialization || null,
-            };
-          });
-          setDoctors(docList);
-        }
-      } finally {
+    listDokterAction(selectedHospital.id).then((res) => {
+      if (!ignore) {
+        setDoctors(res.success && res.results ? res.results : []);
         setLoadingDoctors(false);
       }
-    }
+    });
 
-    loadDoctors();
-  }, [selectedHospitalId]);
+    return () => {
+      ignore = true;
+    };
+  }, [selectedHospital]);
 
-  // Handler (a) Cari Pasien lewat NIK
+  // (a) Cari Pasien
   const handleSearchPatient = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const cleanNik = searchNik.trim();
-
     if (!cleanNik || cleanNik.length !== 16) {
       setPatientSearchError("Masukkan 16 digit NIK pasien dengan lengkap.");
+      setPatientResults([]);
       setSelectedPatient(null);
       return;
     }
 
     setSearchingPatient(true);
     setPatientSearchError(null);
+    setPatientResults([]);
     setSelectedPatient(null);
 
-    try {
-      const supabase = createClient();
+    const res = await cariPasienAction(cleanNik);
+    setSearchingPatient(false);
 
-      // Query tabel patients where nik = input
-      const { data: patient, error: patientErr } = await supabase
-        .from("patients")
-        .select("id, nik, address, province, city, district, village, dob, gender, phone, bpjs_number, profiles(full_name)")
-        .eq("nik", cleanNik)
-        .maybeSingle();
+    if (!res.success) {
+      setPatientSearchError(res.error || "Pasien tidak ditemukan atau akunnya belum aktif.");
+      return;
+    }
 
-      if (patientErr) {
-        setPatientSearchError("Gagal memeriksa data pasien: " + patientErr.message);
-        return;
-      }
+    const results = res.results ?? [];
+    setPatientResults(results);
 
-      if (!patient) {
-        setPatientSearchError("Pasien belum terdaftar di Lytera");
-        return;
-      }
-
-      const pProfile = patient.profiles as unknown as { full_name: string } | null;
-      const namaLengkap = pProfile?.full_name || "Pasien Lytera";
-      const wilayahStr = resolveRegion(
-        patient.province,
-        patient.city,
-        patient.district,
-        patient.village
-      );
-
-      setSelectedPatient({
-        id: patient.id,
-        nik: patient.nik,
-        nama: namaLengkap,
-        dob: patient.dob,
-        gender: patient.gender,
-        phone: patient.phone,
-        alamat: patient.address,
-        bpjsNumber: patient.bpjs_number,
-        wilayah: wilayahStr,
-      });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setPatientSearchError("Terjadi kendala pencarian pasien: " + msg);
-    } finally {
-      setSearchingPatient(false);
+    // Jika hanya 1 hasil, langsung pilih
+    if (results.length === 1) {
+      setSelectedPatient(results[0]);
     }
   };
 
-  // Handler Submit Rujukan
+  // Submit Rujukan
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setServerError(null);
     setFieldErrors({});
 
     if (!selectedPatient) {
-      setServerError("Harap cari dan pilih pasien terlebih dahulu sebelum membuat rujukan.");
+      setServerError("Harap cari dan pilih pasien terlebih dahulu.");
       return;
     }
-
-    if (!selectedHospitalId) {
+    if (!selectedHospital) {
       setServerError("Harap pilih fasilitas kesehatan rumah sakit rujukan tujuan.");
       return;
     }
-
     if (!diagnosisIcd10.trim()) {
-      setFieldErrors((prev) => ({ ...prev, diagnosisIcd10: "Diagnosis ICD-10 wajib diisi" }));
+      setFieldErrors((p) => ({ ...p, diagnosisIcd10: "Diagnosis ICD-10 wajib diisi" }));
       return;
     }
-
     if (!catatanKlinis.trim()) {
-      setFieldErrors((prev) => ({ ...prev, catatanKlinis: "Catatan klinis wajib diisi minimal 5 karakter" }));
+      setFieldErrors((p) => ({ ...p, catatanKlinis: "Catatan klinis wajib diisi minimal 5 karakter" }));
       return;
     }
 
     setSubmitting(true);
+    const res = await buatRujukanAction({
+      patientId: selectedPatient.patient_id,
+      familyMemberId: selectedPatient.family_member_id || null,
+      destinationFacilityId: selectedHospital.id,
+      destinationDoctorId: selectedDoctorId || null,
+      poli,
+      priority,
+      diagnosisIcd10,
+      catatanKlinis,
+    });
+    setSubmitting(false);
 
-    try {
-      const res = await buatRujukanAction({
-        patientId: selectedPatient.id,
-        destinationFacilityId: selectedHospitalId,
-        destinationDoctorId: selectedDoctorId ? selectedDoctorId : null,
-        poli,
-        priority,
-        diagnosisIcd10,
-        catatanKlinis,
-      });
-
-      if (!res.success) {
-        setServerError(res.error || "Gagal menyimpan surat rujukan.");
-        if (res.fieldErrors) {
-          setFieldErrors(res.fieldErrors);
-        }
-        return;
-      }
-
-      // Berhasil: Redirect ke halaman daftar rujukan buatan faskes ini
-      router.push(`/portal/${peran}/${subperan}/rujukan`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setServerError("Terjadi kesalahan jaringan atau server: " + msg);
-    } finally {
-      setSubmitting(false);
+    if (!res.success) {
+      setServerError(res.error || "Gagal menyimpan surat rujukan.");
+      if (res.fieldErrors) setFieldErrors(res.fieldErrors);
+      return;
     }
+    router.push(`/portal/${peran}/${subperan}/rujukan`);
   };
 
-  // Tampilan Memeriksa Otorisasi
+  // ---- Render: Loading Auth ----
   if (checkingAuth) {
     return (
       <div className="min-h-screen text-[#464858]" data-navbar-tone="light" data-portal-wallpaper="true">
@@ -456,7 +406,7 @@ export default function BuatRujukanBaruPage({ params }: PageProps) {
     );
   }
 
-  // Tampilan Tidak Diizinkan
+  // ---- Render: Tidak Diizinkan ----
   if (unauthorizedMsg) {
     return (
       <div className="min-h-screen text-[#464858]" data-navbar-tone="light" data-portal-wallpaper="true">
@@ -466,458 +416,312 @@ export default function BuatRujukanBaruPage({ params }: PageProps) {
             <div className="w-12 h-12 rounded-full bg-[#FDECEA] flex items-center justify-center text-[#B3261E] mx-auto mb-4">
               <ShieldAlert className="w-6 h-6" />
             </div>
-            <h1 className="text-xl font-bold text-[#0F3040] mb-2">Akses Pembuatan Rujukan Dibatasi</h1>
+            <h1 className="text-xl font-bold text-[#0F3040] mb-2">Akses Dibatasi</h1>
             <p className="text-sm text-slate-600 leading-relaxed mb-6">{unauthorizedMsg}</p>
-            <div className="flex justify-center gap-3">
-              <Link
-                href={`/portal/${peran}/${subperan}`}
-                className="px-5 py-2.5 rounded-full bg-[#0F3040] text-white text-xs sm:text-sm font-semibold hover:bg-[#0A2230] transition-colors"
-              >
-                Kembali ke Portal
-              </Link>
-            </div>
+            <Link
+              href={`/portal/${peran}/${subperan}`}
+              className="px-5 py-2.5 rounded-full bg-[#0F3040] text-white text-sm font-semibold hover:bg-[#0A2230] transition-colors"
+            >
+              Kembali ke Portal
+            </Link>
           </Card>
         </main>
       </div>
     );
   }
 
+  // ---- Render: Form Utama ----
   return (
     <div className="min-h-screen text-[#464858]" data-navbar-tone="light" data-portal-wallpaper="true">
       <Navbar
         variant="dokter-puskesmas"
         facilityName={staffInfo?.facilityName}
         userName={staffInfo?.staffName || "Tenaga Medis"}
-        userRole={staffInfo?.staffRole === "dokter" ? "Dokter Faskes" : "Petugas Faskes"}
+        userRole="Dokter"
         forceGlass={true}
       />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-28 pb-20">
-        {/* Navigasi Atas */}
-        <div className="mb-6 flex items-center justify-between">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-28 pb-20">
+        {/* Header */}
+        <div className="mb-6">
           <Link
             href={`/portal/${peran}/${subperan}`}
-            className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-[#0F3040] hover:text-[#8F5A4E] transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-white/90 hover:text-white mb-4"
           >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Kembali ke Portal {subperan === "puskesmas" ? "Puskesmas" : "Klinik"}</span>
+            ← Kembali ke Portal
           </Link>
-
-          <Link
-            href={`/portal/${peran}/${subperan}/rujukan`}
-            className="text-xs sm:text-sm font-semibold text-[#8F5A4E] hover:underline"
-          >
-            Lihat Daftar Rujukan Keluar &rarr;
-          </Link>
+          <h1 className="text-2xl font-bold text-white drop-shadow">Buat Surat Rujukan Digital</h1>
+          <p className="text-sm text-white/80 mt-1">
+            Dari: <span className="font-semibold">{staffInfo?.facilityName}</span>
+          </p>
         </div>
 
-        {/* Header Form */}
-        <Reveal>
-          <Card variant="white" className="p-6 sm:p-8 shadow-sm border border-[#E2E8F0] mb-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge variant="info">Fasilitas Primer</Badge>
-                  <span className="text-xs text-slate-500 font-medium">
-                    Asal: <strong className="text-[#0F3040]">{staffInfo?.facilityName}</strong>
-                  </span>
-                </div>
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F3040] tracking-tight">
-                  Buat Surat Rujukan Pasien
-                </h1>
-                <p className="text-sm text-slate-600 mt-1 max-w-2xl leading-relaxed">
-                  Terbitkan rujukan digital terintegrasi ke rumah sakit rujukan sekunder. Berkas klinis
-                  akan langsung terkirim secara aman sesuai standar SatuSehat.
-                </p>
-              </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* ── (a) Pencarian Pasien ── */}
+          <Card variant="white" className="p-5 shadow-sm border border-[#E2E8F0]">
+            <h2 className="flex items-center gap-2 text-sm font-bold text-[#0F3040] mb-4">
+              <span className="w-6 h-6 rounded-full bg-[#0F3040] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
+              Cari Pasien
+            </h2>
 
-              <div className="shrink-0">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#EDF7F2] text-[#1B6B4D]">
-                  <span className="w-2 h-2 rounded-full bg-[#1B6B4D] animate-pulse" />
-                  Sesi Staf Aktif
-                </span>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={16}
+                  value={searchNik}
+                  onChange={(e) => {
+                    setSearchNik(e.target.value.replace(/\D/g, ""));
+                    setPatientSearchError(null);
+                    setPatientResults([]);
+                    setSelectedPatient(null);
+                  }}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSearchPatient(); } }}
+                  placeholder="Masukkan 16 digit NIK pasien"
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-sm text-[#0F3040] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#8F5A4E]/40 focus:border-[#8F5A4E] font-mono tracking-wider"
+                />
               </div>
+              <button
+                type="button"
+                onClick={() => handleSearchPatient()}
+                disabled={searchingPatient || searchNik.length !== 16}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0F3040] text-white text-sm font-semibold hover:bg-[#0A2230] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+              >
+                {searchingPatient ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                Cari
+              </button>
             </div>
-          </Card>
-        </Reveal>
 
-        {/* Galat Server Utama */}
-        {serverError && (
-          <div className="mb-6 p-4 rounded-[16px] bg-[#FDECEA] border border-[#B3261E]/20 text-[#B3261E] text-sm flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-            <div className="leading-relaxed">
-              <p className="font-semibold">Gagal Memproses Rujukan</p>
-              <p className="text-xs mt-0.5">{serverError}</p>
-            </div>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* ============================================================== */}
-          {/* LANGKAH (A): CARI PASIEN LEWAT NIK                            */}
-          {/* ============================================================== */}
-          <Reveal delayMs={100}>
-            <Card variant="white" className="p-6 sm:p-8 shadow-sm border border-[#E2E8F0]">
-              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-[#E2E8F0]">
-                <div className="w-9 h-9 rounded-xl bg-[#FAF5F2] flex items-center justify-center text-[#8F5A4E] shrink-0">
-                  <User className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-[#0F3040]">1. Identitas Pasien</h2>
-                  <p className="text-xs text-slate-500">
-                    Cari pasien terdaftar di Lytera menggunakan Nomor Induk Kependudukan (NIK 16 digit).
-                  </p>
-                </div>
+            {/* Pesan Galat Pencarian */}
+            {patientSearchError && (
+              <div className="mt-3 flex items-start gap-2 text-sm text-[#B3261E] bg-[#FDECEA] rounded-xl px-3 py-2.5">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>{patientSearchError}</span>
               </div>
+            )}
 
-              {!selectedPatient ? (
-                <div>
-                  <label htmlFor="search-nik" className="block text-xs font-semibold text-[#0F3040] mb-1.5">
-                    Nomor Induk Kependudukan (NIK) Pasien *
-                  </label>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="relative flex-1">
-                      <input
-                        id="search-nik"
-                        type="text"
-                        maxLength={16}
-                        inputMode="numeric"
-                        value={searchNik}
-                        onChange={(e) => setSearchNik(e.target.value.replace(/\D/g, ""))}
-                        placeholder="Contoh: 3374012345670001"
-                        className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] font-mono tabular-nums text-sm outline-none focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E]"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleSearchPatient()}
-                      disabled={searchingPatient || searchNik.length !== 16}
-                      className="h-12 px-6 rounded-[14px] bg-[#0F3040] text-white text-xs sm:text-sm font-semibold hover:bg-[#0A2230] transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
-                    >
-                      {searchingPatient ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Mencari...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Search className="w-4 h-4" />
-                          <span>Cari Pasien</span>
-                        </>
+            {/* Hasil Pencarian (lebih dari 1 → pilih) */}
+            {patientResults.length > 1 && (
+              <div className="mt-3 space-y-2">
+                <p className="text-xs text-slate-500 font-medium">Ditemukan {patientResults.length} pasien. Pilih yang sesuai:</p>
+                {patientResults.map((p) => (
+                  <button
+                    key={p.patient_id + (p.family_member_id ?? "")}
+                    type="button"
+                    onClick={() => setSelectedPatient(p)}
+                    className={`w-full text-left px-3 py-2.5 rounded-xl border transition-colors ${
+                      selectedPatient?.patient_id === p.patient_id && selectedPatient?.family_member_id === p.family_member_id
+                        ? "border-[#8F5A4E] bg-[#FDF5F3]"
+                        : "border-[#E2E8F0] bg-white hover:bg-[#F8FAFC]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-[#0F3040]">{p.full_name}</p>
+                      {p.family_member_id && p.relation && (
+                        <Badge variant="proses">{p.relation}</Badge>
                       )}
-                    </button>
-                  </div>
-
-                  {patientSearchError && (
-                    <div className="mt-4 p-4 rounded-[14px] bg-[#FFF4D6] border border-[#E0A100]/30 text-[#7A5200] text-xs flex items-start gap-2.5">
-                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#E0A100]" />
-                      <div className="leading-relaxed">
-                        <span className="font-bold">{patientSearchError}</span>
-                        {patientSearchError.includes("belum terdaftar") && (
-                          <p className="mt-1 text-slate-600">
-                            Pastikan 16 digit NIK telah benar, atau arahkan pasien/keluarga untuk melakukan
-                            pendaftaran akun pasien terlebih dahulu agar berkas rekam medis dapat terhubung.
-                          </p>
-                        )}
-                      </div>
                     </div>
-                  )}
+                    <p className="text-xs text-slate-500 font-mono mt-0.5">{p.nik_masked}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Kartu Pasien Terpilih */}
+            {selectedPatient && (
+              <div className="mt-3 rounded-xl border border-[#D1FAE5] bg-[#F0FDF4] px-4 py-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <CheckCircle2 className="w-4 h-4 text-[#16A34A] flex-shrink-0" />
+                    <p className="text-sm font-bold text-[#0F3040]">{selectedPatient.full_name}</p>
+                    {selectedPatient.family_member_id && selectedPatient.relation && (
+                      <Badge variant="proses">
+                        Anggota keluarga ({selectedPatient.relation})
+                      </Badge>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedPatient(null); setPatientResults([]); setSearchNik(""); }}
+                    className="text-slate-400 hover:text-slate-600 flex-shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-600">
+                  <span><span className="text-slate-400">NIK:</span> <span className="font-mono">{selectedPatient.nik_masked}</span></span>
+                  <span><span className="text-slate-400">Lahir:</span> {formatDateIndo(selectedPatient.dob)}</span>
+                  <span><span className="text-slate-400">Kelamin:</span> {selectedPatient.gender === "L" ? "Laki-laki" : selectedPatient.gender === "P" ? "Perempuan" : "-"}</span>
+                  <span><span className="text-slate-400">Kota:</span> {selectedPatient.city ?? "-"}</span>
+                </div>
+              </div>
+            )}
+          </Card>
+
+          {/* ── (b) Rumah Sakit Tujuan ── */}
+          <Card variant="white" className="p-5 shadow-sm border border-[#E2E8F0]">
+            <h2 className="flex items-center gap-2 text-sm font-bold text-[#0F3040] mb-4">
+              <span className="w-6 h-6 rounded-full bg-[#0F3040] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
+              Rumah Sakit Tujuan
+            </h2>
+            <FacilityCombobox value={selectedHospital} onChange={handleHospitalChange} />
+            {selectedHospital && (
+              <p className="mt-2 text-xs text-[#16A34A] font-medium flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                {selectedHospital.name} — {selectedHospital.city ?? ""}
+              </p>
+            )}
+          </Card>
+
+          {/* ── (c) Dokter Tujuan (Opsional) ── */}
+          {selectedHospital && (
+            <Card variant="white" className="p-5 shadow-sm border border-[#E2E8F0]">
+              <h2 className="flex items-center gap-2 text-sm font-bold text-[#0F3040] mb-4">
+                <span className="w-6 h-6 rounded-full bg-[#0F3040] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
+                Dokter Tujuan
+                <span className="ml-1 text-xs font-normal text-slate-400">(opsional)</span>
+              </h2>
+              {loadingDoctors ? (
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Memuat daftar dokter...
                 </div>
               ) : (
-                <CardInner variant="cream" className="p-5 border border-[#E2E8F0] space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E2E8F0]/70">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-[#1B6B4D]" />
-                      <span className="text-sm font-bold text-[#0F3040]">{selectedPatient.nama}</span>
-                      <Badge variant="selesai" showDot>
-                        Pasien Terdaftar
-                      </Badge>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedPatient(null);
-                        setSearchNik("");
-                      }}
-                      className="text-xs font-semibold text-[#8F5A4E] hover:underline text-left"
-                    >
-                      Ganti Pasien Lain
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
-                    <div>
-                      <span className="text-slate-500 block">NIK Pasien:</span>
-                      <span className="font-mono font-semibold text-[#0F3040]">
-                        {maskNik(selectedPatient.nik)}
-                      </span>
-                    </div>
-
-                    <div>
-                      <span className="text-slate-500 block">Tanggal Lahir:</span>
-                      <span className="font-semibold text-[#0F3040]">
-                        {formatDateIndo(selectedPatient.dob)} (
-                        {selectedPatient.gender === "L" ? "Laki-laki" : "Perempuan"})
-                      </span>
-                    </div>
-
-                    <div>
-                      <span className="text-slate-500 block">No. BPJS Kesehatan:</span>
-                      <span className="font-semibold text-[#0F3040]">
-                        {selectedPatient.bpjsNumber || "Tidak ada"}
-                      </span>
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <span className="text-slate-500 block">Alamat Domisili:</span>
-                      <span className="font-medium text-[#0F3040]">
-                        {selectedPatient.alamat || "-"}, {selectedPatient.wilayah}
-                      </span>
-                    </div>
-
-                    <div>
-                      <span className="text-slate-500 block">Kontak Pasien:</span>
-                      <span className="font-semibold text-[#0F3040]">
-                        {selectedPatient.phone || "-"}
-                      </span>
-                    </div>
-                  </div>
-                </CardInner>
-              )}
-            </Card>
-          </Reveal>
-
-          {/* ============================================================== */}
-          {/* LANGKAH (B) & (C): PILIH FASKES & DOKTER TUJUAN                */}
-          {/* ============================================================== */}
-          <Reveal delayMs={150}>
-            <Card variant="white" className="p-6 sm:p-8 shadow-sm border border-[#E2E8F0]">
-              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-[#E2E8F0]">
-                <div className="w-9 h-9 rounded-xl bg-[#EBF2F6] flex items-center justify-center text-[#0F3040] shrink-0">
-                  <Building2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-[#0F3040]">2. Fasilitas & Dokter Rujukan Tujuan</h2>
-                  <p className="text-xs text-slate-500">
-                    Pilih rumah sakit rujukan sekunder terakreditasi dan dokter spesialis tujuan.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* (b) Faskes Tujuan */}
-                <div>
-                  <label htmlFor="hospital-select" className="block text-xs font-semibold text-[#0F3040] mb-1.5">
-                    Rumah Sakit Rujukan (Faskes Tujuan) *
-                  </label>
+                <div className="relative">
+                  <Stethoscope className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                   <select
-                    id="hospital-select"
-                    value={selectedHospitalId}
-                    onChange={(e) => setSelectedHospitalId(e.target.value)}
-                    disabled={loadingHospitals || hospitals.length === 0}
-                    className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] bg-white text-xs sm:text-sm outline-none focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E]"
-                  >
-                    {loadingHospitals ? (
-                      <option value="">Memuat daftar rumah sakit...</option>
-                    ) : hospitals.length === 0 ? (
-                      <option value="">Tidak ada rumah sakit aktif ditemukan</option>
-                    ) : (
-                      hospitals.map((h) => (
-                        <option key={h.id} value={h.id}>
-                          {h.name} {h.city ? `(${h.city})` : ""}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    Hanya menampilkan rumah sakit yang terintegrasi aktif pada jaringan Lytera.
-                  </p>
-                </div>
-
-                {/* (c) Dokter Tujuan (Opsional) */}
-                <div>
-                  <label htmlFor="doctor-select" className="block text-xs font-semibold text-[#0F3040] mb-1.5">
-                    Dokter Spesialis Tujuan (Opsional)
-                  </label>
-                  <select
-                    id="doctor-select"
                     value={selectedDoctorId}
                     onChange={(e) => setSelectedDoctorId(e.target.value)}
-                    disabled={loadingDoctors || !selectedHospitalId}
-                    className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] bg-white text-xs sm:text-sm outline-none focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E]"
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-sm text-[#0F3040] focus:outline-none focus:ring-2 focus:ring-[#8F5A4E]/40 focus:border-[#8F5A4E] appearance-none"
                   >
-                    <option value="">-- Ditujukan ke Poli Umum RS (Tanpa Dokter Tertentu) --</option>
+                    <option value="">Tanpa dokter tertentu</option>
                     {doctors.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name} {d.specialization ? `(${d.specialization})` : ""}
+                      <option key={d.staff_id} value={d.staff_id}>
+                        {d.full_name}{d.specialization ? ` — ${d.specialization}` : ""}
                       </option>
                     ))}
                   </select>
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    {loadingDoctors
-                      ? "Memuat dokter..."
-                      : doctors.length === 0
-                      ? "Belum ada dokter spesialis terdaftar khusus di faskes ini."
-                      : `${doctors.length} dokter spesialis tersedia di rumah sakit ini.`}
-                  </p>
                 </div>
-              </div>
+              )}
+              {!loadingDoctors && doctors.length === 0 && (
+                <p className="mt-2 text-xs text-slate-500">Belum ada dokter aktif terdaftar di rumah sakit ini.</p>
+              )}
             </Card>
-          </Reveal>
+          )}
 
-          {/* ============================================================== */}
-          {/* LANGKAH (D): DETAIL KLINIS, POLI, PRIORITAS, ICD-10, CATATAN   */}
-          {/* ============================================================== */}
-          <Reveal delayMs={200}>
-            <Card variant="white" className="p-6 sm:p-8 shadow-sm border border-[#E2E8F0]">
-              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-[#E2E8F0]">
-                <div className="w-9 h-9 rounded-xl bg-[#FAF5F2] flex items-center justify-center text-[#8F5A4E] shrink-0">
-                  <Stethoscope className="w-5 h-5" />
+          {/* ── (d) Detail Klinis ── */}
+          <Card variant="white" className="p-5 shadow-sm border border-[#E2E8F0]">
+            <h2 className="flex items-center gap-2 text-sm font-bold text-[#0F3040] mb-4">
+              <span className="w-6 h-6 rounded-full bg-[#0F3040] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">4</span>
+              Detail Klinis
+            </h2>
+
+            <div className="space-y-4">
+              {/* Poli */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Poli / Spesialisasi Tujuan</label>
+                <div className="relative">
+                  <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  <select
+                    value={poli}
+                    onChange={(e) => setPoli(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-sm text-[#0F3040] focus:outline-none focus:ring-2 focus:ring-[#8F5A4E]/40 focus:border-[#8F5A4E] appearance-none"
+                  >
+                    {POLI_OPTIONS.map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
                 </div>
-                <div>
-                  <h2 className="text-base font-bold text-[#0F3040]">3. Informasi Medis & Triase Rujukan</h2>
-                  <p className="text-xs text-slate-500">
-                    Lengkapi poli spesialisasi, derajat urgensi, kode diagnosis klinis, dan riwayat pemeriksaan.
-                  </p>
+              </div>
+
+              {/* Prioritas */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Prioritas Rujukan</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["elektif", "urgent", "gawat_darurat"] as const).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPriority(p)}
+                      className={`py-2 rounded-xl text-xs font-semibold border transition-colors ${
+                        priority === p
+                          ? p === "gawat_darurat"
+                            ? "bg-[#B3261E] text-white border-[#B3261E]"
+                            : p === "urgent"
+                            ? "bg-[#D97706] text-white border-[#D97706]"
+                            : "bg-[#0F3040] text-white border-[#0F3040]"
+                          : "bg-white text-slate-600 border-[#E2E8F0] hover:bg-[#F8FAFC]"
+                      }`}
+                    >
+                      {p === "elektif" ? "Elektif" : p === "urgent" ? "Urgent" : "Gawat Darurat"}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <div className="space-y-5">
-                {/* Baris Poli & Prioritas */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div>
-                    <label htmlFor="poli-input" className="block text-xs font-semibold text-[#0F3040] mb-1.5">
-                      Poli Spesialisasi Tujuan *
-                    </label>
-                    <input
-                      id="poli-input"
-                      type="text"
-                      list="poli-list"
-                      value={poli}
-                      onChange={(e) => setPoli(e.target.value)}
-                      placeholder="Pilih atau ketik poli spesialis"
-                      className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] text-xs sm:text-sm outline-none focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E]"
-                    />
-                    <datalist id="poli-list">
-                      {POLI_OPTIONS.map((p) => (
-                        <option key={p} value={p} />
-                      ))}
-                    </datalist>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[#0F3040] mb-1.5">
-                      Derajat Prioritas (Triase Klinis) *
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setPriority("elektif")}
-                        className={`py-2.5 px-3 rounded-[12px] text-xs font-semibold border transition-all text-center ${
-                          priority === "elektif"
-                            ? "bg-[#0F3040] text-white border-[#0F3040] shadow-sm"
-                            : "bg-white text-slate-600 border-[#E2E8F0] hover:bg-slate-50"
-                        }`}
-                      >
-                        Elektif
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setPriority("urgent")}
-                        className={`py-2.5 px-3 rounded-[12px] text-xs font-semibold border transition-all text-center ${
-                          priority === "urgent"
-                            ? "bg-[#FFF4D6] text-[#7A5200] border-[#E0A100] ring-2 ring-[#E0A100]/30 shadow-sm"
-                            : "bg-white text-slate-600 border-[#E2E8F0] hover:bg-slate-50"
-                        }`}
-                      >
-                        Urgent
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setPriority("gawat_darurat")}
-                        className={`py-2.5 px-3 rounded-[12px] text-xs font-semibold border transition-all text-center ${
-                          priority === "gawat_darurat"
-                            ? "bg-[#FDECEA] text-[#B3261E] border-[#B3261E] ring-2 ring-[#B3261E]/30 shadow-sm"
-                            : "bg-white text-slate-600 border-[#E2E8F0] hover:bg-slate-50"
-                        }`}
-                      >
-                        Gawat Darurat
-                      </button>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      {priority === "elektif" && "Rujukan terjadwal untuk kasus stabil kronis / elektif."}
-                      {priority === "urgent" && "Penanganan dalam 24-48 jam untuk mencegah komplikasi lanjut."}
-                      {priority === "gawat_darurat" && "Kondisi kritis mengancam jiwa atau kegawatdaruratan akut."}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Diagnosis ICD-10 */}
-                <div>
-                  <label htmlFor="icd10-input" className="block text-xs font-semibold text-[#0F3040] mb-1.5">
-                    Diagnosis Kerja / Kode ICD-10 *
-                  </label>
-                  <input
-                    id="icd10-input"
-                    type="text"
-                    value={diagnosisIcd10}
-                    onChange={(e) => setDiagnosisIcd10(e.target.value)}
-                    placeholder="Contoh: I10 - Hipertensi Esensial Primer atau E11.9 - DM Tipe 2"
-                    className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] text-xs sm:text-sm outline-none focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E]"
-                  />
-                  {fieldErrors.diagnosisIcd10 && (
-                    <p className="text-xs text-[#B3261E] mt-1">{fieldErrors.diagnosisIcd10}</p>
-                  )}
-                </div>
-
-                {/* Catatan Klinis */}
-                <div>
-                  <label htmlFor="catatan-klinis" className="block text-xs font-semibold text-[#0F3040] mb-1.5">
-                    Catatan Klinis &amp; Terapi Awal Faskes Primer *
-                  </label>
-                  <textarea
-                    id="catatan-klinis"
-                    rows={4}
-                    value={catatanKlinis}
-                    onChange={(e) => setCatatanKlinis(e.target.value)}
-                    placeholder="Tuliskan anamnesis singkat, hasil pemeriksaan fisik/laboratorium awal, terapi yang sudah diberikan di puskesmas, serta alasan spesifik rujukan lanjutan..."
-                    className="w-full p-4 rounded-[14px] border border-[#E2E8F0] text-xs sm:text-sm outline-none focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] leading-relaxed"
-                  />
-                  {fieldErrors.catatanKlinis && (
-                    <p className="text-xs text-[#B3261E] mt-1">{fieldErrors.catatanKlinis}</p>
-                  )}
-                </div>
+              {/* Diagnosis ICD-10 */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                  Kode Diagnosis ICD-10 <span className="text-[#B3261E]">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={diagnosisIcd10}
+                  onChange={(e) => { setDiagnosisIcd10(e.target.value); if (fieldErrors.diagnosisIcd10) setFieldErrors(p => ({ ...p, diagnosisIcd10: "" })); }}
+                  placeholder="Cth: A09, J18.9, I21.0"
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-sm text-[#0F3040] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#8F5A4E]/40 focus:border-[#8F5A4E] font-mono"
+                />
+                {fieldErrors.diagnosisIcd10 && (
+                  <p className="mt-1 text-xs text-[#B3261E]">{fieldErrors.diagnosisIcd10}</p>
+                )}
               </div>
-            </Card>
-          </Reveal>
 
-          {/* Tombol Aksi Submit */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[#E2E8F0]">
+              {/* Catatan Klinis */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                  Catatan Klinis & Riwayat <span className="text-[#B3261E]">*</span>
+                </label>
+                <textarea
+                  value={catatanKlinis}
+                  onChange={(e) => { setCatatanKlinis(e.target.value); if (fieldErrors.catatanKlinis) setFieldErrors(p => ({ ...p, catatanKlinis: "" })); }}
+                  rows={4}
+                  placeholder="Deskripsikan kondisi pasien, riwayat penyakit, hasil pemeriksaan awal, dan alasan rujukan..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-sm text-[#0F3040] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#8F5A4E]/40 focus:border-[#8F5A4E] resize-none"
+                />
+                {fieldErrors.catatanKlinis && (
+                  <p className="mt-1 text-xs text-[#B3261E]">{fieldErrors.catatanKlinis}</p>
+                )}
+              </div>
+            </div>
+          </Card>
+
+          {/* Galat Server */}
+          {serverError && (
+            <div className="flex items-start gap-2 text-sm text-[#B3261E] bg-white/90 border border-[#FECACA] rounded-xl px-4 py-3">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{serverError}</span>
+            </div>
+          )}
+
+          {/* Tombol Submit */}
+          <div className="flex gap-3 justify-end pt-2">
             <Link
               href={`/portal/${peran}/${subperan}`}
-              className="text-xs sm:text-sm font-semibold text-slate-600 hover:text-[#0F3040] transition-colors"
+              className="px-5 py-2.5 rounded-full border border-white/60 bg-white/20 text-white text-sm font-semibold hover:bg-white/30 transition-colors"
             >
-              Batalkan &amp; Kembali
+              Batal
             </Link>
-
             <button
               type="submit"
-              disabled={submitting || !selectedPatient}
-              className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-[#8F5A4E] text-white text-sm font-semibold hover:bg-[#A56F63] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+              disabled={submitting || !selectedPatient || !selectedHospital}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#8F5A4E] text-white text-sm font-bold hover:bg-[#7A4A3E] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md"
             >
               {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Mengirimkan Rujukan Digital...</span>
-                </>
+                <><Loader2 className="w-4 h-4 animate-spin" /> Menyimpan...</>
               ) : (
-                <>
-                  <FileText className="w-4 h-4" />
-                  <span>Kirim Rujukan ke Rumah Sakit</span>
-                </>
+                <><User className="w-4 h-4" /> Kirim Rujukan</>
               )}
             </button>
           </div>

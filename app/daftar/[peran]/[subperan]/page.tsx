@@ -192,7 +192,7 @@ export default function PendaftaranPage({ params }: PageProps) {
 
   if (!valid || !roleMeta || !subRoleMeta) {
     return (
-      <div className={`min-h-screen flex items-center justify-center p-4 ${peran === "verifikator" ? "bg-[#FAF5F2]" : ""}`}>
+      <div className="min-h-screen flex items-center justify-center p-4">
         <p className="text-sm text-[#464858]">Memuat formulir...</p>
       </div>
     );
@@ -637,10 +637,10 @@ export default function PendaftaranPage({ params }: PageProps) {
   };
 
   return (
-    <div className={`min-h-screen text-[#464858] pb-16 ${peran === "verifikator" ? "bg-[#FAF5F2]" : ""}`} data-portal-wallpaper={peran !== "verifikator" ? "true" : undefined}>
+    <div className="min-h-screen text-[#464858] pb-16" data-portal-wallpaper="true">
       {/* Top Bar: Logo kiri, BackButton kanan */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 flex items-center justify-between">
-        <Logo tone={peran === "verifikator" ? "light" : "dark"} size="sm" />
+        <Logo tone="dark" size="sm" />
         <BackButton href="/" label="Kembali ke Beranda" />
       </div>
 

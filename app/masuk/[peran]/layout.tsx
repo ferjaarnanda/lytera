@@ -12,11 +12,22 @@ export default async function MasukPeranLayout({
 }: MasukPeranLayoutProps) {
   const { peran } = await params;
 
-  // Hanya terapkan wallpaper foto untuk pasien dan fasilitas kesehatan
+  // Wallpaper rumah sakit untuk pasien dan fasilitas kesehatan
   if (peran === "pasien" || peran === "fasilitas") {
     return <PortalWallpaper>{children}</PortalWallpaper>;
   }
 
-  // Verifikasi Administrasi (verifikator) dan lainnya tidak memakai wallpaper foto
+  // Wallpaper khusus verifikasi & dinkes untuk verifikator
+  if (peran === "verifikator") {
+    return (
+      <PortalWallpaper
+        src="/images/wallpaper-verifikasi-dinkes.webp"
+        brightness={1.3}
+      >
+        {children}
+      </PortalWallpaper>
+    );
+  }
+
   return <>{children}</>;
 }

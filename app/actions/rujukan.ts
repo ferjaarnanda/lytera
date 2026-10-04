@@ -4,11 +4,176 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
 // ============================================================================
+// TIPE DATA PENCARIAN PASIEN (hasil rpc find_patient_by_nik)
+// ============================================================================
+
+export interface PatientSearchResult {
+  patient_id: string;
+  family_member_id: string | null;
+  full_name: string;
+  nik_masked: string;
+  dob: string | null;
+  gender: string | null;
+  relation: string | null;
+  city: string | null;
+  district: string | null;
+}
+
+export interface PatientSearchResponse {
+  success: boolean;
+  results?: PatientSearchResult[];
+  error?: string;
+}
+
+// ============================================================================
+// SERVER ACTION: CARI PASIEN VIA find_patient_by_nik
+// ============================================================================
+
+export async function cariPasienAction(nik: string): Promise<PatientSearchResponse> {
+  const cleanNik = nik.trim();
+
+  if (!cleanNik || cleanNik.length !== 16 || !/^\d{16}$/.test(cleanNik)) {
+    return { success: false, error: "NIK harus berupa 16 digit angka." };
+  }
+
+  try {
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "Sesi login tidak ditemukan. Silakan masuk kembali." };
+    }
+
+    const { data, error } = await supabase.rpc("find_patient_by_nik", { p_nik: cleanNik });
+
+    if (error) {
+      // Petakan pesan galat database ke bahasa Indonesia
+      const msg = error.message || "";
+      if (msg.includes("bukan dokter aktif") || msg.includes("not an active doctor")) {
+        return { success: false, error: "Akun Anda tidak terdaftar sebagai dokter aktif di fasilitas kesehatan." };
+      }
+      if (msg.includes("16 digit") || msg.includes("invalid NIK")) {
+        return { success: false, error: "NIK harus terdiri dari tepat 16 digit angka." };
+      }
+      if (msg.includes("terlalu banyak") || msg.includes("rate limit") || msg.includes("too many")) {
+        return { success: false, error: "Terlalu banyak pencarian. Coba lagi beberapa menit kemudian." };
+      }
+      return { success: false, error: error.message };
+    }
+
+    if (!data || (Array.isArray(data) && data.length === 0)) {
+      return { success: false, error: "Pasien tidak ditemukan atau akunnya belum aktif." };
+    }
+
+    const results = Array.isArray(data) ? data : [data];
+    return { success: true, results: results as PatientSearchResult[] };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: "Terjadi kesalahan saat mencari pasien: " + msg };
+  }
+}
+
+// ============================================================================
+// TIPE DATA PENCARIAN RUMAH SAKIT (hasil rpc list_active_facilities)
+// ============================================================================
+
+export interface FasilitasOption {
+  id: string;
+  name: string;
+  type: string;
+  city: string | null;
+  district: string | null;
+}
+
+export interface CariFaskesResponse {
+  success: boolean;
+  results?: FasilitasOption[];
+  error?: string;
+}
+
+// ============================================================================
+// SERVER ACTION: CARI RUMAH SAKIT TUJUAN VIA list_active_facilities
+// ============================================================================
+
+export async function cariFaskesAction(
+  query: string,
+  limit = 20
+): Promise<CariFaskesResponse> {
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase.rpc("list_active_facilities", {
+      p_type: "rumah_sakit",
+      p_query: query.trim(),
+      p_limit: limit,
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const results = Array.isArray(data) ? data : [];
+    return { success: true, results: results as FasilitasOption[] };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: "Gagal memuat daftar rumah sakit: " + msg };
+  }
+}
+
+// ============================================================================
+// TIPE DATA DOKTER TUJUAN (hasil rpc list_active_doctors)
+// ============================================================================
+
+export interface DokterOption {
+  staff_id: string;
+  full_name: string;
+  specialization: string | null;
+}
+
+export interface ListDokterResponse {
+  success: boolean;
+  results?: DokterOption[];
+  error?: string;
+}
+
+// ============================================================================
+// SERVER ACTION: DAFTAR DOKTER AKTIF DI RS TUJUAN
+// ============================================================================
+
+export async function listDokterAction(facilityId: string): Promise<ListDokterResponse> {
+  if (!facilityId) {
+    return { success: true, results: [] };
+  }
+
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase.rpc("list_active_doctors", {
+      p_facility_id: facilityId,
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const results = Array.isArray(data) ? data : [];
+    return { success: true, results: results as DokterOption[] };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: "Gagal memuat daftar dokter: " + msg };
+  }
+}
+
+// ============================================================================
 // SKEMA VALIDASI ZOD DI SISI SERVER
 // ============================================================================
 
 const BuatRujukanSchema = z.object({
   patientId: z.string().uuid("ID Pasien tidak valid"),
+  familyMemberId: z.string().uuid().nullable().optional(),
   destinationFacilityId: z.string().uuid("Fasilitas kesehatan tujuan wajib dipilih"),
   destinationDoctorId: z.string().uuid().nullable().optional(),
   poli: z.string().min(2, "Poli spesialis tujuan wajib diisi"),
@@ -70,7 +235,7 @@ export async function buatRujukanAction(payload: unknown): Promise<BuatRujukanRe
       };
     }
 
-    // 3. Verifikasi staf faskes: harus dokter atau petugas, status aktif, dan punya facility_id
+    // 3. Verifikasi staf faskes: harus dokter, status aktif, dan punya facility_id
     const { data: staff, error: staffError } = await supabase
       .from("facility_staff")
       .select("id, profile_id, facility_id, staff_role, status")
@@ -126,25 +291,14 @@ export async function buatRujukanAction(payload: unknown): Promise<BuatRujukanRe
       };
     }
 
-    // 4. Verifikasi bahwa pasien terdaftar di tabel patients
-    const { data: patient, error: patientError } = await supabase
-      .from("patients")
-      .select("id")
-      .eq("id", data.patientId)
-      .maybeSingle();
-
-    if (patientError || !patient) {
-      return {
-        success: false,
-        error: "Pasien tujuan tidak ditemukan pada basis data sistem Lytera.",
-      };
-    }
-
     // 5. Insert baris baru ke tabel 'referrals'
+    //    Database guard (trg_guard_referrals) akan memaksa status='diajukan'
+    //    dan memvalidasi destination_facility_id harus rumah_sakit aktif.
     const { data: referral, error: referralError } = await supabase
       .from("referrals")
       .insert({
         patient_id: data.patientId,
+        family_member_id: data.familyMemberId || null,
         origin_facility_id: staff.facility_id,
         destination_facility_id: data.destinationFacilityId,
         destination_doctor_id: data.destinationDoctorId || null,
@@ -161,11 +315,13 @@ export async function buatRujukanAction(payload: unknown): Promise<BuatRujukanRe
     if (referralError || !referral) {
       return {
         success: false,
-        error: "Gagal menyimpan data rujukan ke Supabase: " + (referralError?.message || "Kesalahan database"),
+        error:
+          "Gagal menyimpan data rujukan: " +
+          (referralError?.message || "Kesalahan database"),
       };
     }
 
-    // 6. Insert baris pencatatan riwayat ke 'referral_events'
+    // 6. Insert riwayat ke 'referral_events'
     const { error: eventError } = await supabase.from("referral_events").insert({
       referral_id: referral.id,
       status: "diajukan",
@@ -174,8 +330,8 @@ export async function buatRujukanAction(payload: unknown): Promise<BuatRujukanRe
     });
 
     if (eventError) {
+      // Tidak membatalkan — rujukan sudah tersimpan
       console.error("Peringatan: Gagal mencatat referral_event:", eventError.message);
-      // Rujukan utama sudah tersimpan, tidak membatalkan proses keseluruhan
     }
 
     return {

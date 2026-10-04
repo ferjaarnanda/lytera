@@ -417,8 +417,8 @@ export default function VerifikasiFaskesPage() {
   // ──────────────────────────────────────────────────────────────────────────
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] text-[#464858]" data-navbar-tone="light">
-        <Navbar variant="dinkes" userName="Memuat Profil..." userRole="Dinas Kesehatan" />
+      <div className="min-h-screen text-[#464858]" data-navbar-tone="light">
+        <Navbar variant="dinkes" userName="Memuat Profil..." userRole="Dinas Kesehatan" forceGlass={true} />
         <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-16">
           <Card variant="white" className="p-12 text-center shadow-sm">
             <div className="w-12 h-12 rounded-full bg-[#EBF2F6] flex items-center justify-center mx-auto mb-4 animate-pulse">
@@ -436,8 +436,8 @@ export default function VerifikasiFaskesPage() {
 
   if (accessDenied || !currentUser) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] text-[#464858]" data-navbar-tone="light">
-        <Navbar variant="landing" />
+      <div className="min-h-screen text-[#464858]" data-navbar-tone="light">
+        <Navbar variant="landing" forceGlass={true} />
         <main className="max-w-xl mx-auto px-4 sm:px-6 pt-28 pb-16">
           <Card variant="white" className="p-8 sm:p-10 text-center shadow-sm border border-[#E2E8F0]">
             <div className="w-12 h-12 rounded-full bg-[#FDECEA] flex items-center justify-center mx-auto mb-4 text-[#B3261E]">
@@ -462,13 +462,14 @@ export default function VerifikasiFaskesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#464858]" data-navbar-tone="light">
+    <div className="min-h-screen text-[#464858]" data-navbar-tone="light">
       {/* Top Navbar */}
       <Navbar
         variant="dinkes"
         activeItem="Verifikasi Faskes"
         userName={currentUser.full_name}
         userRole="Dinas Kesehatan"
+        forceGlass={true}
       />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-16">

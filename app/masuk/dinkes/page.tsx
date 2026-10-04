@@ -71,10 +71,10 @@ export default function MasukDinkesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF5F2] text-[#464858] pb-16">
+    <div className="min-h-screen text-[#464858] pb-16">
       {/* Top Navigation: Logo kiri, BackButton kanan */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 flex items-center justify-between">
-        <Logo tone="light" size="sm" />
+        <Logo tone="dark" size="sm" />
         <BackButton href="/" label="Kembali ke Beranda" />
       </div>
 
