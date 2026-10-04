@@ -4,9 +4,9 @@
 
 | Tahap | Status | Commit | Catatan |
 |---|---|---|---|
-| Tahap 0: Persiapan | SELESAI | current | Verifikasi proyek Supabase lytera via MCP. Uji database impersonasi (a)-(e) lolos 100%. Security advisors diperiksa. |
-| Tahap 1: Perbaiki Buat Rujukan | SELESAI | current | Pencarian pasien via RPC find_patient_by_nik, FacilityCombobox via list_active_facilities, list_active_doctors, insert rujukan + event, dan daftar rujukan keluar via list_facility_referrals. Teruji nyata via MCP & UI. |
-| Tahap 2: Halaman Staf | BELUM | - | Riwayat Rujukan & Rujukan Masuk RS, aksi terima/jadwalkan/selesai/tolak |
+| Tahap 0: Persiapan | SELESAI | f6b836c | Verifikasi proyek Supabase lytera via MCP. Uji database impersonasi (a)-(e) lolos 100%. Security advisors diperiksa. |
+| Tahap 1: Perbaiki Buat Rujukan | SELESAI | f6b836c | Pencarian pasien via RPC find_patient_by_nik, FacilityCombobox via list_active_facilities, list_active_doctors, insert rujukan + event, dan daftar rujukan keluar via list_facility_referrals. Teruji nyata via MCP & UI. |
+| Tahap 2: Halaman Staf | SELESAI | current | Riwayat Rujukan faskes primer (keluar), Rujukan Masuk RS, filter status, tab prioritas, panel detail dengan linimasa timeline (list_referral_events), dan aksi proses rujukan (terima, tolak, jadwalkan, selesai) teruji nyata dua sisi. |
 | Tahap 3: Halaman Pasien | BELUM | - | Rujukan Saya, Rujukan Aktif dashboard, Izin Akses |
 | Tahap 4: Token Akses, Riwayat Medis, Rekam Medis | BELUM | - | Skema token 6 digit hash, audit log, RPC security definer |
 | Tahap 5: Penyesuaian Teks Verifikasi Administrasi | BELUM | - | Penyesuaian copy opsional non-BPJS |

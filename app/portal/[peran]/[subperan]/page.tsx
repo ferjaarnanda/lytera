@@ -178,8 +178,14 @@ export default function PortalSimulasiPage({ params }: PageProps) {
                       </Link>
                     </div>
                   ) : (
-                    <div className="text-3xl font-bold text-[#0F3040] tabular-nums">
-                      14 <span className="text-xs font-normal text-slate-500">pasien hari ini</span>
+                    <div className="pt-2">
+                      <Link
+                        href={`/portal/${peran}/${subperan}/rujukan`}
+                        className="w-full py-2.5 px-4 rounded-[12px] bg-[#0F3040] text-white text-xs font-semibold hover:bg-[#0A2230] transition-colors text-center inline-flex items-center justify-center gap-1.5 shadow-2xs"
+                      >
+                        <Building className="w-3.5 h-3.5" />
+                        <span>Kelola Rujukan Masuk &rarr;</span>
+                      </Link>
                     </div>
                   )}
                 </div>

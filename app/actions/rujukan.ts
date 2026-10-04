@@ -346,3 +346,173 @@ export async function buatRujukanAction(payload: unknown): Promise<BuatRujukanRe
     };
   }
 }
+
+// ============================================================================
+// TIPE & ACTION: TIMELINE REFERRAL EVENTS
+// ============================================================================
+
+export interface ReferralEventItem {
+  id: string;
+  status: string;
+  catatan: string;
+  created_at: string;
+  actor_name: string | null;
+}
+
+export async function listReferralEventsAction(referralId: string): Promise<{
+  success: boolean;
+  events?: ReferralEventItem[];
+  error?: string;
+}> {
+  if (!referralId) return { success: true, events: [] };
+
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("list_referral_events", {
+      p_referral_id: referralId,
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, events: (data as ReferralEventItem[]) || [] };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: "Gagal memuat riwayat rujukan: " + msg };
+  }
+}
+
+// ============================================================================
+// SERVER ACTION: PROSES STATUS RUJUKAN OLEH RUMAH SAKIT
+// ============================================================================
+
+const ProsesRujukanSchema = z
+  .object({
+    referralId: z.string().uuid("ID Rujukan tidak valid"),
+    action: z.enum(["terima", "tolak", "jadwalkan", "selesai"]),
+    catatan: z.string().optional(),
+    jadwalPemeriksaan: z.string().optional(),
+    destinationDoctorId: z.string().uuid().nullable().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.action === "tolak" && (!data.catatan || data.catatan.trim().length === 0)) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Alasan penolakan rujukan wajib diisi",
+      path: ["catatan"],
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.action === "jadwalkan" && (!data.jadwalPemeriksaan || data.jadwalPemeriksaan.trim().length === 0)) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Tanggal dan jam jadwal pemeriksaan wajib diisi",
+      path: ["jadwalPemeriksaan"],
+    }
+  );
+
+export interface ProsesRujukanResult {
+  success: boolean;
+  error?: string;
+  fieldErrors?: Record<string, string>;
+}
+
+export async function prosesRujukanAction(payload: unknown): Promise<ProsesRujukanResult> {
+  if (!payload || typeof payload !== "object") {
+    return { success: false, error: "Data tindakan rujukan tidak valid" };
+  }
+
+  const parsed = ProsesRujukanSchema.safeParse(payload);
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    parsed.error.issues.forEach((issue) => {
+      const key = issue.path[0];
+      if (key) fieldErrors[String(key)] = issue.message;
+    });
+    return {
+      success: false,
+      error: fieldErrors.catatan || fieldErrors.jadwalPemeriksaan || "Data tindakan tidak valid",
+      fieldErrors,
+    };
+  }
+
+  const { referralId, action, catatan, jadwalPemeriksaan, destinationDoctorId } = parsed.data;
+
+  try {
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { success: false, error: "Sesi login kedaluwarsa. Silakan masuk kembali." };
+    }
+
+    let targetStatus: "diterima" | "ditolak" | "dijadwalkan" | "selesai";
+    let defaultCatatan = "";
+
+    if (action === "terima") {
+      targetStatus = "diterima";
+      defaultCatatan = catatan?.trim() || "Rujukan diterima oleh rumah sakit";
+    } else if (action === "tolak") {
+      targetStatus = "ditolak";
+      defaultCatatan = catatan!.trim();
+    } else if (action === "jadwalkan") {
+      targetStatus = "dijadwalkan";
+      defaultCatatan = catatan?.trim() || `Pemeriksaan dijadwalkan pada ${jadwalPemeriksaan}`;
+    } else {
+      targetStatus = "selesai";
+      defaultCatatan = catatan?.trim() || "Pemeriksaan dan tindakan spesialis selesai";
+    }
+
+    // Siapkan update rujukan
+    const updatePayload: Record<string, unknown> = { status: targetStatus };
+    if (action === "jadwalkan") {
+      updatePayload.jadwal_pemeriksaan = jadwalPemeriksaan;
+      if (destinationDoctorId !== undefined) {
+        updatePayload.destination_doctor_id = destinationDoctorId;
+      }
+    }
+
+    const { error: updateError } = await supabase
+      .from("referrals")
+      .update(updatePayload)
+      .eq("id", referralId);
+
+    if (updateError) {
+      return {
+        success: false,
+        error: "Gagal memperbarui status rujukan: " + updateError.message,
+      };
+    }
+
+    // Catat riwayat event
+    const { error: eventError } = await supabase.from("referral_events").insert({
+      referral_id: referralId,
+      status: targetStatus,
+      catatan: defaultCatatan,
+      created_by: user.id,
+    });
+
+    if (eventError) {
+      console.error("Gagal mencatat referral_event:", eventError.message);
+    }
+
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: "Terjadi kesalahan sistem: " + msg };
+  }
+}
+
