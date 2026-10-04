@@ -5,9 +5,9 @@
 | Tahap | Status | Commit | Catatan |
 |---|---|---|---|
 | Tahap 0: Persiapan | SELESAI | f6b836c | Verifikasi proyek Supabase lytera via MCP. Uji database impersonasi (a)-(e) lolos 100%. Security advisors diperiksa. |
-| Tahap 1: Perbaiki Buat Rujukan | SELESAI | f6b836c | Pencarian pasien via RPC find_patient_by_nik, FacilityCombobox via list_active_facilities, list_active_doctors, insert rujukan + event, dan daftar rujukan keluar via list_facility_referrals. Teruji nyata via MCP & UI. |
-| Tahap 2: Halaman Staf | SELESAI | current | Riwayat Rujukan faskes primer (keluar), Rujukan Masuk RS, filter status, tab prioritas, panel detail dengan linimasa timeline (list_referral_events), dan aksi proses rujukan (terima, tolak, jadwalkan, selesai) teruji nyata dua sisi. |
-| Tahap 3: Halaman Pasien | BELUM | - | Rujukan Saya, Rujukan Aktif dashboard, Izin Akses |
+| Tahap 1: Perbaiki Buat Rujukan | SELESAI | f6b836c | find_patient_by_nik(NIK 1111…): mengembalikan iwak peyek, NIK dimasker, log tercatat di patient_lookup_logs (id dafa5d21, found=true, dokter dr. Andi, faskes puskemas kedung rejo). list_active_facilities('rumah_sakit','col'): mengembalikan rumah sakit colombia. Semua terbukti via MCP impersonasi tanpa rollback. |
+| Tahap 2: Halaman Staf | SELESAI | 954a5a2 | Riwayat Rujukan faskes primer (keluar), Rujukan Masuk RS, filter status, tab prioritas, panel detail dengan linimasa timeline (list_referral_events), dan aksi proses rujukan (terima, tolak, jadwalkan, selesai) teruji nyata dua sisi. |
+| Tahap 3: Halaman Pasien | BELUM | - | Kode sudah ditulis (PasienDashboard.tsx + listMyReferralsAction + listMyLookupLogsAction), build lolos, belum di-commit. Berikutnya: commit kode Tahap 3, uji impersonasi list_my_referrals pasien iwak peyek, cek RujukanCard di UI. |
 | Tahap 4: Token Akses, Riwayat Medis, Rekam Medis | BELUM | - | Skema token 6 digit hash, audit log, RPC security definer |
 | Tahap 5: Penyesuaian Teks Verifikasi Administrasi | BELUM | - | Penyesuaian copy opsional non-BPJS |
 

@@ -12,6 +12,9 @@ import {
   AlertTriangle,
   RotateCw,
   Clock,
+  Eye,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardInner } from "@/components/Card";
@@ -20,6 +23,12 @@ import { StatusIcon } from "@/components/StatusIcon";
 import { LogoutButton } from "@/components/LogoutButton";
 import { Navbar } from "@/components/Navbar";
 import { Reveal } from "@/components/Reveal";
+import {
+  listMyReferralsAction,
+  listMyLookupLogsAction,
+  MyReferralItem,
+  LookupLogItem,
+} from "@/app/actions/rujukan";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Tipe Data Domain Supabase
@@ -86,7 +95,6 @@ const BULAN_NAMES = [
 
 function formatDateIndo(dateStr?: string | null): string {
   if (!dateStr) return "-";
-  // Tangani format ISO YYYY-MM-DD
   const parts = dateStr.split("T")[0].split("-");
   if (parts.length === 3) {
     const y = parseInt(parts[0], 10);
@@ -97,6 +105,15 @@ function formatDateIndo(dateStr?: string | null): string {
     }
   }
   return dateStr;
+}
+
+function formatDateTimeIndo(dtStr?: string | null): string {
+  if (!dtStr) return "-";
+  const d = new Date(dtStr);
+  if (isNaN(d.getTime())) return dtStr;
+  const tgl = `${d.getDate()} ${BULAN_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+  const jam = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+  return `${tgl}, ${jam}`;
 }
 
 function maskNik(nik?: string | null): string {
@@ -127,6 +144,145 @@ function formatRelation(relation?: string | null): string {
   return "Keluarga";
 }
 
+// Warna badge status
+const STATUS_BADGE: Record<string, "selesai" | "proses" | "bahaya" | "info"> = {
+  diajukan: "proses",
+  diterima: "info",
+  dijadwalkan: "info",
+  selesai: "selesai",
+  ditolak: "bahaya",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  diajukan: "Diajukan",
+  diterima: "Diterima",
+  dijadwalkan: "Dijadwalkan",
+  selesai: "Selesai",
+  ditolak: "Ditolak",
+};
+
+const PRIORITY_BADGE: Record<string, "bahaya" | "proses" | "info"> = {
+  gawat_darurat: "bahaya",
+  urgent: "proses",
+  elektif: "info",
+};
+
+const PRIORITY_LABEL: Record<string, string> = {
+  gawat_darurat: "Gawat Darurat",
+  urgent: "Urgent",
+  elektif: "Elektif",
+};
+
+function isRujukanAktif(status: string): boolean {
+  return ["diajukan", "diterima", "dijadwalkan"].includes(status);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Sub-Komponen: Kartu Satu Rujukan
+// ──────────────────────────────────────────────────────────────────────────────
+
+function RujukanCard({ ref: _ref, item }: { ref?: never; item: MyReferralItem }) {
+  const [open, setOpen] = useState(false);
+  const statusVariant = STATUS_BADGE[item.status] ?? "info";
+  const priorityVariant = PRIORITY_BADGE[item.priority] ?? "info";
+
+  return (
+    <CardInner
+      variant="cream"
+      className="rounded-[18px] border border-[#E2E8F0] overflow-hidden"
+    >
+      {/* Header baris ringkasan */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full text-left px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+      >
+        <div className="flex items-start gap-3 min-w-0">
+          <StatusIcon
+            status={
+              item.status === "selesai"
+                ? "selesai"
+                : item.status === "ditolak"
+                ? "error"
+                : "proses"
+            }
+            size="md"
+            className="shrink-0 mt-0.5"
+          />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+              <Badge variant={statusVariant} showDot>
+                {STATUS_LABEL[item.status] ?? item.status}
+              </Badge>
+              <Badge variant={priorityVariant}>
+                {PRIORITY_LABEL[item.priority] ?? item.priority}
+              </Badge>
+              {item.is_family && (
+                <Badge variant="info">Untuk: {item.subject_name}</Badge>
+              )}
+            </div>
+            <span className="text-sm font-bold text-[#0F3040] block truncate">
+              {item.destination_name}
+            </span>
+            <span className="text-xs text-slate-500">
+              Dari: {item.origin_name} · {formatDateIndo(item.created_at)}
+            </span>
+          </div>
+        </div>
+        <div className="shrink-0 text-slate-400">
+          {open ? (
+            <ChevronUp className="w-4 h-4" />
+          ) : (
+            <ChevronDown className="w-4 h-4" />
+          )}
+        </div>
+      </button>
+
+      {/* Detail expandable */}
+      {open && (
+        <div className="px-5 pb-5 border-t border-[#E2E8F0]/70 pt-4 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div>
+              <span className="text-[11px] text-slate-500 uppercase tracking-wide block">
+                Poli Tujuan
+              </span>
+              <span className="font-semibold text-[#0F3040]">
+                {item.poli || "-"}
+              </span>
+            </div>
+            <div>
+              <span className="text-[11px] text-slate-500 uppercase tracking-wide block">
+                Dokter Tujuan
+              </span>
+              <span className="font-semibold text-[#0F3040]">
+                {item.destination_doctor || "Tanpa dokter tertentu"}
+              </span>
+            </div>
+            <div>
+              <span className="text-[11px] text-slate-500 uppercase tracking-wide block">
+                Diagnosis (ICD-10)
+              </span>
+              <span className="font-semibold text-[#0F3040]">
+                {item.diagnosis_icd10 || "-"}
+              </span>
+            </div>
+            {item.jadwal_pemeriksaan && (
+              <div>
+                <span className="text-[11px] text-slate-500 uppercase tracking-wide block">
+                  Jadwal Pemeriksaan
+                </span>
+                <span className="font-semibold text-[#0F3040]">
+                  {formatDateTimeIndo(item.jadwal_pemeriksaan)}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </CardInner>
+  );
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Komponen Utama PasienDashboard
 // ──────────────────────────────────────────────────────────────────────────────
@@ -145,6 +301,8 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [patient, setPatient] = useState<PatientData | null>(null);
   const [familyMembers, setFamilyMembers] = useState<FamilyMemberData[]>([]);
+  const [referrals, setReferrals] = useState<MyReferralItem[]>([]);
+  const [lookupLogs, setLookupLogs] = useState<LookupLogItem[]>([]);
 
   const handleRefetch = () => {
     setLoading(true);
@@ -169,7 +327,10 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
 
         if (userError || !user) {
           // Mode preview / testing visual: jika URL memiliki ?demo=1
-          const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+          const urlParams =
+            typeof window !== "undefined"
+              ? new URLSearchParams(window.location.search)
+              : null;
           if (urlParams?.get("demo") === "1") {
             setProfile({
               id: "demo-user-id",
@@ -263,10 +424,28 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
           if (isCancelled) return;
 
           if (membersError) {
-            console.error("Gagal membaca family_members:", membersError.message);
+            console.error(
+              "Gagal membaca family_members:",
+              membersError.message
+            );
           } else if (membersData) {
             setFamilyMembers(membersData as FamilyMemberData[]);
           }
+        }
+
+        // 6. Muat rujukan saya via server action (RPC list_my_referrals)
+        const [refResult, logsResult] = await Promise.all([
+          listMyReferralsAction(),
+          listMyLookupLogsAction(),
+        ]);
+
+        if (isCancelled) return;
+
+        if (refResult.success) {
+          setReferrals(refResult.referrals ?? []);
+        }
+        if (logsResult.success) {
+          setLookupLogs(logsResult.logs ?? []);
         }
       } catch (err: unknown) {
         if (!isCancelled) {
@@ -431,6 +610,8 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
 
   // ── 4. STATUS 'aktif': DASHBOARD PASIEN ASLI ──
   const isKeluarga = subperan === "keluarga" || profile.sub_role === "keluarga";
+  const rujukanAktif = referrals.filter((r) => isRujukanAktif(r.status));
+  const rujukanLalu = referrals.filter((r) => !isRujukanAktif(r.status));
 
   return (
     <div className="min-h-screen text-[#464858]" data-navbar-tone="light" data-portal-wallpaper="true">
@@ -642,14 +823,11 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
           </Reveal>
         )}
 
-        {/* ── STATUS KOSONG JUJUR: TOKEN DI ATAS (RINGKAS), RUJUKAN DI BAWAH (UTAMA) ── */}
+        {/* ── TOKEN AKSES & RUJUKAN AKTIF ── */}
         <Reveal delayMs={200}>
-          <div className="flex flex-col gap-6">
-            {/* 1. KARTU TOKEN AKSES MEDIS (DI ATAS - LEBIH RINGKAS & PENDEK) */}
-            <Card
-              variant="white"
-              className="p-5 sm:p-6 rounded-[22px] border border-[#E2E8F0] shadow-sm"
-            >
+          <div className="flex flex-col gap-6 mb-8">
+            {/* 1. KARTU TOKEN AKSES MEDIS */}
+            <Card variant="white" className="p-5 sm:p-6 rounded-[22px] border border-[#E2E8F0] shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-[#EDF7F2] flex items-center justify-center text-[#1B6B4D] shrink-0">
@@ -675,29 +853,33 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
               </div>
             </Card>
 
-            {/* 2. KARTU RUJUKAN AKTIF (DI BAWAH - LEBIH TINGGI & MENONJOL SEBAGAI UTAMA) */}
-            <Card
-              variant="white"
-              className="p-6 sm:p-8 rounded-[24px] border border-[#E2E8F0] shadow-sm flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-2xl bg-[#FAF5F2] flex items-center justify-center text-[#8F5A4E] shrink-0">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-[#0F3040]">Rujukan Aktif</h2>
-                    <p className="text-xs text-slate-500">
-                      Surat rujukan klinis dan antrean ke rumah sakit lanjutan.
-                    </p>
-                  </div>
+            {/* 2. KARTU RUJUKAN AKTIF — data nyata */}
+            <Card variant="white" className="p-6 sm:p-8 rounded-[24px] border border-[#E2E8F0] shadow-sm">
+              <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#E2E8F0]">
+                <div className="w-10 h-10 rounded-2xl bg-[#FAF5F2] flex items-center justify-center text-[#8F5A4E] shrink-0">
+                  <FileText className="w-5 h-5" />
                 </div>
+                <div>
+                  <h2 className="text-lg font-bold text-[#0F3040]">Rujukan Aktif</h2>
+                  <p className="text-xs text-slate-500">
+                    Surat rujukan klinis dan antrean ke rumah sakit lanjutan.
+                  </p>
+                </div>
+                {rujukanAktif.length > 0 && (
+                  <Badge variant="proses" showDot className="ml-auto">
+                    {rujukanAktif.length} aktif
+                  </Badge>
+                )}
+              </div>
 
-                {/* Status Kosong yang Jujur */}
-                <CardInner
-                  variant="cream"
-                  className="p-6 sm:p-8 rounded-[20px] border border-[#E2E8F0] text-center my-3"
-                >
+              {rujukanAktif.length > 0 ? (
+                <div className="space-y-3">
+                  {rujukanAktif.map((item) => (
+                    <RujukanCard key={item.id} item={item} />
+                  ))}
+                </div>
+              ) : (
+                <CardInner variant="cream" className="p-6 sm:p-8 rounded-[20px] border border-[#E2E8F0] text-center">
                   <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center mx-auto mb-2.5 text-slate-400 border border-[#E2E8F0]">
                     <FileText className="w-5 h-5" />
                   </div>
@@ -708,14 +890,98 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
                     (Puskesmas atau Klinik).
                   </p>
                 </CardInner>
-              </div>
+              )}
 
-              <div className="pt-3.5 border-t border-[#E2E8F0]/70 flex items-center justify-between text-xs text-slate-400 mt-2">
+              <div className="pt-3.5 border-t border-[#E2E8F0]/70 flex items-center justify-between text-xs text-slate-400 mt-4">
                 <span>Interkoneksi Sistem: Realtime</span>
                 <span className="font-semibold text-[#1B6B4D]">● Siap Menerima</span>
               </div>
             </Card>
           </div>
+        </Reveal>
+
+        {/* ── RIWAYAT RUJUKAN (selesai & ditolak) ── */}
+        {rujukanLalu.length > 0 && (
+          <Reveal delayMs={250}>
+            <Card variant="white" className="p-6 sm:p-8 shadow-sm mb-8 border border-[#E2E8F0]">
+              <div className="flex items-center gap-3 pb-4 mb-5 border-b border-[#E2E8F0]">
+                <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-[#0F3040]">Riwayat Rujukan</h2>
+                  <p className="text-xs text-slate-500">
+                    Rujukan yang telah selesai atau ditolak.
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {rujukanLalu.map((item) => (
+                  <RujukanCard key={item.id} item={item} />
+                ))}
+              </div>
+            </Card>
+          </Reveal>
+        )}
+
+        {/* ── IZIN AKSES: SIAPA YANG MENCARI DATA SAYA ── */}
+        <Reveal delayMs={300}>
+          <Card variant="white" className="p-6 sm:p-8 shadow-sm border border-[#E2E8F0]">
+            <div className="flex items-center gap-3 pb-4 mb-6 border-b border-[#E2E8F0]">
+              <div className="w-10 h-10 rounded-2xl bg-[#EBF2F6] flex items-center justify-center text-[#0F3040] shrink-0">
+                <Eye className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-[#0F3040]">Izin Akses & Pencarian</h2>
+                <p className="text-xs text-slate-500">
+                  Daftar dokter yang pernah mencari data identitasmu lewat sistem Lytera.
+                </p>
+              </div>
+            </div>
+
+            {lookupLogs.length > 0 ? (
+              <div className="space-y-2">
+                {lookupLogs.map((log, idx) => (
+                  <CardInner
+                    key={idx}
+                    variant="cream"
+                    className="px-4 py-3 rounded-[14px] border border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0">
+                      <span className="text-sm font-semibold text-[#0F3040] block">
+                        {log.doctor_name}
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        {log.facility_name}
+                        {log.subject_name ? ` · Data: ${log.subject_name}` : ""}
+                      </span>
+                      {log.purpose && (
+                        <span className="text-xs text-slate-400 italic block">
+                          Keperluan: {log.purpose}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] font-mono text-slate-400 shrink-0 whitespace-nowrap">
+                      {formatDateTimeIndo(log.created_at)}
+                    </span>
+                  </CardInner>
+                ))}
+              </div>
+            ) : (
+              <CardInner variant="cream" className="p-8 text-center border border-[#E2E8F0]">
+                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center mx-auto mb-2.5 text-slate-400 border border-[#E2E8F0]">
+                  <Eye className="w-5 h-5" />
+                </div>
+                <p className="text-sm font-semibold text-[#0F3040]">
+                  Belum ada pencarian data
+                </p>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed max-w-xs mx-auto">
+                  Setiap kali dokter mencari data identitasmu lewat sistem Lytera, riwayatnya akan
+                  tercatat di sini secara otomatis.
+                </p>
+              </CardInner>
+            )}
+          </Card>
         </Reveal>
       </main>
     </div>

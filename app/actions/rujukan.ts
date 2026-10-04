@@ -516,3 +516,81 @@ export async function prosesRujukanAction(payload: unknown): Promise<ProsesRujuk
   }
 }
 
+// ============================================================================
+// TIPE & ACTION: RUJUKAN SAYA (PASIEN)
+// ============================================================================
+
+export interface MyReferralItem {
+  id: string;
+  status: string;
+  priority: string;
+  poli: string;
+  diagnosis_icd10: string;
+  jadwal_pemeriksaan: string | null;
+  created_at: string;
+  origin_name: string;
+  destination_name: string;
+  destination_doctor: string | null;
+  subject_name: string;   // nama pasien atau anggota keluarga
+  is_family: boolean;
+}
+
+export async function listMyReferralsAction(): Promise<{
+  success: boolean;
+  referrals?: MyReferralItem[];
+  error?: string;
+}> {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !user) {
+      return { success: false, error: "Sesi login tidak ditemukan." };
+    }
+
+    const { data, error } = await supabase.rpc("list_my_referrals");
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, referrals: (data as MyReferralItem[]) || [] };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: "Gagal memuat rujukan: " + msg };
+  }
+}
+
+// ============================================================================
+// TIPE & ACTION: LOG PENCARIAN (PASIEN — siapa yang mencari data saya)
+// ============================================================================
+
+export interface LookupLogItem {
+  created_at: string;
+  doctor_name: string;
+  facility_name: string;
+  subject_name: string;  // pasien atau anggota keluarga yang dicari
+  purpose: string | null;
+}
+
+export async function listMyLookupLogsAction(): Promise<{
+  success: boolean;
+  logs?: LookupLogItem[];
+  error?: string;
+}> {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !user) {
+      return { success: false, error: "Sesi login tidak ditemukan." };
+    }
+
+    const { data, error } = await supabase.rpc("list_my_lookup_logs");
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, logs: (data as LookupLogItem[]) || [] };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: "Gagal memuat log pencarian: " + msg };
+  }
+}

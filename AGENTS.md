@@ -3,8 +3,9 @@
 Platform rujukan digital dan rekam medis berbasis izin pasien (proyek lomba). Next.js 16, TypeScript, Tailwind v4, Supabase. Antarmuka bahasa Indonesia sehari-hari. Semua data adalah data uji.
 
 ## Aturan kerja (hemat kuota)
-- Satu tahap per giliran. Selesai satu tahap: jalankan lint dan build SEKALI, git commit, perbarui PROGRESS.md, lanjut ke tahap berikutnya tanpa minta konfirmasi.
-- Jangan membaca ulang file besar tanpa perlu. Jangan menulis ulang file yang sudah jalan.
+- SATU tahap per sesi, lalu BERHENTI. Selesai: lint dan build SEKALI, git commit, perbarui PROGRESS.md, tulis "Berikutnya", stop. Jangan lanjut ke tahap lain.
+- Batasi sesi: maksimal sekitar 4 file berubah. Tahap terlalu besar? Kerjakan sub-bagian pertama yang utuh, commit, catat sisanya, stop.
+- Edit kecil, bukan menulis ulang file utuh. Jangan uji browser berulang: satu uji akhir untuk jalur utama. Uji database lewat SQL impersonasi.
 - Jangan berhenti dengan file setengah jadi: selesaikan atau kembalikan (git checkout).
 - Kuota hampir habis: berhenti di checkpoint bersih, tulis "Berikutnya" di PROGRESS.md.
 - Laporan akhir singkat: apa yang berubah, hasil uji nyata, apa yang belum. Jangan klaim selesai tanpa bukti uji.
