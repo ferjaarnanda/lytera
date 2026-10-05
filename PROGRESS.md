@@ -7,8 +7,9 @@
 | Tahap 0: Persiapan | SELESAI | f6b836c | Verifikasi proyek Supabase lytera via MCP. Uji database impersonasi (a)-(e) lolos 100%. Security advisors diperiksa. |
 | Tahap 1: Perbaiki Buat Rujukan | SELESAI | f6b836c | find_patient_by_nik(NIK 1111…): mengembalikan iwak peyek, NIK dimasker, log tercatat di patient_lookup_logs (id dafa5d21, found=true, dokter dr. Andi, faskes puskemas kedung rejo). list_active_facilities('rumah_sakit','col'): mengembalikan rumah sakit colombia. Semua terbukti via MCP impersonasi tanpa rollback. |
 | Tahap 2: Halaman Staf | SELESAI | c0b0f56 | Riwayat Rujukan faskes primer (keluar), Rujukan Masuk RS, filter status, tab prioritas, panel detail dengan linimasa timeline (list_referral_events), dan aksi proses rujukan (terima, tolak, jadwalkan, selesai) teruji nyata dua sisi via SQL impersonasi. Fallback admin_id ditambahkan ke rujukan/page.tsx agar admin RS Colombia dapat langsung memproses rujukan di UI. |
-| Tahap 3: Halaman Pasien | SELESAI | 488ad4d | Rujukan Saya (list_my_referrals), kartu Rujukan Aktif di dashboard (menampilkan rujukan aktif terbaru dengan timeline lengkap), tab navigasi Beranda / Rujukan Saya / Izin Akses, dan linimasa aktivitas rujukan (list_referral_events) teruji nyata via SQL impersonasi pasien Iwak Peyek (3cfd180a). Akun pasien siap uji UI. |
-| Tahap 4: Token Akses, Riwayat Medis, Rekam Medis | BELUM | - | Berikutnya: Skema token 6 digit hash (pgcrypto), tabel kunjungan medis minimal, audit log akses, RPC SECURITY DEFINER, UI buat & cabut token pasien, dokter buka rekam medis dengan token. |
+| Tahap 3: Halaman Pasien | SELESAI | 44ef984 | Rujukan Saya (list_my_referrals), kartu Rujukan Aktif di dashboard (menampilkan rujukan aktif terbaru dengan timeline lengkap), tab navigasi Beranda / Rujukan Saya / Izin Akses, dan linimasa aktivitas rujukan (list_referral_events) teruji nyata via SQL impersonasi pasien Iwak Peyek (3cfd180a). Akun pasien siap uji UI. |
+| Tahap 4a: Skema, Token & Rekam Medis (Database) | SELESAI | 9fe6ad0 | Tabel patient_access_tokens (hash crypt, expiry 60m, limit 5 salah, revoke), medical_records, medical_record_access_logs. RLS aktif & direct access revoked. RPC SECURITY DEFINER lengkap. Seluruh 9 skenario uji impersonasi SQL lolos 100%. Security advisors bersih. |
+| Tahap 4b: Antarmuka Pasien & Dokter (UI) | BELUM | - | Berikutnya: UI Pasien di tab Izin Akses (buat token 6 digit, hitung mundur sisa waktu, tombol cabut token, riwayat audit log akses) dan UI Dokter di alur Rujukan Masuk RS untuk verifikasi token serta melihat/menambah kunjungan medis. |
 | Tahap 5: Penyesuaian Teks Verifikasi Administrasi | BELUM | - | Penyesuaian copy opsional non-BPJS |
 
 ---
@@ -140,3 +141,32 @@
 ### 15. Kualitas & Validasi Akhir
 - [x] `npm run lint` lolos dengan 0 error dan 0 warning.
 - [x] `npm run build` lolos 100% kompilasi Next.js (Turbopack) & pemeriksaan tipe TypeScript.
+
+### 16. Tahap 4a: Skema Token Otorisasi, Kunjungan Rekam Medis Minimal, dan Audit Log Akses (Selesai)
+- [x] **Skema Database & Migrasi**:
+  - `patient_access_tokens`: Menyimpan hash token 6 digit via `extensions.crypt(..., gen_salt('bf', 10))`. Kedaluwarsa 60 menit (`expires_at`), pelacakan batas 5 percobaan gagal (`failed_attempts`, `is_locked`), dan pencabutan mandiri (`revoked_at`).
+  - `medical_records`: Kunjungan medis minimal (`patient_id`, `family_member_id`, `facility_id`, `doctor_name`, `doctor_id`, `tanggal`, `diagnosis_icd10`, `ringkasan`, `referral_id`).
+  - `medical_record_access_logs`: Audit log append-only mencatat identitas pemanggil, faskes, subjek, hasil akses (`berhasil`, `token_salah`, `token_kedaluwarsa`, `token_dicabut`, `token_terkunci`, `tanpa_token`), catatan alasan, dan timestamp.
+- [x] **Keamanan & Isolasi RLS**:
+  - RLS diaktifkan di ketiga tabel baru dan akses langsung di-revoke dari `anon`, `authenticated`, dan `public`.
+  - Akses sepenuhnya dikendalikan oleh lapisan RPC `SECURITY DEFINER` dengan parameter aman `set search_path = public, extensions, pg_temp` dan hak eksekusi hanya untuk `authenticated`.
+- [x] **RPC SECURITY DEFINER**:
+  - `create_patient_access_token()`: Pasien membuat token 6 digit baru; token aktif lama otomatis dicabut; kode mentah hanya dikembalikan sekali saat pembuatan.
+  - `revoke_patient_access_token()`: Pasien mencabut token aktifnya sewaktu-waktu.
+  - `get_my_active_token_status()`: Pasien memantau status token aktif (waktu kedaluwarsa & sisa detik) tanpa mengekspos token mentah.
+  - `open_patient_medical_record(p_patient_id, p_token_code, p_family_member_id)`: Khusus dokter aktif di faskes aktif. Setiap percobaan diverifikasi terhadap token terbaru pasien. Menghasilkan audit log persisten ke `medical_record_access_logs` tanpa exception rollback, mengembalikan indikator penolakan ramah bila token salah/terkunci/dicabut/kedaluwarsa/kosong, dan mengembalikan rekam medis bila sah.
+  - `list_my_medical_records()`: Pasien melihat daftar riwayat medis miliknya dan anggota keluarganya.
+  - `add_medical_record(...)`: Dokter aktif di RS tujuan rujukan pasien (yang berstatus dijadwalkan atau selesai) menambahkan catatan kunjungan medis.
+  - `list_my_access_audit_logs()`: Pasien membaca seluruh log audit pembacaan rekam medisnya.
+- [x] **Bukti Uji Impersonasi SQL (9/9 Skenario Lolos)**:
+  - Test 1 (Dokter tanpa token): Ditolak (`AKSES_DITOLAK`), log `tanpa_token` tercatat.
+  - Test 2 (Dokter kode salah): Ditolak (`AKSES_DITOLAK`), `failed_attempts = 1` tercatat di log (`token_salah`).
+  - Test 3 (Dokter salah 5x): Terkunci (`AKSES_DITOLAK`), status `token_terkunci` tercatat di log. Kode benar berikutnya tetap ditolak selama token terkunci.
+  - Test 4 (Pasien cabut token): Ditolak (`AKSES_DITOLAK`), status `token_dicabut` tercatat di log.
+  - Test 5 (Token kedaluwarsa): Ditolak (`AKSES_DITOLAK`), status `token_kedaluwarsa` tercatat di log.
+  - Test 6 (Token valid): Otorisasi sukses membuka akses, rekam medis dikembalikan, log `berhasil` tercatat.
+  - Test 7 (Dokter faskes tidak terkait): Ditolak menambahkan rekam medis (`Dokter hanya dapat menambah catatan kunjungan pada rujukan pasien ke rumah sakitnya yang berstatus dijadwalkan atau selesai`).
+  - Test 8 (Isolasi data pasien lain): Pasien lain memanggil `list_my_medical_records()` menghasilkan 0 baris (privasi terjaga).
+  - Test 9 (Audit log pasien): Pasien Iwak Peyek memanggil `list_my_access_audit_logs()` membaca seluruh entri log upaya akses.
+- [x] **Advisors Supabase**: `get_advisors(security)` bebas dari temuan kerentanan baru yang tidak diinginkan.
+
