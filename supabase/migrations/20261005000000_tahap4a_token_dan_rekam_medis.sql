@@ -349,13 +349,14 @@ begin
 end;
 $$;
 
--- 10. RPC SECURITY DEFINER: Menambah Catatan Kunjungan Rekam Medis (Hanya Dokter di RS Rujukan Pasien Dijadwalkan/Selesai)
+-- 10. RPC SECURITY DEFINER: Menambah Catatan Kunjungan Rekam Medis (Dokter Aktif dengan Token Izin Pasien)
 create or replace function public.add_medical_record(
   p_patient_id uuid,
   p_family_member_id uuid,
   p_referral_id uuid,
   p_diagnosis_icd10 text,
-  p_ringkasan text
+  p_ringkasan text,
+  p_token_code text default null
 )
 returns uuid
 language plpgsql
@@ -367,13 +368,15 @@ declare
   v_uid uuid := auth.uid();
   v_staff record;
   v_ref record;
+  v_token record;
+  v_clean_code text := trim(coalesce(p_token_code, ''));
   v_record_id uuid;
 begin
   if v_uid is null then
     raise exception 'Anda harus masuk terlebih dahulu';
   end if;
 
-  -- Dokter aktif di faskes aktif
+  -- 1. Dokter aktif di faskes aktif
   select fs.id as staff_id, fs.facility_id, p.full_name as doctor_name
   into v_staff
   from public.facility_staff fs
@@ -386,10 +389,10 @@ begin
   limit 1;
 
   if v_staff.facility_id is null then
-    raise exception 'Hanya dokter aktif di fasilitas aktif yang dapat menambah rekam medis';
+    raise exception 'Hanya dokter aktif di fasilitas kesehatan aktif yang dapat menambah rekam medis';
   end if;
 
-  -- Verifikasi rujukan: wajib ada referral_id yang menunjuk ke RS dokter pemanggil dengan status 'dijadwalkan' atau 'selesai'
+  -- 2. Verifikasi rujukan terkait (referral_id)
   if p_referral_id is null then
     raise exception 'Rujukan pemeriksaan terkait (referral_id) wajib disertakan';
   end if;
@@ -398,17 +401,61 @@ begin
   into v_ref
   from public.referrals as r
   where r.id = p_referral_id
-    and r.destination_facility_id = v_staff.facility_id
-    and r.status in ('dijadwalkan', 'selesai');
+    and (r.destination_facility_id = v_staff.facility_id or r.origin_facility_id = v_staff.facility_id)
+    and r.status in ('dijadwalkan', 'selesai', 'diajukan', 'diterima');
 
   if v_ref.id is null then
-    raise exception 'Dokter hanya dapat menambah catatan kunjungan pada rujukan pasien ke rumah sakitnya yang berstatus dijadwalkan atau selesai';
+    raise exception 'Dokter hanya dapat menambah catatan medis pada rujukan faskesnya yang terkait dengan pasien';
   end if;
 
   if v_ref.patient_id <> p_patient_id then
     raise exception 'Pasien pada rujukan tidak cocok dengan data rekam medis';
   end if;
 
+  -- 3. Verifikasi token izin aktif pasien
+  select pat.id, pat.token_hash, pat.expires_at, pat.failed_attempts, pat.is_locked, pat.revoked_at
+  into v_token
+  from public.patient_access_tokens as pat
+  where pat.patient_id = p_patient_id
+  order by pat.created_at desc, pat.ctid desc
+  limit 1;
+
+  if v_token.id is null or v_clean_code = '' then
+    insert into public.medical_record_access_logs(accessed_by, facility_id, patient_id, family_member_id, access_result, notes)
+    values (v_uid, v_staff.facility_id, p_patient_id, p_family_member_id, 'tanpa_token', 'Penulisan rekam medis ditolak: tanpa token otorisasi aktif');
+    raise exception 'Akses ditolak: penulisan rekam medis memerlukan token izin aktif dari pasien';
+  end if;
+
+  if v_token.revoked_at is not null then
+    insert into public.medical_record_access_logs(accessed_by, facility_id, patient_id, family_member_id, access_result, notes)
+    values (v_uid, v_staff.facility_id, p_patient_id, p_family_member_id, 'token_dicabut', 'Penulisan rekam medis ditolak: token telah dicabut');
+    raise exception 'Akses ditolak: token izin pasien telah dicabut';
+  end if;
+
+  if v_token.expires_at < now() then
+    insert into public.medical_record_access_logs(accessed_by, facility_id, patient_id, family_member_id, access_result, notes)
+    values (v_uid, v_staff.facility_id, p_patient_id, p_family_member_id, 'token_kedaluwarsa', 'Penulisan rekam medis ditolak: token kedaluwarsa');
+    raise exception 'Akses ditolak: token izin pasien telah kedaluwarsa';
+  end if;
+
+  if v_token.is_locked then
+    insert into public.medical_record_access_logs(accessed_by, facility_id, patient_id, family_member_id, access_result, notes)
+    values (v_uid, v_staff.facility_id, p_patient_id, p_family_member_id, 'token_terkunci', 'Penulisan rekam medis ditolak: token terkunci');
+    raise exception 'Akses ditolak: token izin pasien terkunci karena batas 5 kali kesalahan terlampaui';
+  end if;
+
+  if extensions.crypt(v_clean_code, v_token.token_hash) <> v_token.token_hash then
+    update public.patient_access_tokens
+    set failed_attempts = failed_attempts + 1,
+        is_locked = (failed_attempts + 1 >= 5)
+    where patient_access_tokens.id = v_token.id;
+
+    insert into public.medical_record_access_logs(accessed_by, facility_id, patient_id, family_member_id, access_result, notes)
+    values (v_uid, v_staff.facility_id, p_patient_id, p_family_member_id, case when v_token.failed_attempts + 1 >= 5 then 'token_terkunci' else 'token_salah' end, 'Penulisan rekam medis ditolak: kode token izin salah');
+    raise exception 'Akses ditolak: kode token izin pasien salah';
+  end if;
+
+  -- 4. Otorisasi sukses -> simpan rekam medis & catat log berhasil
   insert into public.medical_records(
     patient_id,
     family_member_id,
@@ -428,6 +475,9 @@ begin
     trim(p_ringkasan),
     p_referral_id
   ) returning medical_records.id into v_record_id;
+
+  insert into public.medical_record_access_logs(accessed_by, facility_id, patient_id, family_member_id, access_result, notes)
+  values (v_uid, v_staff.facility_id, p_patient_id, p_family_member_id, 'berhasil', 'Penulisan rekam medis disetujui dengan token izin pasien');
 
   return v_record_id;
 end;
@@ -489,8 +539,8 @@ grant execute on function public.open_patient_medical_record(uuid, text, uuid) t
 revoke execute on function public.list_my_medical_records() from public, anon;
 grant execute on function public.list_my_medical_records() to authenticated;
 
-revoke execute on function public.add_medical_record(uuid, uuid, uuid, text, text) from public, anon;
-grant execute on function public.add_medical_record(uuid, uuid, uuid, text, text) to authenticated;
+revoke execute on function public.add_medical_record(uuid, uuid, uuid, text, text, text) from public, anon;
+grant execute on function public.add_medical_record(uuid, uuid, uuid, text, text, text) to authenticated;
 
 revoke execute on function public.list_my_access_audit_logs() from public, anon;
 grant execute on function public.list_my_access_audit_logs() to authenticated;
