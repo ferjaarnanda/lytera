@@ -9,7 +9,8 @@
 | Tahap 2: Halaman Staf | SELESAI | c0b0f56 | Riwayat Rujukan faskes primer (keluar), Rujukan Masuk RS, filter status, tab prioritas, panel detail dengan linimasa timeline (list_referral_events), dan aksi proses rujukan (terima, tolak, jadwalkan, selesai) teruji nyata dua sisi via SQL impersonasi. Fallback admin_id ditambahkan ke rujukan/page.tsx agar admin RS Colombia dapat langsung memproses rujukan di UI. |
 | Tahap 3: Halaman Pasien | SELESAI | 44ef984 | Rujukan Saya (list_my_referrals), kartu Rujukan Aktif di dashboard (menampilkan rujukan aktif terbaru dengan timeline lengkap), tab navigasi Beranda / Rujukan Saya / Izin Akses, dan linimasa aktivitas rujukan (list_referral_events) teruji nyata via SQL impersonasi pasien Iwak Peyek (3cfd180a). Akun pasien siap uji UI. |
 | Tahap 4a: Skema, Token & Rekam Medis (Database) | SELESAI | cac8f9d | Tabel patient_access_tokens (hash crypt, expiry 60m, limit 5 salah, revoke), medical_records, medical_record_access_logs. RLS aktif & direct access revoked. RPC SECURITY DEFINER lengkap. Seluruh 9 skenario uji impersonasi SQL lolos 100%. Security advisors bersih. |
-| Tahap 4b: Antarmuka Pasien & Dokter (UI) | BELUM | - | Berikutnya: UI Pasien di tab Izin Akses (buat token 6 digit, hitung mundur sisa waktu, tombol cabut token, riwayat audit log akses) dan UI Dokter di alur Rujukan Masuk RS untuk verifikasi token serta melihat/menambah kunjungan medis. |
+| Tahap 4b: Antarmuka Pasien (Token, Riwayat & Log) | SELESAI | 88c5e37 | Kartu izin akses token 6-digit pasien (tampil sekali, hitung mundur 60m, cabut izin berkonfirmasi, status multi-state), riwayat kunjungan medis terintegrasi, log audit akses rekam medis realtime, transparansi pencarian NIK. Lolos lint & build 100%, uji alur impersonasi SQL lolos. |
+| Tahap 4c: Antarmuka Dokter (Buka & Tulis Rekam Medis) | BELUM | - | Berikutnya: Form verifikasi token 6 digit di rujukan masuk RS bagi dokter aktif, membaca data rekam medis pasien, dan menambahkan catatan kunjungan medis baru. |
 | Tahap 5: Penyesuaian Teks Verifikasi Administrasi | BELUM | - | Penyesuaian copy opsional non-BPJS |
 
 ---
@@ -168,5 +169,29 @@
   - Skenario 7 (Dokter dengan Token Valid): Dokter sukses membuka rekam medis; dokter dengan token salah ditolak saat menulis rekam medis; dokter dengan token VALID sukses menulis rekam medis baru.
   - Skenario 8 (Pasien & Audit Log): Pasien sukses membaca riwayat medis baru yang ditulis dokter, dan log audit append-only mencatat seluruh 11 riwayat aktivitas dokter.
 - [x] **Advisors Supabase**: `get_advisors(security)` bersih tanpa temuan kerentanan baru yang tidak diinginkan.
+
+### 17. Tahap 4b: Antarmuka Pasien untuk Token Izin, Riwayat Medis, dan Log Akses (Selesai)
+- [x] **Server Actions (`app/actions/rekam-medis.ts`)**:
+  - `createPatientAccessTokenAction`: Pasien membuat token 6-digit baru via RPC; kode mentah hanya ada di memori dan tidak disimpan di DB/log.
+  - `getMyActiveTokenStatusAction`: Pasien membaca status token aktif (multi-state: aktif, terkunci, dicabut, kedaluwarsa) tanpa mengekspos kode mentah.
+  - `revokePatientAccessTokenAction`: Pasien mencabut token aktifnya sewaktu-waktu.
+  - `listMyMedicalRecordsAction`: Pasien mengambil riwayat kunjungan medis miliknya dan anggota keluarga perwalian.
+  - `listMyAccessAuditLogsAction`: Pasien mengambil riwayat log audit akses tenaga medis terhadap rekam medisnya.
+- [x] **Komponen Antarmuka Pasien (`components/PasienDashboard.tsx`)**:
+  - `KartuIzinAkses`:
+    - Tombol "Buat Kode Izin" memicu penerbitan token 6 digit.
+    - Kode 6 digit ditampilkan SEKALI dengan hitung mundur realtime 60 menit. Jika tab ditutup/dimuat ulang, kode mentah hilang dari memori demi privasi.
+    - Status token aktif ditampilkan informatif: `Token Aktif` (dengan sisa menit & detik), `Token Terkunci` (jika 5x salah), `Token Dicabut` (jika dicabut pasien), `Token Kedaluwarsa` (jika waktu habis), dan `Belum Ada Token Aktif`.
+    - Tombol "Cabut Izin" dilengkapi modal/konfirmasi aksi untuk mencegah klik tidak sengaja.
+  - `KartuRiwayatMedis`:
+    - Sub-tab "Kunjungan Medis" menampilkan daftar riwayat kunjungan dokter, nama faskes, kode diagnosis ICD-10, tanggal kunjungan, dan ringkasan klinis dengan state kosong terkelola rapi.
+    - Sub-tab "Log Akses Rekam Medis" menampilkan audit log realtime: nama dokter pemeriksa, fasilitas kesehatan, badge hasil akses (Berhasil Dibuka, Token Salah, Token Kedaluwarsa, Token Dicabut, Token Terkunci, Tanpa Token), dan tanggal/jam akses.
+  - Tab "Izin Akses" memadukan `KartuIzinAkses` di bagian atas serta transparansi log pencarian NIK (UU PDP) di bagian bawah.
+- [x] **Pengujian & Validasi**:
+  - SQL Impersonasi: Pembuatan token -> status aktif -> pencabutan -> status dicabut teruji 100% lolos via MCP Supabase lytera.
+  - Hak Akses: Akun non-pasien (Dinkes & Dokter) dibatasi; Dinkes melihat 0 baris data medis/audit log, dokter ditolak memanggil pembuatan token pasien.
+  - Seed Data: 1 riwayat medis realistis (I10 - Hipertensi Esensial oleh dr. Andi Wicaksono) dan 1 log audit akses resmi berhasil dicatat untuk pengujian visual UI.
+  - `npm run lint`: Lolos 0 error, 0 warning.
+  - `npm run build`: Lolos 100% kompilasi Next.js 16 (Turbopack) & pemeriksaan tipe TypeScript.
 
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   User,
@@ -17,6 +17,15 @@ import {
   ChevronUp,
   Loader2,
   CalendarCheck,
+  Key,
+  Stethoscope,
+  XCircle,
+  CheckCircle2,
+  Lock,
+  History,
+  Activity,
+  ShieldAlert,
+  ShieldOff,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardInner } from "@/components/Card";
@@ -33,6 +42,16 @@ import {
   LookupLogItem,
   ReferralEventItem,
 } from "@/app/actions/rujukan";
+import {
+  createPatientAccessTokenAction,
+  getMyActiveTokenStatusAction,
+  revokePatientAccessTokenAction,
+  listMyMedicalRecordsAction,
+  listMyAccessAuditLogsAction,
+  TokenStatus,
+  MedicalRecordItem,
+  AccessAuditLogItem,
+} from "@/app/actions/rekam-medis";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Tipe Data Domain Supabase
@@ -188,26 +207,26 @@ function isRujukanAktif(status: string): boolean {
 function RujukanCard({ item, defaultOpen = false }: { item: MyReferralItem; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   const [events, setEvents] = useState<ReferralEventItem[] | null>(null);
-  const [loadingEvents, setLoadingEvents] = useState(false);
+  const fetchingRef = useRef(false);
 
   const statusVariant = STATUS_BADGE[item.status] ?? "info";
   const priorityVariant = PRIORITY_BADGE[item.priority] ?? "info";
 
+  // loadingEvents: true jika sedang mengambil (null = belum) dan belum selesai
+  const loadingEvents = open && events === null;
+
   useEffect(() => {
-    if (open && events === null && !loadingEvents) {
-      setLoadingEvents(true);
+    if (open && events === null && !fetchingRef.current) {
+      fetchingRef.current = true;
       listReferralEventsAction(item.id)
         .then((res) => {
-          if (res.success && res.events) {
-            setEvents(res.events);
-          } else {
-            setEvents([]);
-          }
+          setEvents(res.success && res.events ? res.events : []);
         })
         .catch(() => setEvents([]))
-        .finally(() => setLoadingEvents(false));
+        .finally(() => { fetchingRef.current = false; });
     }
-  }, [open, events, loadingEvents, item.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, item.id]);
 
   return (
     <CardInner
@@ -342,6 +361,507 @@ function RujukanCard({ item, defaultOpen = false }: { item: MyReferralItem; defa
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Sub-Komponen: Kartu Izin Akses Token (Tahap 4b)
+// ──────────────────────────────────────────────────────────────────────────────
+
+const ACCESS_RESULT_LABEL: Record<string, { label: string; variant: "selesai" | "bahaya" | "proses" | "info" }> = {
+  berhasil:           { label: "Berhasil Dibuka", variant: "selesai" },
+  token_salah:        { label: "Token Salah", variant: "bahaya" },
+  token_kedaluwarsa:  { label: "Token Kedaluwarsa", variant: "bahaya" },
+  token_dicabut:      { label: "Token Dicabut", variant: "bahaya" },
+  token_terkunci:     { label: "Token Terkunci", variant: "bahaya" },
+  tanpa_token:        { label: "Tanpa Token", variant: "proses" },
+};
+
+function KartuIzinAkses() {
+  const [tokenStatus, setTokenStatus] = useState<TokenStatus | null>(null);
+  const [loadingStatus, setLoadingStatus] = useState(true);
+  const [statusError, setStatusError] = useState<string | null>(null);
+
+  // Kode mentah HANYA ada di memori, hilang saat komponen unmount/refresh
+  const [shownCode, setShownCode] = useState<string | null>(null);
+  const [shownExpiresAt, setShownExpiresAt] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState<number>(0);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  const [revoking, setRevoking] = useState(false);
+  const [revokeError, setRevokeError] = useState<string | null>(null);
+  const [confirmRevoke, setConfirmRevoke] = useState(false);
+
+  const loadStatus = useCallback(async () => {
+    setLoadingStatus(true);
+    setStatusError(null);
+    const res = await getMyActiveTokenStatusAction();
+    setLoadingStatus(false);
+    if (res.success && res.status) {
+      setTokenStatus(res.status);
+    } else {
+      setStatusError(res.error ?? "Gagal memuat status token.");
+    }
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadStatus();
+  }, [loadStatus]);
+
+  // Hitung mundur setelah token dibuat
+  useEffect(() => {
+    if (shownExpiresAt) {
+      const tick = () => {
+        const sisa = Math.max(0, Math.floor((new Date(shownExpiresAt).getTime() - Date.now()) / 1000));
+        setCountdown(sisa);
+        if (sisa <= 0 && countdownRef.current) {
+          clearInterval(countdownRef.current);
+          countdownRef.current = null;
+          setShownCode(null);
+          loadStatus();
+        }
+      };
+      tick();
+      countdownRef.current = setInterval(tick, 1000);
+    }
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, [shownExpiresAt, loadStatus]);
+
+  const handleCreate = async () => {
+    setCreating(true);
+    setCreateError(null);
+    setShownCode(null);
+    setShownExpiresAt(null);
+    const res = await createPatientAccessTokenAction();
+    setCreating(false);
+    if (res.success && res.token_code) {
+      setShownCode(res.token_code);
+      setShownExpiresAt(res.expires_at ?? null);
+      await loadStatus();
+    } else {
+      setCreateError(res.error ?? "Gagal membuat kode izin.");
+    }
+  };
+
+  const handleRevoke = async () => {
+    if (!confirmRevoke) { setConfirmRevoke(true); return; }
+    setRevoking(true);
+    setRevokeError(null);
+    const res = await revokePatientAccessTokenAction();
+    setRevoking(false);
+    setConfirmRevoke(false);
+    if (res.success) {
+      setShownCode(null);
+      setShownExpiresAt(null);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+      await loadStatus();
+    } else {
+      setRevokeError(res.error ?? "Gagal mencabut token.");
+    }
+  };
+
+  const secsLeft = countdown % 60;
+  const hasActive = tokenStatus?.has_active_token && !tokenStatus.is_expired && !tokenStatus.is_revoked && !tokenStatus.is_locked;
+
+  return (
+    <Card variant="white" className="p-6 sm:p-8 shadow-sm border border-[#E2E8F0]">
+      <div className="flex items-center gap-3 pb-4 mb-6 border-b border-[#E2E8F0]">
+        <div className="w-10 h-10 rounded-2xl bg-[#EDF7F2] flex items-center justify-center text-[#1B6B4D] shrink-0">
+          <Key className="w-5 h-5" />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold text-[#0F3040]">Kode Izin Akses Rekam Medis</h2>
+          <p className="text-xs text-slate-500">
+            Berikan kode 6-digit ini kepada dokter di faskes tujuan agar dapat membuka rekam medis Anda. Berlaku 60 menit.
+          </p>
+        </div>
+      </div>
+
+      {/* Tampilkan kode yang baru dibuat — SEKALI saja */}
+      {shownCode && countdown > 0 && (
+        <div className="mb-6 p-5 rounded-[18px] bg-[#EDF7F2] border border-[#A8D5BD] flex flex-col items-center gap-3">
+          <div className="flex items-center gap-2 text-[#1B6B4D]">
+            <CheckCircle2 className="w-5 h-5" />
+            <span className="text-sm font-semibold">Kode Izin Berhasil Dibuat</span>
+          </div>
+          <div className="font-mono text-4xl font-extrabold tracking-[0.25em] text-[#0F3040] select-all">
+            {shownCode}
+          </div>
+          <div className="text-xs text-[#1B6B4D] font-medium">
+            Berlaku{" "}
+            <span className="font-mono font-bold">
+              {String(Math.floor(countdown / 60)).padStart(2, "0")}:{String(secsLeft).padStart(2, "0")}
+            </span>{" "}
+            menit lagi
+          </div>
+          <p className="text-[11px] text-slate-500 text-center max-w-xs">
+            Kode ini tidak akan ditampilkan kembali setelah halaman ditutup atau dimuat ulang. Tunjukkan langsung ke dokter.
+          </p>
+        </div>
+      )}
+
+      {loadingStatus ? (
+        <div className="flex items-center gap-2 text-slate-400 text-sm py-4">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span>Memeriksa status token...</span>
+        </div>
+      ) : statusError ? (
+        <div className="flex items-center gap-2 text-[#B3261E] text-sm mb-4">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span>{statusError}</span>
+        </div>
+      ) : tokenStatus ? (
+        <div className="mb-5">
+          {/* Status badge token */}
+          {tokenStatus.is_locked ? (
+            <CardInner variant="cream" className="p-4 rounded-[14px] border border-[#E2E8F0] flex items-center gap-3">
+              <Lock className="w-5 h-5 text-[#B3261E] shrink-0" />
+              <div>
+                <p className="text-sm font-bold text-[#B3261E]">Token Terkunci</p>
+                <p className="text-xs text-slate-500">
+                  Token dikunci karena terlalu banyak percobaan kode salah. Buat token baru untuk melanjutkan.
+                </p>
+              </div>
+            </CardInner>
+          ) : tokenStatus.is_revoked ? (
+            <CardInner variant="cream" className="p-4 rounded-[14px] border border-[#E2E8F0] flex items-center gap-3">
+              <ShieldOff className="w-5 h-5 text-slate-400 shrink-0" />
+              <div>
+                <p className="text-sm font-bold text-slate-600">Token Dicabut</p>
+                <p className="text-xs text-slate-500">Token terakhir telah Anda cabut. Buat token baru jika diperlukan.</p>
+              </div>
+            </CardInner>
+          ) : tokenStatus.is_expired ? (
+            <CardInner variant="cream" className="p-4 rounded-[14px] border border-[#E2E8F0] flex items-center gap-3">
+              <Clock className="w-5 h-5 text-slate-400 shrink-0" />
+              <div>
+                <p className="text-sm font-bold text-slate-600">Token Kedaluwarsa</p>
+                <p className="text-xs text-slate-500">Token terakhir sudah melewati batas waktu 60 menit. Buat baru jika diperlukan.</p>
+              </div>
+            </CardInner>
+          ) : hasActive ? (
+            <CardInner variant="cream" className="p-4 rounded-[14px] border border-[#A8D5BD] bg-[#EDF7F2] flex items-center gap-3">
+              <ShieldCheck className="w-5 h-5 text-[#1B6B4D] shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-[#1B6B4D]">Token Aktif</p>
+                <p className="text-xs text-slate-600">
+                  Sisa waktu:{" "}
+                  <span className="font-mono font-semibold">
+                    {tokenStatus.seconds_remaining != null
+                      ? `${Math.floor(tokenStatus.seconds_remaining / 60)} menit ${tokenStatus.seconds_remaining % 60} detik`
+                      : "-"}
+                  </span>
+                </p>
+              </div>
+            </CardInner>
+          ) : (
+            <CardInner variant="cream" className="p-4 rounded-[14px] border border-[#E2E8F0] flex items-center gap-3">
+              <ShieldAlert className="w-5 h-5 text-slate-400 shrink-0" />
+              <div>
+                <p className="text-sm font-bold text-slate-600">Belum Ada Token Aktif</p>
+                <p className="text-xs text-slate-500">Buat kode izin untuk mengizinkan dokter membuka rekam medis Anda.</p>
+              </div>
+            </CardInner>
+          )}
+        </div>
+      ) : null}
+
+      {/* Error */}
+      {createError && (
+        <div className="flex items-center gap-2 text-[#B3261E] text-sm mb-4">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span>{createError}</span>
+        </div>
+      )}
+      {revokeError && (
+        <div className="flex items-center gap-2 text-[#B3261E] text-sm mb-4">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span>{revokeError}</span>
+        </div>
+      )}
+
+      {/* Tombol aksi */}
+      <div className="flex flex-wrap items-center gap-3 mt-2">
+        <button
+          type="button"
+          onClick={handleCreate}
+          disabled={creating || loadingStatus}
+          className="px-5 py-2.5 rounded-full bg-[#0F3040] text-white text-sm font-semibold hover:bg-[#0A2230] disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
+        >
+          {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
+          {creating ? "Membuat..." : hasActive ? "Perbarui Kode Izin" : "Buat Kode Izin"}
+        </button>
+
+        {(hasActive || (shownCode && countdown > 0)) && (
+          confirmRevoke ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[#B3261E] font-semibold">Cabut sekarang?</span>
+              <button
+                type="button"
+                onClick={handleRevoke}
+                disabled={revoking}
+                className="px-4 py-2 rounded-full bg-[#B3261E] text-white text-xs font-semibold hover:bg-[#8B1C14] transition-colors inline-flex items-center gap-1.5"
+              >
+                {revoking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                Ya, Cabut
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmRevoke(false)}
+                className="px-4 py-2 rounded-full border border-[#E2E8F0] text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Batal
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmRevoke(true)}
+              className="px-5 py-2.5 rounded-full border border-[#E2E8F0] text-sm font-semibold text-slate-700 hover:bg-[#FDECEA] hover:text-[#B3261E] hover:border-[#B3261E]/30 transition-colors inline-flex items-center gap-2"
+            >
+              <XCircle className="w-4 h-4" />
+              Cabut Izin
+            </button>
+          )
+        )}
+      </div>
+
+      <p className="text-[11px] text-slate-400 mt-4 leading-relaxed">
+        Sistem mencatat setiap percobaan akses. Setelah 5 kali percobaan kode salah, token akan terkunci otomatis.
+        Anda dapat membuat token baru kapan saja; token lama akan dicabut otomatis.
+      </p>
+    </Card>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Sub-Komponen: Kartu Riwayat Rekam Medis (Tahap 4b)
+// ──────────────────────────────────────────────────────────────────────────────
+
+function KartuRiwayatMedis() {
+  const [records, setRecords] = useState<MedicalRecordItem[] | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AccessAuditLogItem[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeSubTab, setActiveSubTab] = useState<"kunjungan" | "log-akses">("kunjungan");
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      setError(null);
+      const [recRes, logRes] = await Promise.all([
+        listMyMedicalRecordsAction(),
+        listMyAccessAuditLogsAction(),
+      ]);
+      if (cancelled) return;
+      setLoading(false);
+      if (recRes.success) setRecords(recRes.records ?? []);
+      else setError(recRes.error ?? "Gagal memuat riwayat.");
+      if (logRes.success) setAuditLogs(logRes.logs ?? []);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      {/* Sub-tab */}
+      <div className="flex items-center gap-2">
+        {(["kunjungan", "log-akses"] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveSubTab(tab)}
+            className={`px-4 py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
+              activeSubTab === tab
+                ? "bg-[#0F3040] text-white shadow-2xs"
+                : "bg-white text-slate-600 border border-[#E2E8F0] hover:bg-slate-50"
+            }`}
+          >
+            {tab === "kunjungan" ? (
+              <span className="flex items-center gap-1.5"><Stethoscope className="w-3.5 h-3.5" />Kunjungan Medis</span>
+            ) : (
+              <span className="flex items-center gap-1.5"><Activity className="w-3.5 h-3.5" />Log Akses Rekam Medis</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <Card variant="white" className="p-8 flex items-center gap-3 text-slate-400 border border-[#E2E8F0]">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span className="text-sm">Memuat data...</span>
+        </Card>
+      ) : error ? (
+        <Card variant="white" className="p-6 border border-[#E2E8F0]">
+          <div className="flex items-center gap-2 text-[#B3261E] text-sm">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        </Card>
+      ) : activeSubTab === "kunjungan" ? (
+        <Card variant="white" className="p-6 sm:p-8 shadow-sm border border-[#E2E8F0]">
+          <div className="flex items-center gap-3 pb-4 mb-6 border-b border-[#E2E8F0]">
+            <div className="w-10 h-10 rounded-2xl bg-[#FAF5F2] flex items-center justify-center text-[#8F5A4E] shrink-0">
+              <Stethoscope className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-[#0F3040]">Riwayat Kunjungan Medis</h2>
+              <p className="text-xs text-slate-500">Catatan kunjungan dan diagnosis yang dicatat dokter di fasilitas kesehatan.</p>
+            </div>
+            {records && records.length > 0 && (
+              <span className="ml-auto text-xs font-semibold bg-[#FAF5F2] text-[#8F5A4E] px-3 py-1 rounded-full border border-[#E2E8F0]">
+                {records.length} kunjungan
+              </span>
+            )}
+          </div>
+
+          {records && records.length > 0 ? (
+            <div className="space-y-3">
+              {records.map((rec) => (
+                <CardInner
+                  key={rec.id}
+                  variant="cream"
+                  className="p-4 rounded-[16px] border border-[#E2E8F0]"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-[#8F5A4E] border border-[#E2E8F0] shrink-0">
+                        <Stethoscope className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-[#0F3040]">{rec.doctor_name ?? "Dokter tidak tercatat"}</p>
+                        <p className="text-xs text-slate-500">{rec.facility_name ?? "Fasilitas tidak tercatat"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {rec.subject_name && (
+                        <span className="text-[11px] bg-[#EBF2F6] text-[#0F3040] px-2 py-0.5 rounded-full font-medium border border-[#E2E8F0]">
+                          Untuk: {rec.subject_name}
+                        </span>
+                      )}
+                      <span className="text-[11px] font-mono text-slate-400 bg-white px-2.5 py-1 rounded-full border border-[#E2E8F0]">
+                        {formatDateIndo(rec.visit_date ?? rec.created_at)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {rec.diagnosis_icd10 && (
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-[11px] font-mono font-bold bg-white text-[#8F5A4E] px-2 py-0.5 rounded-full border border-[#E2E8F0]">
+                        ICD-10: {rec.diagnosis_icd10}
+                      </span>
+                    </div>
+                  )}
+                  {rec.ringkasan && (
+                    <p className="text-xs text-slate-600 leading-relaxed pl-1 border-l-2 border-[#E2E8F0] ml-0.5 mt-1">
+                      {rec.ringkasan}
+                    </p>
+                  )}
+                </CardInner>
+              ))}
+            </div>
+          ) : (
+            <CardInner variant="cream" className="p-10 text-center border border-[#E2E8F0]">
+              <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center mx-auto mb-3 text-slate-400 border border-[#E2E8F0]">
+                <Stethoscope className="w-6 h-6" />
+              </div>
+              <p className="text-base font-bold text-[#0F3040]">Belum ada catatan kunjungan</p>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                Catatan kunjungan medis akan dicatat oleh dokter di fasilitas kesehatan setelah Anda memberikan kode izin akses.
+              </p>
+            </CardInner>
+          )}
+        </Card>
+      ) : (
+        /* Log Akses Rekam Medis */
+        <Card variant="white" className="p-6 sm:p-8 shadow-sm border border-[#E2E8F0]">
+          <div className="flex items-center gap-3 pb-4 mb-6 border-b border-[#E2E8F0]">
+            <div className="w-10 h-10 rounded-2xl bg-[#EBF2F6] flex items-center justify-center text-[#0F3040] shrink-0">
+              <Activity className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-[#0F3040]">Log Akses Rekam Medis</h2>
+              <p className="text-xs text-slate-500">
+                Setiap percobaan dokter membuka rekam medis Anda tercatat di sini secara otomatis.
+              </p>
+            </div>
+            {auditLogs && auditLogs.length > 0 && (
+              <span className="ml-auto text-xs font-semibold bg-[#EBF2F6] text-[#0F3040] px-3 py-1 rounded-full border border-[#E2E8F0]">
+                {auditLogs.length} entri
+              </span>
+            )}
+          </div>
+
+          {auditLogs && auditLogs.length > 0 ? (
+            <div className="space-y-2">
+              {auditLogs.map((log) => {
+                const resultInfo = ACCESS_RESULT_LABEL[log.access_result] ?? { label: log.access_result, variant: "info" as const };
+                return (
+                  <CardInner
+                    key={log.id}
+                    variant="cream"
+                    className="px-4 py-3 rounded-[14px] border border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                  >
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                        resultInfo.variant === "selesai" ? "bg-[#EDF7F2] text-[#1B6B4D]" : "bg-[#FDECEA] text-[#B3261E]"
+                      }`}>
+                        {resultInfo.variant === "selesai"
+                          ? <CheckCircle2 className="w-4 h-4" />
+                          : <XCircle className="w-4 h-4" />
+                        }
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold text-[#0F3040]">
+                            {log.accessor_name ?? "Dokter tidak dikenal"}
+                          </span>
+                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                            resultInfo.variant === "selesai"
+                              ? "bg-[#EDF7F2] text-[#1B6B4D]"
+                              : "bg-[#FDECEA] text-[#B3261E]"
+                          }`}>
+                            {resultInfo.label}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 truncate mt-0.5">
+                          {log.facility_name ?? "Fasilitas tidak tercatat"}
+                          {log.subject_name ? ` · Data: ${log.subject_name}` : ""}
+                        </p>
+                        {log.notes && (
+                          <p className="text-[11px] text-slate-400 italic mt-0.5">{log.notes}</p>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-mono text-slate-400 bg-white px-2.5 py-1 rounded-full border border-[#E2E8F0] shrink-0 whitespace-nowrap">
+                      {formatDateTimeIndo(log.created_at)}
+                    </span>
+                  </CardInner>
+                );
+              })}
+            </div>
+          ) : (
+            <CardInner variant="cream" className="p-10 text-center border border-[#E2E8F0]">
+              <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center mx-auto mb-3 text-slate-400 border border-[#E2E8F0]">
+                <History className="w-6 h-6" />
+              </div>
+              <p className="text-base font-bold text-[#0F3040]">Belum ada log akses</p>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                Log akses akan muncul setelah dokter mencoba membuka rekam medis Anda dengan kode izin.
+              </p>
+            </CardInner>
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Komponen Utama PasienDashboard
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -361,17 +881,15 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
   const [familyMembers, setFamilyMembers] = useState<FamilyMemberData[]>([]);
   const [referrals, setReferrals] = useState<MyReferralItem[]>([]);
   const [lookupLogs, setLookupLogs] = useState<LookupLogItem[]>([]);
-  const [activeTab, setActiveTab] = useState<string>("Beranda");
-
-  useEffect(() => {
+  const [activeTab, setActiveTab] = useState<string>(() => {
     if (typeof window !== "undefined") {
-      const searchParams = new URLSearchParams(window.location.search);
-      const tabParam = searchParams.get("tab");
-      if (tabParam === "rujukan") setActiveTab("Rujukan Saya");
-      else if (tabParam === "izin-akses") setActiveTab("Izin Akses");
-      else if (tabParam === "riwayat-medis") setActiveTab("Riwayat Medis");
+      const tabParam = new URLSearchParams(window.location.search).get("tab");
+      if (tabParam === "rujukan") return "Rujukan Saya";
+      if (tabParam === "izin-akses") return "Izin Akses";
+      if (tabParam === "riwayat-medis") return "Riwayat Medis";
     }
-  }, []);
+    return "Beranda";
+  });
 
   const handleRefetch = () => {
     setLoading(true);
@@ -1143,17 +1661,26 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
         {activeTab === "Izin Akses" && (
           <Reveal>
             <div className="space-y-6">
+              {/* Kartu token 6 digit — menggunakan KartuIzinAkses */}
+              <KartuIzinAkses />
+
+              {/* Log Pencarian NIK oleh Dokter */}
               <Card variant="white" className="p-6 sm:p-8 shadow-sm border border-[#E2E8F0]">
                 <div className="flex items-center gap-3 pb-4 mb-6 border-b border-[#E2E8F0]">
                   <div className="w-10 h-10 rounded-2xl bg-[#EBF2F6] flex items-center justify-center text-[#0F3040] shrink-0">
                     <Eye className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-[#0F3040]">Izin Akses & Transparansi Pencarian Data</h2>
+                    <h2 className="text-lg font-bold text-[#0F3040]">Transparansi Pencarian Data Identitas</h2>
                     <p className="text-xs text-slate-500">
-                      Sesuai amanat UU Perlindungan Data Pribadi (PDP), Anda berhak mengetahui seluruh tenaga medis yang mengakses data Anda.
+                      Sesuai UU PDP, seluruh pencarian NIK Anda oleh tenaga medis tercatat di sini.
                     </p>
                   </div>
+                  {lookupLogs.length > 0 && (
+                    <span className="ml-auto text-xs font-semibold bg-[#EBF2F6] text-[#0F3040] px-3 py-1 rounded-full border border-[#E2E8F0]">
+                      {lookupLogs.length} pencarian
+                    </span>
+                  )}
                 </div>
 
                 {lookupLogs.length > 0 ? (
@@ -1165,7 +1692,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
                         className="p-4 rounded-[16px] border border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                       >
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm font-bold text-[#0F3040] block">
                               {log.doctor_name}
                             </span>
@@ -1196,13 +1723,13 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
                     </div>
                     <p className="text-base font-bold text-[#0F3040]">Belum ada riwayat pencarian data</p>
                     <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
-                      Belum ada dokter atau fasilitas kesehatan yang melakukan pencarian NIK Anda. Riwayat akan dicatat secara otomatis realtime.
+                      Belum ada dokter yang melakukan pencarian NIK Anda. Riwayat dicatat otomatis realtime.
                     </p>
                   </CardInner>
                 )}
               </Card>
 
-              {/* Kartu Edukasi UU PDP */}
+              {/* Kartu Edukasi */}
               <Card variant="white" className="p-6 rounded-[20px] border border-[#E2E8F0] shadow-sm bg-gradient-to-r from-white to-[#F9FAF8]">
                 <div className="flex items-start gap-3.5">
                   <div className="w-9 h-9 rounded-xl bg-[#EDF7F2] flex items-center justify-center text-[#1B6B4D] shrink-0 mt-0.5">
@@ -1211,7 +1738,8 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
                   <div>
                     <h3 className="text-sm font-bold text-[#0F3040]">Kedaulatan Data Medis Pasien</h3>
                     <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                      Di platform Lytera, tenaga medis faskes primer hanya dapat mencari identitas dasar dengan NIK untuk keperluan pembuatan rujukan. Akses rekam medis lengkap di rumah sakit rujukan nantinya wajib menggunakan otorisasi Token 6-digit pasien.
+                      Di Lytera, tenaga medis di faskes primer hanya dapat mencari identitas dasar dengan NIK untuk membuat rujukan.
+                      Akses rekam medis lengkap wajib menggunakan Kode Izin 6-digit yang Anda buat sendiri di atas.
                     </p>
                   </div>
                 </div>
@@ -1223,24 +1751,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
         {/* ── TAB RIWAYAT MEDIS ── */}
         {activeTab === "Riwayat Medis" && (
           <Reveal>
-            <Card variant="white" className="p-8 sm:p-10 text-center shadow-sm border border-[#E2E8F0] rounded-[24px]">
-              <div className="w-12 h-12 rounded-full bg-[#EBF2F6] flex items-center justify-center mx-auto mb-4 text-[#0F3040]">
-                <Clock className="w-6 h-6 text-[#8F5A4E]" />
-              </div>
-              <h2 className="text-xl font-bold text-[#0F3040]">Riwayat Medis Terintegrasi</h2>
-              <p className="text-sm text-slate-600 mt-2 max-w-lg mx-auto leading-relaxed">
-                Fitur riwayat rekam medis dan otorisasi berkunjung dengan Token 6-digit akan aktif pada implementasi <strong>Tahap 4</strong>.
-              </p>
-              <div className="mt-6 flex justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("Rujukan Saya")}
-                  className="px-5 py-2.5 rounded-full bg-[#0F3040] text-white text-xs font-semibold hover:bg-[#0A2230] transition-colors"
-                >
-                  Lihat Rujukan Saya
-                </button>
-              </div>
-            </Card>
+            <KartuRiwayatMedis />
           </Reveal>
         )}
       </main>
