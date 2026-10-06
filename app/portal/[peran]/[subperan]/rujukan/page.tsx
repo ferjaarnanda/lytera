@@ -25,6 +25,7 @@ import {
   type ReferralEventItem,
   type DokterOption,
 } from "@/app/actions/rujukan";
+import { RekamMedisDokterPanel } from "@/components/RekamMedisDokterPanel";
 import { Card } from "@/components/Card";
 import { Badge } from "@/components/Badge";
 import { StatusIcon, StatusType } from "@/components/StatusIcon";
@@ -671,6 +672,15 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* ── PEMERIKSAAN MEDIS & VERIFIKASI TOKEN PASIEN (Tahap 4c) ── */}
+              <div className="pt-3 pb-2 border-t border-[#E2E8F0]">
+                <RekamMedisDokterPanel
+                  referralId={selectedReferral.id}
+                  patientName={selectedReferral.patient_name}
+                  isDoctor={facilityInfo?.staffRole === "dokter"}
+                />
               </div>
 
               {/* ── FORM AKSI RUMAH SAKIT ── */}

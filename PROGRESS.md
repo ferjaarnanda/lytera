@@ -10,8 +10,8 @@
 | Tahap 3: Halaman Pasien | SELESAI | 44ef984 | Rujukan Saya (list_my_referrals), kartu Rujukan Aktif di dashboard (menampilkan rujukan aktif terbaru dengan timeline lengkap), tab navigasi Beranda / Rujukan Saya / Izin Akses, dan linimasa aktivitas rujukan (list_referral_events) teruji nyata via SQL impersonasi pasien Iwak Peyek (3cfd180a). Akun pasien siap uji UI. |
 | Tahap 4a: Skema, Token & Rekam Medis (Database) | SELESAI | cac8f9d | Tabel patient_access_tokens (hash crypt, expiry 60m, limit 5 salah, revoke), medical_records, medical_record_access_logs. RLS aktif & direct access revoked. RPC SECURITY DEFINER lengkap. Seluruh 9 skenario uji impersonasi SQL lolos 100%. Security advisors bersih. |
 | Tahap 4b: Antarmuka Pasien (Token, Riwayat & Log) | SELESAI | 88c5e37 | Kartu izin akses token 6-digit pasien (tampil sekali, hitung mundur 60m, cabut izin berkonfirmasi, status multi-state), riwayat kunjungan medis terintegrasi, log audit akses rekam medis realtime, transparansi pencarian NIK. Lolos lint & build 100%, uji alur impersonasi SQL lolos. |
-| Tahap 4c: Antarmuka Dokter (Buka & Tulis Rekam Medis) | BELUM | - | Berikutnya: Form verifikasi token 6 digit di rujukan masuk RS bagi dokter aktif, membaca data rekam medis pasien, dan menambahkan catatan kunjungan medis baru. |
-| Tahap 5: Penyesuaian Teks Verifikasi Administrasi | BELUM | - | Penyesuaian copy opsional non-BPJS |
+| Tahap 4c: Antarmuka Dokter (Buka & Tulis Rekam Medis) | SELESAI | 5754db5 | Komponen RekamMedisDokterPanel di alur rujukan (masuk RS & keluar faskes primer) terintegrasi bukaRekamMedisDokterAction & tambahRekamMedisDokterAction. Token tidak disimpan di URL/storage, read-only riwayat audit PDP, form ICD-10 & ringkasan terhubung rujukan, auto-reset jika token dicabut/expired, non-dokter ditolak. Lolos lint & build 100%, uji 7 skenario SQL lolos. |
+| Tahap 5: Penyesuaian Teks Verifikasi Administrasi | BELUM | - | Berikutnya: Penyesuaian copy opsional non-BPJS dan penyempurnaan teks verifikasi administrasi faskes. |
 
 ---
 
@@ -193,5 +193,39 @@
   - Seed Data: 1 riwayat medis realistis (I10 - Hipertensi Esensial oleh dr. Andi Wicaksono) dan 1 log audit akses resmi berhasil dicatat untuk pengujian visual UI.
   - `npm run lint`: Lolos 0 error, 0 warning.
   - `npm run build`: Lolos 100% kompilasi Next.js 16 (Turbopack) & pemeriksaan tipe TypeScript.
+
+### 18. Tahap 4c: Antarmuka Dokter untuk Verifikasi Token Izin dan Input Rekam Medis (Selesai)
+- [x] **Server Actions Dokter (`app/actions/rekam-medis.ts`)**:
+  - `bukaRekamMedisDokterAction`: Validasi dokter aktif dan faskes rujukan $\to$ memanggil `open_patient_medical_record`. Menangani status penolakan (`AKSES_DITOLAK`), status rekam medis kosong (`KOSONG`), dan daftar rekam medis aktif.
+  - `tambahRekamMedisDokterAction`: Validasi 6 digit token izin, diagnosis ICD-10, dan ringkasan klinis $\to$ memanggil `add_medical_record` (versi 6 parameter) yang terhubung ke rujukan faskes pemanggil. Menangani pesan galat jika token kedaluwarsa/dicabut/terkunci di tengah jalan.
+- [x] **Komponen UI Dokter (`components/RekamMedisDokterPanel.tsx`)**:
+  - **Form Verifikasi Token Pasien**:
+    - Input kode 6-digit dengan mode angka dan pemformatan monospace tracking luas.
+    - Token disimpan strictly di memori lokal React component saat sesi aktif (tidak di-cache di localStorage, cookies, URL params, atau log konsol).
+    - Pesan galat jelas untuk setiap skenario kegagalan: kode salah (dengan info sisa percobaan), token kedaluwarsa, token dicabut, atau token terkunci.
+  - **Tampilan Riwayat Medis Pasien (Read-Only)**:
+    - Banner penanda otorisasi aktif dan kepatuhan audit log PDP.
+    - Menampilkan riwayat kunjungan terdahulu: nama dokter, fasilitas, tanggal kunjungan, kode ICD-10, dan ringkasan catatan klinis.
+    - State kosong ramah pengguna jika pasien baru pertama kali berkunjung.
+  - **Form Input Catatan Rekam Medis**:
+    - Input kode diagnosis ICD-10 dan textarea ringkasan pemeriksaan/terapi klinis.
+    - Menggunakan token aktif yang sama tanpa meminta pasien menginput ulang.
+    - Jika token dicabut atau habis waktu di tengah sesi penulisan, form otomatis menutup diri dan meminta dokter memverifikasi ulang.
+    - Setelah berhasil disimpan, entri baru langsung muncul di daftar riwayat lokal dan memicu pembaruan callback.
+  - **Proteksi Hak Akses**:
+    - Fitur diverifikasi di tingkat UI (`isDoctor`) dan di server action/database. Peran non-dokter (admin faskes, petugas, dinkes, pasien) ditolak dengan pesan informatif.
+- [x] **Integrasi Halaman Rujukan (`app/portal/[peran]/[subperan]/rujukan/page.tsx`)**:
+  - `RekamMedisDokterPanel` disematkan ke dalam modal rujukan pasien, berlaku dua arah: baik pada rujukan masuk rumah sakit maupun rujukan keluar faskes primer pengirim.
+- [x] **Pengujian & Validasi**:
+  - `npm run lint`: Lolos 0 error, 0 warning.
+  - `npm run build`: Lolos 100% kompilasi Next.js 16 (Turbopack) & pemeriksaan tipe TypeScript.
+  - **Uji Impersonasi SQL (7 Skenario Lolos 100%)**:
+    1. Dokter dengan token valid sukses membuka rekam medis.
+    2. Dokter dengan token valid sukses mencatat rekam medis baru (*K29.7 - Gastritis*).
+    3. Dokter dengan token salah otomatis ditolak (`AKSES_DITOLAK`).
+    4. Akun Dinkes ditolak membuka rekam medis (exception dilempar).
+    5. Akun pasien ditolak menulis rekam medis (exception dilempar).
+    6. Rekam medis yang ditulis dokter terbukti langsung muncul di riwayat pasien `list_my_medical_records` (Tahap 4b).
+    7. Log audit append-only mencatat seluruh aktivitas pembacaan dan penulisan dokter secara persisten.
 
 

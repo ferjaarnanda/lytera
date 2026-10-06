@@ -277,3 +277,204 @@ export async function listMyAccessAuditLogsAction(): Promise<AccessAuditLogsResp
     return { success: false, error: "Terjadi kesalahan: " + msg };
   }
 }
+
+// ============================================================================
+// SERVER ACTION: DOKTER MEMBUKA REKAM MEDIS PASIEN DENGAN TOKEN (Tahap 4c)
+// ============================================================================
+
+export interface OpenMedicalRecordResult {
+  id: string | null;
+  patient_id: string;
+  family_member_id: string | null;
+  facility_name: string | null;
+  doctor_name: string | null;
+  tanggal: string | null;
+  diagnosis_icd10: string;
+  ringkasan: string;
+  referral_id: string | null;
+}
+
+export interface BukaRekamMedisResponse {
+  success: boolean;
+  records?: OpenMedicalRecordResult[];
+  patientId?: string;
+  familyMemberId?: string | null;
+  error?: string;
+}
+
+export async function bukaRekamMedisDokterAction(params: {
+  referralId: string;
+  tokenCode: string;
+}): Promise<BukaRekamMedisResponse> {
+  const cleanCode = (params.tokenCode || "").trim();
+
+  if (!cleanCode || cleanCode.length !== 6 || !/^\d{6}$/.test(cleanCode)) {
+    return {
+      success: false,
+      error: "Kode izin harus berupa tepat 6 digit angka dari pasien.",
+    };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "Sesi login tidak ditemukan. Silakan masuk kembali." };
+    }
+
+    // 1. Ambil data rujukan untuk mendapatkan patient_id dan family_member_id
+    const { data: ref, error: refErr } = await supabase
+      .from("referrals")
+      .select("id, patient_id, family_member_id, origin_facility_id, destination_facility_id")
+      .eq("id", params.referralId)
+      .maybeSingle();
+
+    if (refErr || !ref) {
+      return { success: false, error: "Data rujukan tidak ditemukan atau Anda tidak memiliki akses." };
+    }
+
+    // 2. Panggil RPC open_patient_medical_record
+    const { data, error } = await supabase.rpc("open_patient_medical_record", {
+      p_patient_id: ref.patient_id,
+      p_token_code: cleanCode,
+      p_family_member_id: ref.family_member_id || null,
+    });
+
+    if (error) {
+      const msg = error.message || "";
+      if (msg.includes("dokter aktif")) {
+        return {
+          success: false,
+          error: "Hanya dokter aktif di fasilitas kesehatan yang berhak membuka rekam medis.",
+        };
+      }
+      return { success: false, error: "Gagal membuka rekam medis: " + msg };
+    }
+
+    const rows = Array.isArray(data) ? (data as OpenMedicalRecordResult[]) : [];
+
+    // Periksa status penolakan pada baris hasil
+    if (rows.length > 0 && rows[0].diagnosis_icd10 === "AKSES_DITOLAK") {
+      return {
+        success: false,
+        error: rows[0].ringkasan || "Akses ke rekam medis ditolak oleh sistem otorisasi.",
+      };
+    }
+
+    // Jika rekam medis kosong tapi token valid
+    if (rows.length === 1 && rows[0].diagnosis_icd10 === "KOSONG") {
+      return {
+        success: true,
+        records: [],
+        patientId: ref.patient_id,
+        familyMemberId: ref.family_member_id,
+      };
+    }
+
+    return {
+      success: true,
+      records: rows,
+      patientId: ref.patient_id,
+      familyMemberId: ref.family_member_id,
+    };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: "Terjadi kesalahan: " + msg };
+  }
+}
+
+// ============================================================================
+// SERVER ACTION: DOKTER MENULIS REKAM MEDIS DENGAN TOKEN (Tahap 4c)
+// ============================================================================
+
+export interface TambahRekamMedisResponse {
+  success: boolean;
+  recordId?: string;
+  error?: string;
+}
+
+export async function tambahRekamMedisDokterAction(params: {
+  referralId: string;
+  tokenCode: string;
+  diagnosisIcd10: string;
+  ringkasan: string;
+}): Promise<TambahRekamMedisResponse> {
+  const cleanCode = (params.tokenCode || "").trim();
+  const cleanDiagnosis = (params.diagnosisIcd10 || "").trim();
+  const cleanRingkasan = (params.ringkasan || "").trim();
+
+  if (!cleanCode || cleanCode.length !== 6 || !/^\d{6}$/.test(cleanCode)) {
+    return { success: false, error: "Kode token izin harus terdiri dari 6 digit angka." };
+  }
+
+  if (!cleanDiagnosis) {
+    return { success: false, error: "Kode diagnosis ICD-10 wajib diisi." };
+  }
+
+  if (!cleanRingkasan) {
+    return { success: false, error: "Ringkasan pemeriksaan klinis wajib diisi." };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "Sesi login tidak ditemukan." };
+    }
+
+    // 1. Ambil data rujukan
+    const { data: ref, error: refErr } = await supabase
+      .from("referrals")
+      .select("id, patient_id, family_member_id")
+      .eq("id", params.referralId)
+      .maybeSingle();
+
+    if (refErr || !ref) {
+      return { success: false, error: "Data rujukan tidak ditemukan." };
+    }
+
+    // 2. Panggil RPC add_medical_record (versi 6 parameter)
+    const { data, error } = await supabase.rpc("add_medical_record", {
+      p_patient_id: ref.patient_id,
+      p_family_member_id: ref.family_member_id || null,
+      p_referral_id: ref.id,
+      p_diagnosis_icd10: cleanDiagnosis,
+      p_ringkasan: cleanRingkasan,
+      p_token_code: cleanCode,
+    });
+
+    if (error) {
+      const msg = error.message || "";
+      if (msg.includes("dokter aktif")) {
+        return { success: false, error: "Hanya dokter aktif yang berhak menambah rekam medis." };
+      }
+      if (msg.includes("token izin pasien telah dicabut") || msg.includes("token_dicabut")) {
+        return { success: false, error: "Token izin telah dicabut oleh pasien. Silakan minta kode izin baru." };
+      }
+      if (msg.includes("token izin pasien telah kedaluwarsa") || msg.includes("token_kedaluwarsa")) {
+        return { success: false, error: "Token izin telah kedaluwarsa. Silakan minta kode izin baru." };
+      }
+      if (msg.includes("token izin pasien terkunci") || msg.includes("token_terkunci")) {
+        return { success: false, error: "Token izin telah terkunci. Pasien perlu membuat token baru." };
+      }
+      if (msg.includes("kode token izin pasien salah") || msg.includes("token_salah")) {
+        return { success: false, error: "Kode izin pasien tidak cocok atau salah." };
+      }
+      return { success: false, error: msg };
+    }
+
+    return {
+      success: true,
+      recordId: typeof data === "string" ? data : undefined,
+    };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: "Terjadi kendala: " + msg };
+  }
+}
