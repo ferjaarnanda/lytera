@@ -23,6 +23,9 @@ const PasienPribadiSchema = z.object({
   kelurahan: z.string().min(1, "Kelurahan wajib dipilih"),
   alamatDetail: z.string().min(5, "Alamat lengkap wajib diisi minimal 5 karakter"),
   noBpjs: z.string().optional().or(z.literal("")),
+  penjamin: z.enum(["mandiri", "bpjs", "asuransi", "jaminan_daerah"]).optional().default("mandiri"),
+  namaAsuransi: z.string().optional().or(z.literal("")),
+  nomorPolisAsuransi: z.string().optional().or(z.literal("")),
   riwayatAlergi: z.string().optional().or(z.literal("")),
   setujuKetentuan: z.boolean().refine((val) => val === true, {
     message: "Anda wajib menyetujui pemrosesan data medis untuk melanjutkan",
@@ -52,6 +55,10 @@ const PasienKeluargaSchema = z.object({
         nik: z.string().regex(/^\d{16}$/, "NIK anggota keluarga harus 16 digit angka"),
         tanggalLahir: z.string().min(1, "Tanggal lahir anggota wajib dipilih"),
         hubungan: z.string().min(1, "Hubungan anggota keluarga wajib diisi"),
+        penjamin: z.enum(["mandiri", "bpjs", "asuransi", "jaminan_daerah"]).optional().default("mandiri"),
+        noBpjs: z.string().optional().or(z.literal("")),
+        namaAsuransi: z.string().optional().or(z.literal("")),
+        nomorPolisAsuransi: z.string().optional().or(z.literal("")),
       })
     )
     .min(1, "Tambahkan minimal satu anggota keluarga"),
@@ -530,9 +537,12 @@ export async function submitPendaftaranAction(
         district: pasienPribadiData.kecamatan,
         village: pasienPribadiData.kelurahan,
         address: pasienPribadiData.alamatDetail,
-        bpjs_number: pasienPribadiData.noBpjs || null,
+        bpjs_number: pasienPribadiData.penjamin === "bpjs" ? (pasienPribadiData.noBpjs || null) : null,
         blood_type: null,
         allergies: pasienPribadiData.riwayatAlergi || null,
+        payer_type: pasienPribadiData.penjamin || "mandiri",
+        insurance_name: pasienPribadiData.penjamin === "asuransi" ? (pasienPribadiData.namaAsuransi || null) : null,
+        insurance_policy_number: pasienPribadiData.penjamin === "asuransi" ? (pasienPribadiData.nomorPolisAsuransi || null) : null,
       });
 
       if (patientError) {
@@ -557,6 +567,7 @@ export async function submitPendaftaranAction(
         bpjs_number: null,
         blood_type: null,
         allergies: null,
+        payer_type: "mandiri",
       });
 
       if (patientError) {
@@ -591,8 +602,11 @@ export async function submitPendaftaranAction(
           nik: ang.nik,
           dob: ang.tanggalLahir,
           relation: rel,
-          bpjs_number: null,
+          bpjs_number: ang.penjamin === "bpjs" ? (ang.noBpjs || null) : null,
           allergies: null,
+          payer_type: ang.penjamin || "mandiri",
+          insurance_name: ang.penjamin === "asuransi" ? (ang.namaAsuransi || null) : null,
+          insurance_policy_number: ang.penjamin === "asuransi" ? (ang.nomorPolisAsuransi || null) : null,
         };
       });
 

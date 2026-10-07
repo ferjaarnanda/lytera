@@ -12,7 +12,7 @@
 | Tahap 4b: Antarmuka Pasien (Token, Riwayat & Log) | SELESAI | 88c5e37 | Kartu izin akses token 6-digit pasien (tampil sekali, hitung mundur 60m, cabut izin berkonfirmasi, status multi-state), riwayat kunjungan medis terintegrasi, log audit akses rekam medis realtime, transparansi pencarian NIK. Lolos lint & build 100%, uji alur impersonasi SQL lolos. |
 | Tahap 4c: Antarmuka Dokter (Buka & Tulis Rekam Medis) | SELESAI | 5754db5 | Komponen RekamMedisDokterPanel di alur rujukan (masuk RS & keluar faskes primer) terintegrasi bukaRekamMedisDokterAction & tambahRekamMedisDokterAction. Token tidak disimpan di URL/storage, read-only riwayat audit PDP, form ICD-10 & ringkasan terhubung rujukan, auto-reset jika token dicabut/expired, non-dokter ditolak. Lolos lint & build 100%, uji 7 skenario SQL lolos. |
 | Tahap 5a & 5c: Verifikasi Administrasi (Backend, Verifikator, Dinkes, RS) | SELESAI | 0296414 | Migrasi skema penjamin & verification_requests, storage verification-documents, RPC SECURITY DEFINER, portal verifikator berwilayah, persetujuan petugas verifikator Dinkes, status penjamin & verifikasi di rujukan RS, copy landing page. Uji impersonasi SQL 100% lolos, lint & build lolos. |
-| Tahap 5b: Formulir Pendaftaran & Halaman Penjamin Pasien | BELUM | - | Berikutnya: Input penjamin (BPJS, asuransi, mandiri, jaminan daerah) di pendaftaran pasien, halaman "Penjamin & Verifikasi" di portal pasien untuk ubah penjamin dan unggah permohonan verifikasi domisili/SKTM. |
+| Tahap 5b: Formulir Pendaftaran & Halaman Penjamin Pasien | SELESAI | 9bf1615 | Formulir pendaftaran pasien pribadi & keluarga dengan pilihan kartu penjamin (Mandiri, BPJS, Asuransi, Jaminan Daerah), kartu ringkas penjamin di Beranda, halaman Penjamin & Verifikasi di portal pasien (kelola penjamin, pengajuan domisili & SKTM dengan unggah berkas, badge terverifikasi). Lint 0 error/0 warning, build exit 0, uji impersonasi SQL lolos 100%. |
 
 ---
 
@@ -254,3 +254,25 @@
   - SQL Impersonasi MCP Supabase Lytera: Skenario permohonan pasien -> masuk antrean verifikator berwilayah -> persetujuan verifikator -> status aktif tercermin di rujukan rumah sakit -> penolakan akses oleh Dinkes/pihak lain teruji lolos 100%.
   - `npm run lint`: Lolos 0 error, 0 warning.
   - `npm run build`: Lolos 100% kompilasi Next.js 16 (Turbopack) & pemeriksaan tipe TypeScript.
+
+
+### 20. Tahap 5b: Formulir Pendaftaran & Halaman Penjamin Pasien (Selesai)
+- [x] **Server Actions Pasien (`app/actions/verifikasi.ts`)**:
+  - `listMyVerificationsAction`: Mengambil riwayat pengajuan verifikasi domisili & SKTM milik pasien login via RPC `list_my_verifications`.
+  - `submitVerificationAction`: Menangani unggah berkas PDF/PNG/JPG (maksimal 5 MB) ke bucket privat `verification-documents` di path `{patient_id}/{timestamp}_{filename}`, lalu memanggil RPC `submit_verification` dengan rollback berkas jika permohonan ditolak.
+  - `getMyPayerStatusAction`: Mengambil data penjamin biaya pasien utama serta seluruh anggota keluarga perwalian.
+  - `updatePatientPayerAction`: Memperbarui tipe penjamin (`mandiri`, `bpjs`, `asuransi`, `jaminan_daerah`), nomor BPJS (13 digit), nama asuransi, dan nomor polis untuk subjek pasien atau anggota keluarga.
+- [x] **Formulir Pendaftaran Pasien (`app/actions/pendaftaran.ts` & `app/daftar/[peran]/[subperan]/page.tsx`)**:
+  - Formulir Pasien Pribadi (Langkah Alamat & Medis): Pilihan penjamin berupa kartu (Mandiri [default], BPJS Kesehatan [nomor 13 digit], Asuransi Swasta [nama & polis], Jaminan Daerah [keterangan diverifikasi pemda]). Label simulasi: *"Dicatat sesuai pengakuan pasien (simulasi). Bukan syarat daftar."*
+  - Formulir Pasien Keluarga: Opsi penjamin biaya serupa disematkan per anggota keluarga.
+  - Server Action `submitPendaftaranAction`: Memvalidasi dan menyimpan kolom `payer_type`, `insurance_name`, dan `insurance_policy_number` ke tabel `patients` dan `family_members`.
+- [x] **Halaman & Bagian "Penjamin & Verifikasi" di Portal Pasien (`components/PenjaminVerifikasiSection.tsx`)**:
+  - Tab "Penjamin Biaya Pasien": Formulir pemilihan penjamin dengan kartu pilihan, input dinamis, pemilihan subjek untuk keluarga, dan tombol simpan perubahan.
+  - Tab "Verifikasi Administrasi & SKTM": Ringkasan status verifikasi domisili & SKTM (Terverifikasi s.d. tanggal / Dalam Peninjauan / Ditolak / Belum Diajukan), modal formulir pengajuan dengan unggah berkas (JPG/PNG/PDF maks 5 MB), serta daftar riwayat pengajuan lengkap dengan catatan pemohon, alasan penolakan petugas, dan tautan pratinjau dokumen aman via signed URL.
+- [x] **Dashboard Pasien & Navigasi (`components/PasienDashboard.tsx` & `components/Navbar.tsx`)**:
+  - Tab "Beranda": Kartu ringkas penjamin dan status verifikasi dengan badge status dan tombol pintas navigasi ke tab "Penjamin & Verifikasi".
+  - Navigasi Cepat & Navbar: Penambahan tab *"Penjamin & Verifikasi"* di navbar dan tab navigasi utama dashboard.
+- [x] **Pengujian & Validasi Nyata**:
+  - Uji Impersonasi SQL Supabase MCP (lytera): Update penjamin pasien menjadi BPJS (`0001234567890`), submit pengajuan SKTM via `submit_verification`, dan verifikasi muncul di `list_my_verifications` teruji lolos 100%.
+  - `npm run lint`: **0 error, 0 warning**.
+  - `npm run build`: **Exit 0**, seluruh rute statis & dinamis Next.js 16 (Turbopack) berhasil dibangun tanpa galat tipe TypeScript.

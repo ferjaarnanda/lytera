@@ -26,6 +26,7 @@ import {
   Activity,
   ShieldAlert,
   ShieldOff,
+  CreditCard,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardInner } from "@/components/Card";
@@ -34,6 +35,7 @@ import { StatusIcon } from "@/components/StatusIcon";
 import { LogoutButton } from "@/components/LogoutButton";
 import { Navbar } from "@/components/Navbar";
 import { Reveal } from "@/components/Reveal";
+import { PenjaminVerifikasiSection } from "@/components/PenjaminVerifikasiSection";
 import {
   listMyReferralsAction,
   listMyLookupLogsAction,
@@ -83,6 +85,9 @@ export interface PatientData {
   blood_type: string | null;
   allergies: string | null;
   created_at?: string;
+  payer_type?: "bpjs" | "asuransi" | "mandiri" | "jaminan_daerah" | null;
+  insurance_name?: string | null;
+  insurance_policy_number?: string | null;
 }
 
 export interface FamilyMemberData {
@@ -95,6 +100,9 @@ export interface FamilyMemberData {
   bpjs_number: string | null;
   allergies: string | null;
   created_at?: string;
+  payer_type?: "bpjs" | "asuransi" | "mandiri" | "jaminan_daerah" | null;
+  insurance_name?: string | null;
+  insurance_policy_number?: string | null;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -1245,7 +1253,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
         {/* ── TAB NAVIGASI CEPAT ── */}
         <Reveal delayMs={50}>
           <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-1">
-            {["Beranda", "Rujukan Saya", "Izin Akses", "Riwayat Medis"].map((tab) => (
+            {["Beranda", "Rujukan Saya", "Penjamin & Verifikasi", "Riwayat Medis", "Izin Akses"].map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -1443,7 +1451,59 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
             {/* TOKEN AKSES & RUJUKAN AKTIF */}
             <Reveal delayMs={200}>
               <div className="flex flex-col gap-6 mb-8">
-                {/* 1. KARTU TOKEN AKSES MEDIS */}
+                {/* 1. KARTU RINGKAS PENJAMIN & VERIFIKASI */}
+                <Card variant="white" className="p-5 sm:p-6 rounded-[22px] border border-[#E2E8F0] shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-[#FAF5F2] flex items-center justify-center text-[#8F5A4E] shrink-0">
+                        <CreditCard className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h2 className="text-base font-bold text-[#0F3040]">Penjamin Pelayanan Kesehatan</h2>
+                          <Badge
+                            variant={
+                              patient?.payer_type === "bpjs"
+                                ? "selesai"
+                                : patient?.payer_type === "asuransi"
+                                ? "info"
+                                : patient?.payer_type === "jaminan_daerah"
+                                ? "proses"
+                                : "netral"
+                            }
+                          >
+                            {patient?.payer_type === "bpjs"
+                              ? "BPJS Kesehatan"
+                              : patient?.payer_type === "asuransi"
+                              ? "Asuransi Swasta"
+                              : patient?.payer_type === "jaminan_daerah"
+                              ? "Jaminan Daerah (SKTM)"
+                              : "Mandiri / Umum"}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {patient?.payer_type === "bpjs" && patient.bpjs_number
+                            ? `Nomor Kartu: ${patient.bpjs_number.slice(0, 4)}•••••${patient.bpjs_number.slice(-4)} (dicatat sesuai pengakuan pasien)`
+                            : patient?.payer_type === "asuransi" && patient.insurance_name
+                            ? `${patient.insurance_name} · Polis: ${patient.insurance_policy_number || "-"}`
+                            : patient?.payer_type === "jaminan_daerah"
+                            ? "Pembiayaan subsidi daerah khusus warga kurang mampu (opsional verifikasi)"
+                            : "Biaya pelayanan medis ditanggung secara mandiri tanpa penjamin"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("Penjamin & Verifikasi")}
+                      className="px-4 py-2 rounded-full border border-[#E2E8F0] bg-white text-xs font-semibold text-[#0F3040] hover:bg-slate-50 transition-colors shrink-0 self-start sm:self-auto shadow-2xs"
+                    >
+                      Kelola Penjamin & Verifikasi &rarr;
+                    </button>
+                  </div>
+                </Card>
+
+                {/* 2. KARTU TOKEN AKSES MEDIS */}
                 <Card variant="white" className="p-5 sm:p-6 rounded-[22px] border border-[#E2E8F0] shadow-sm">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -1654,6 +1714,13 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
                 )}
               </Card>
             </div>
+          </Reveal>
+        )}
+
+        {/* ── TAB PENJAMIN & VERIFIKASI ── */}
+        {activeTab === "Penjamin & Verifikasi" && (
+          <Reveal>
+            <PenjaminVerifikasiSection onRefreshParent={handleRefetch} />
           </Reveal>
         )}
 

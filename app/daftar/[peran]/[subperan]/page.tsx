@@ -90,6 +90,9 @@ export default function PendaftaranPage({ params }: PageProps) {
     kelurahan: "",
     alamatDetail: "",
     noBpjs: "",
+    penjamin: "mandiri" as "mandiri" | "bpjs" | "asuransi" | "jaminan_daerah",
+    namaAsuransi: "",
+    nomorPolisAsuransi: "",
     riwayatAlergi: "",
     email: "",
     password: "",
@@ -115,9 +118,29 @@ export default function PendaftaranPage({ params }: PageProps) {
     setujuKetentuan: false,
   });
   const [anggotaKeluarga, setAnggotaKeluarga] = useState<
-    Array<{ id: string; nama: string; nik: string; tanggalLahir: string; hubungan: string }>
+    Array<{
+      id: string;
+      nama: string;
+      nik: string;
+      tanggalLahir: string;
+      hubungan: string;
+      penjamin?: "mandiri" | "bpjs" | "asuransi" | "jaminan_daerah";
+      noBpjs?: string;
+      namaAsuransi?: string;
+      nomorPolisAsuransi?: string;
+    }>
   >([
-    { id: "1", nama: "", nik: "", tanggalLahir: "", hubungan: "Istri" },
+    {
+      id: "1",
+      nama: "",
+      nik: "",
+      tanggalLahir: "",
+      hubungan: "Istri",
+      penjamin: "mandiri",
+      noBpjs: "",
+      namaAsuransi: "",
+      nomorPolisAsuransi: "",
+    },
   ]);
 
   // Fasilitas Health Worker / Admin Choice State
@@ -628,6 +651,10 @@ export default function PendaftaranPage({ params }: PageProps) {
         nik: "",
         tanggalLahir: "",
         hubungan: "Anak",
+        penjamin: "mandiri",
+        noBpjs: "",
+        namaAsuransi: "",
+        nomorPolisAsuransi: "",
       },
     ]);
   };
@@ -868,22 +895,181 @@ export default function PendaftaranPage({ params }: PageProps) {
                       )}
                     </div>
 
-                    <div>
-                      <label htmlFor="noBpjs" className="block text-sm font-semibold text-[#0F3040] mb-1">
-                        Nomor BPJS Kesehatan (Opsional)
-                      </label>
-                      <input
-                        id="noBpjs"
-                        type="text"
-                        maxLength={13}
-                        value={pribadiData.noBpjs}
-                        onChange={(e) =>
-                          setPribadiData({ ...pribadiData, noBpjs: e.target.value.replace(/\D/g, "") })
-                        }
-                        placeholder="13 digit angka kartu BPJS"
-                        className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none tabular-nums text-sm"
-                      />
-                      {errors.noBpjs && <p className="text-xs text-[#B3261E] mt-1">{errors.noBpjs}</p>}
+                    {/* Kartu Pilihan Penjamin Biaya (Tahap 5b) */}
+                    <div className="pt-2">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-sm font-semibold text-[#0F3040]">
+                          Pilihan Penjamin Biaya (Opsional)
+                        </label>
+                        <span className="text-[11px] text-slate-500 bg-[#FAF5F2] px-2.5 py-0.5 rounded-full border border-[#E2E8F0]">
+                          Dicatat sesuai pengakuan (simulasi)
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                        {/* Mandiri */}
+                        <div
+                          onClick={() => setPribadiData({ ...pribadiData, penjamin: "mandiri" })}
+                          className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                            pribadiData.penjamin === "mandiri"
+                              ? "bg-[#FAF5F2] border-[#8F5A4E] shadow-2xs"
+                              : "bg-white border-[#E2E8F0] hover:border-slate-300"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-bold text-[#0F3040]">Mandiri / Umum</span>
+                            <input
+                              type="radio"
+                              name="pribadi_penjamin"
+                              checked={pribadiData.penjamin === "mandiri"}
+                              onChange={() => setPribadiData({ ...pribadiData, penjamin: "mandiri" })}
+                              className="accent-[#0F3040]"
+                            />
+                          </div>
+                          <p className="text-[11px] text-slate-500">
+                            Biaya pemeriksaan ditanggung sendiri tanpa penjamin.
+                          </p>
+                        </div>
+
+                        {/* BPJS Kesehatan */}
+                        <div
+                          onClick={() => setPribadiData({ ...pribadiData, penjamin: "bpjs" })}
+                          className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                            pribadiData.penjamin === "bpjs"
+                              ? "bg-[#EDF7F2] border-[#1B6B4D] shadow-2xs"
+                              : "bg-white border-[#E2E8F0] hover:border-slate-300"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-bold text-[#0F3040]">BPJS Kesehatan</span>
+                            <input
+                              type="radio"
+                              name="pribadi_penjamin"
+                              checked={pribadiData.penjamin === "bpjs"}
+                              onChange={() => setPribadiData({ ...pribadiData, penjamin: "bpjs" })}
+                              className="accent-[#1B6B4D]"
+                            />
+                          </div>
+                          <p className="text-[11px] text-slate-500">
+                            Nomor kartu kepesertaan JKN (13 digit).
+                          </p>
+                        </div>
+
+                        {/* Asuransi Swasta */}
+                        <div
+                          onClick={() => setPribadiData({ ...pribadiData, penjamin: "asuransi" })}
+                          className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                            pribadiData.penjamin === "asuransi"
+                              ? "bg-[#FAF5F2] border-[#8F5A4E] shadow-2xs"
+                              : "bg-white border-[#E2E8F0] hover:border-slate-300"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-bold text-[#0F3040]">Asuransi Swasta</span>
+                            <input
+                              type="radio"
+                              name="pribadi_penjamin"
+                              checked={pribadiData.penjamin === "asuransi"}
+                              onChange={() => setPribadiData({ ...pribadiData, penjamin: "asuransi" })}
+                              className="accent-[#8F5A4E]"
+                            />
+                          </div>
+                          <p className="text-[11px] text-slate-500">
+                            Polis asuransi kesehatan swasta/perusahaan.
+                          </p>
+                        </div>
+
+                        {/* Jaminan Daerah (SKTM) */}
+                        <div
+                          onClick={() => setPribadiData({ ...pribadiData, penjamin: "jaminan_daerah" })}
+                          className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                            pribadiData.penjamin === "jaminan_daerah"
+                              ? "bg-[#FAF5F2] border-[#8F5A4E] shadow-2xs"
+                              : "bg-white border-[#E2E8F0] hover:border-slate-300"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-bold text-[#0F3040]">Jaminan Daerah (SKTM)</span>
+                            <input
+                              type="radio"
+                              name="pribadi_penjamin"
+                              checked={pribadiData.penjamin === "jaminan_daerah"}
+                              onChange={() => setPribadiData({ ...pribadiData, penjamin: "jaminan_daerah" })}
+                              className="accent-[#8F5A4E]"
+                            />
+                          </div>
+                          <p className="text-[11px] text-slate-500">
+                            Subsidi pemda untuk warga kurang mampu.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Isian Dinamis BPJS */}
+                      {pribadiData.penjamin === "bpjs" && (
+                        <div>
+                          <label htmlFor="noBpjs" className="block text-xs font-semibold text-[#0F3040] mb-1">
+                            Nomor Kartu BPJS Kesehatan (13 Digit)
+                          </label>
+                          <input
+                            id="noBpjs"
+                            type="text"
+                            maxLength={13}
+                            value={pribadiData.noBpjs}
+                            onChange={(e) =>
+                              setPribadiData({ ...pribadiData, noBpjs: e.target.value.replace(/\D/g, "") })
+                            }
+                            placeholder="Contoh: 0001234567890"
+                            className="w-full h-11 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#1B6B4D]/30 focus:border-[#1B6B4D] outline-none tabular-nums text-xs font-mono"
+                          />
+                          {errors.noBpjs && <p className="text-xs text-[#B3261E] mt-1">{errors.noBpjs}</p>}
+                        </div>
+                      )}
+
+                      {/* Isian Dinamis Asuransi */}
+                      {pribadiData.penjamin === "asuransi" && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label htmlFor="namaAsuransi" className="block text-xs font-semibold text-[#0F3040] mb-1">
+                              Nama Asuransi
+                            </label>
+                            <input
+                              id="namaAsuransi"
+                              type="text"
+                              value={pribadiData.namaAsuransi}
+                              onChange={(e) =>
+                                setPribadiData({ ...pribadiData, namaAsuransi: e.target.value })
+                              }
+                              placeholder="Misal: Prudential, Allianz"
+                              className="w-full h-11 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="nomorPolisAsuransi" className="block text-xs font-semibold text-[#0F3040] mb-1">
+                              Nomor Polis
+                            </label>
+                            <input
+                              id="nomorPolisAsuransi"
+                              type="text"
+                              value={pribadiData.nomorPolisAsuransi}
+                              onChange={(e) =>
+                                setPribadiData({ ...pribadiData, nomorPolisAsuransi: e.target.value })
+                              }
+                              placeholder="Misal: POL-12345"
+                              className="w-full h-11 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-xs font-mono"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Keterangan Jaminan Daerah */}
+                      {pribadiData.penjamin === "jaminan_daerah" && (
+                        <div className="p-3 rounded-xl bg-[#FAF5F2] border border-[#8F5A4E]/20 text-xs text-slate-600 leading-relaxed">
+                          <p className="font-semibold text-[#0F3040]">Akan Diverifikasi Petugas</p>
+                          <p className="mt-0.5">
+                            Status jaminan daerah akan diverifikasi oleh petugas kelurahan/dinas sosial. Anda dapat mengunggah berkas SKTM kapan saja setelah masuk ke portal.
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     <div>
@@ -1350,6 +1536,85 @@ export default function PendaftaranPage({ params }: PageProps) {
                                 <option value="Orang Tua">Orang Tua</option>
                                 <option value="Famili Lain">Famili Lain</option>
                               </select>
+                            </div>
+
+                            <div className="sm:col-span-2 pt-2 border-t border-[#E2E8F0]/60">
+                              <div className="flex items-center justify-between mb-1.5">
+                                <label
+                                  htmlFor={`anggota-penjamin-${idx}`}
+                                  className="block text-xs font-semibold text-[#0F3040]"
+                                >
+                                  Penjamin Biaya (Opsional)
+                                </label>
+                                <span className="text-[10px] text-slate-400">
+                                  Simulasi pengakuan
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                <select
+                                  id={`anggota-penjamin-${idx}`}
+                                  value={item.penjamin || "mandiri"}
+                                  onChange={(e) => {
+                                    const next = [...anggotaKeluarga];
+                                    next[idx].penjamin = e.target.value as "mandiri" | "bpjs" | "asuransi" | "jaminan_daerah";
+                                    setAnggotaKeluarga(next);
+                                  }}
+                                  className="h-9 px-2.5 rounded-[10px] border border-[#E2E8F0] bg-white text-xs outline-none focus:border-[#8F5A4E]"
+                                >
+                                  <option value="mandiri">Mandiri / Umum</option>
+                                  <option value="bpjs">BPJS Kesehatan</option>
+                                  <option value="asuransi">Asuransi Swasta</option>
+                                  <option value="jaminan_daerah">Jaminan Daerah (SKTM)</option>
+                                </select>
+
+                                {item.penjamin === "bpjs" && (
+                                  <input
+                                    type="text"
+                                    maxLength={13}
+                                    placeholder="13 digit No BPJS"
+                                    value={item.noBpjs || ""}
+                                    onChange={(e) => {
+                                      const next = [...anggotaKeluarga];
+                                      next[idx].noBpjs = e.target.value.replace(/\D/g, "");
+                                      setAnggotaKeluarga(next);
+                                    }}
+                                    className="sm:col-span-2 h-9 px-2.5 rounded-[10px] border border-[#E2E8F0] bg-white text-xs font-mono outline-none focus:border-[#1B6B4D]"
+                                  />
+                                )}
+
+                                {item.penjamin === "asuransi" && (
+                                  <>
+                                    <input
+                                      type="text"
+                                      placeholder="Nama Asuransi"
+                                      value={item.namaAsuransi || ""}
+                                      onChange={(e) => {
+                                        const next = [...anggotaKeluarga];
+                                        next[idx].namaAsuransi = e.target.value;
+                                        setAnggotaKeluarga(next);
+                                      }}
+                                      className="h-9 px-2.5 rounded-[10px] border border-[#E2E8F0] bg-white text-xs outline-none focus:border-[#8F5A4E]"
+                                    />
+                                    <input
+                                      type="text"
+                                      placeholder="Nomor Polis"
+                                      value={item.nomorPolisAsuransi || ""}
+                                      onChange={(e) => {
+                                        const next = [...anggotaKeluarga];
+                                        next[idx].nomorPolisAsuransi = e.target.value;
+                                        setAnggotaKeluarga(next);
+                                      }}
+                                      className="h-9 px-2.5 rounded-[10px] border border-[#E2E8F0] bg-white text-xs font-mono outline-none focus:border-[#8F5A4E]"
+                                    />
+                                  </>
+                                )}
+
+                                {item.penjamin === "jaminan_daerah" && (
+                                  <span className="sm:col-span-2 text-[11px] text-slate-500 flex items-center">
+                                    Akan diverifikasi melalui kelurahan/dinsos
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>

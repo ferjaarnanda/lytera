@@ -38,6 +38,7 @@ const VARIANT_MENUS: Record<NavbarVariant, { label: string; href?: string }[]> =
   pasien: [
     { label: "Beranda" },
     { label: "Rujukan Saya" },
+    { label: "Penjamin & Verifikasi" },
     { label: "Riwayat Medis" },
     { label: "Izin Akses" },
   ],
