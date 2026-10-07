@@ -503,9 +503,9 @@ export async function submitPendaftaranAction(
     }
 
     // 3. Tulis baris ke tabel profiles
-    // Aturan: status 'aktif' hanya untuk pasien/pribadi, selain itu 'menunggu'
+    // Aturan: status 'aktif' untuk semua pasien (pribadi & keluarga) agar bisa demo tanpa approval
     const profileStatus =
-      peran === "pasien" && subperan === "pribadi" ? "aktif" : "menunggu";
+      peran === "pasien" ? "aktif" : "menunggu";
 
     const { error: profileError } = await supabase.from("profiles").insert({
       id: userId,
