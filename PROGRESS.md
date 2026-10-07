@@ -11,7 +11,8 @@
 | Tahap 4a: Skema, Token & Rekam Medis (Database) | SELESAI | cac8f9d | Tabel patient_access_tokens (hash crypt, expiry 60m, limit 5 salah, revoke), medical_records, medical_record_access_logs. RLS aktif & direct access revoked. RPC SECURITY DEFINER lengkap. Seluruh 9 skenario uji impersonasi SQL lolos 100%. Security advisors bersih. |
 | Tahap 4b: Antarmuka Pasien (Token, Riwayat & Log) | SELESAI | 88c5e37 | Kartu izin akses token 6-digit pasien (tampil sekali, hitung mundur 60m, cabut izin berkonfirmasi, status multi-state), riwayat kunjungan medis terintegrasi, log audit akses rekam medis realtime, transparansi pencarian NIK. Lolos lint & build 100%, uji alur impersonasi SQL lolos. |
 | Tahap 4c: Antarmuka Dokter (Buka & Tulis Rekam Medis) | SELESAI | 5754db5 | Komponen RekamMedisDokterPanel di alur rujukan (masuk RS & keluar faskes primer) terintegrasi bukaRekamMedisDokterAction & tambahRekamMedisDokterAction. Token tidak disimpan di URL/storage, read-only riwayat audit PDP, form ICD-10 & ringkasan terhubung rujukan, auto-reset jika token dicabut/expired, non-dokter ditolak. Lolos lint & build 100%, uji 7 skenario SQL lolos. |
-| Tahap 5: Penyesuaian Teks Verifikasi Administrasi | BELUM | - | Berikutnya: Penyesuaian copy opsional non-BPJS dan penyempurnaan teks verifikasi administrasi faskes. |
+| Tahap 5a & 5c: Verifikasi Administrasi (Backend, Verifikator, Dinkes, RS) | SELESAI | 0296414 | Migrasi skema penjamin & verification_requests, storage verification-documents, RPC SECURITY DEFINER, portal verifikator berwilayah, persetujuan petugas verifikator Dinkes, status penjamin & verifikasi di rujukan RS, copy landing page. Uji impersonasi SQL 100% lolos, lint & build lolos. |
+| Tahap 5b: Formulir Pendaftaran & Halaman Penjamin Pasien | BELUM | - | Berikutnya: Input penjamin (BPJS, asuransi, mandiri, jaminan daerah) di pendaftaran pasien, halaman "Penjamin & Verifikasi" di portal pasien untuk ubah penjamin dan unggah permohonan verifikasi domisili/SKTM. |
 
 ---
 
@@ -228,4 +229,28 @@
     6. Rekam medis yang ditulis dokter terbukti langsung muncul di riwayat pasien `list_my_medical_records` (Tahap 4b).
     7. Log audit append-only mencatat seluruh aktivitas pembacaan dan penulisan dokter secara persisten.
 
-
+### 19. Tahap 5a & 5c: Verifikasi Administrasi (Backend, Portal Verifikator, Dinkes, Rujukan RS, & Teks) (Selesai)
+- [x] **Skema Database & Migrasi (`20261007000000_tahap5a_verifikasi_administrasi.sql`)**:
+  - Kolom penjamin di `patients` & `family_members`: `payer_type` (`'bpjs' | 'asuransi' | 'mandiri' | 'jaminan_daerah'`), `insurance_name`, `insurance_policy_number`.
+  - Tabel `verification_requests`: Menyimpan pengajuan verifikasi domisili & SKTM/jaminan daerah (`patient_id`, `family_member_id`, `type`, `status`, `document_path`, `notes`, `valid_until`, `reviewed_by`, `reviewed_at`). Dilengkapi partial unique index untuk mencegah duplikasi permohonan aktif (`status = 'menunggu'`).
+  - Storage bucket `verification-documents`: Privat, limit 5MB, format PDF/PNG/JPEG, policy RLS per-user (`auth.uid()`).
+  - Normalisasi data wilayah: Migrasi data uji verifikator dan pasien ke format Title Case (`Jawa Tengah`, `Kota Semarang`, `Semarang Tengah`, `Miroto`).
+- [x] **RPC SECURITY DEFINER**:
+  - `submit_verification`: Pasien mengajukan verifikasi domisili atau kurang mampu dengan berkas bukti.
+  - `list_my_verifications`: Pasien melihat status dan riwayat pengajuannya.
+  - `list_verification_queue`: Petugas verifikator melihat antrean berkas sesuai cakupan wilayah tugas (kelurahan, kecamatan, atau kota/kabupaten Dinsos). Tanpa data medis.
+  - `review_verification`: Petugas verifikator menyetujui (dengan masa berlaku) atau menolak (wajib alasan penolakan).
+  - `list_pending_verifiers` & `review_verifier`: Khusus administrator Dinkes untuk memverifikasi akun petugas verifikator baru.
+  - Modifikasi `list_facility_referrals` & `list_my_referrals`: Mengembalikan `payer_type`, `payer_number_masked`, `domisili_terverifikasi`, `jaminan_daerah_status`, `jaminan_daerah_valid_until` ke faskes penerima/pengirim.
+- [x] **Server Actions (`app/actions/verifikasi.ts`)**:
+  - `listVerificationQueueAction`, `reviewVerificationAction`, `getVerificationDocumentSignedUrlAction` (signed URL berdurasi 10 menit untuk dokumen privat).
+  - `listPendingVerifiersAction`, `reviewVerifierAction` untuk verifikasi petugas oleh Dinkes.
+- [x] **Komponen & Antarmuka Pengguna**:
+  - `components/VerifikatorDashboard.tsx`: Antarmuka petugas verifikator lengkap dengan badge instansi wilayah, tab antrean/riwayat, modal detail pemohon administratif & pratinjau berkas via signed URL aman, modal persetujuan dengan batas tanggal, serta modal penolakan dengan catatan wajib. Tidak menampilkan data medis.
+  - `app/portal/dinkes/verifikasi-petugas/page.tsx`: Halaman khusus Dinkes untuk meninjau dan menyetujui/menolak akun petugas verifikator baru, terhubung dengan tombol pintas di navigasi Dinkes.
+  - Modal Rujukan RS (`app/portal/[peran]/[subperan]/rujukan/page.tsx`): Menampilkan status penjamin biaya (BPJS/Asuransi/Mandiri/Jaminan Daerah) serta status verifikasi domisili dan SKTM tanpa menampilkan berkas dokumen.
+  - Copy Landing Page & Deskripsi Peran (`app/page.tsx`, `lib/roles.ts`): Penyesuaian teks verifikator menjadi peran opsional administratif penjamin biaya/domisili yang tidak menghalangi rujukan medis, serta penyesuaian alur cara kerja RS langsung menerima rujukan.
+- [x] **Pengujian & Validasi**:
+  - SQL Impersonasi MCP Supabase Lytera: Skenario permohonan pasien -> masuk antrean verifikator berwilayah -> persetujuan verifikator -> status aktif tercermin di rujukan rumah sakit -> penolakan akses oleh Dinkes/pihak lain teruji lolos 100%.
+  - `npm run lint`: Lolos 0 error, 0 warning.
+  - `npm run build`: Lolos 100% kompilasi Next.js 16 (Turbopack) & pemeriksaan tipe TypeScript.

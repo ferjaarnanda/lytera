@@ -31,13 +31,13 @@ const CARA_KERJA_STEPS = [
   },
   {
     step: 2,
-    title: "Verifikasi administrasi",
-    desc: "Kelurahan atau Dinsos memverifikasi syarat domisili dan SKTM secara paralel bila diperlukan.",
+    title: "Rumah sakit menerima rujukan dan menetapkan jadwal",
+    desc: "Fasilitas rujukan menerima dokumen klinis dan menetapkan tanggal serta jam temu dokter spesialis.",
   },
   {
     step: 3,
-    title: "Rumah sakit menjadwalkan",
-    desc: "Fasilitas rujukan menerima dokumen klinis dan menetapkan tanggal serta jam temu dokter spesialis.",
+    title: "Pemeriksaan & tindakan klinis",
+    desc: "Pasien datang sesuai jadwal, dokter memeriksa dengan otorisasi akses rekam medis digital dari pasien.",
   },
   {
     step: 4,
@@ -267,8 +267,8 @@ export default function HomePage() {
                       <h3 className="text-lg font-bold text-[#0A2230] mb-1 text-center">
                         Verifikasi Administrasi
                       </h3>
-                      <p className="text-[13px] text-slate-600 mb-4 min-h-[40px] text-center">
-                        Periksa berkas domisili dan keterangan tidak mampu.
+                      <p className="text-[13px] text-slate-600 mb-4 min-h-[40px] text-center leading-relaxed">
+                        Opsional. Memverifikasi domisili dan keterangan kurang mampu untuk jaminan biaya. Tidak diperlukan untuk rujukan medis.
                       </p>
                       <div className="flex flex-wrap justify-center gap-1.5 mb-6">
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EBF2F6] text-slate-700">

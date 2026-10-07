@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Landmark,
   Hospital,
@@ -13,6 +14,7 @@ import {
   Search,
   MapPin,
   User,
+  UserCheck,
   FileCheck2,
   FileText,
   ExternalLink,
@@ -491,7 +493,14 @@ export default function VerifikasiFaskesPage() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
+                <Link
+                  href="/portal/dinkes/verifikasi-petugas"
+                  className="px-4 py-2 rounded-full border border-[#E2E8F0] bg-white text-xs font-semibold text-[#0F3040] hover:bg-slate-50 transition-colors shadow-2xs inline-flex items-center gap-1.5"
+                >
+                  <UserCheck className="w-3.5 h-3.5 text-[#8F5A4E]" />
+                  <span>Verifikasi Petugas</span>
+                </Link>
                 <button
                   type="button"
                   onClick={handleRefresh}
@@ -499,7 +508,7 @@ export default function VerifikasiFaskesPage() {
                   className="px-4 py-2 rounded-full border border-[#E2E8F0] bg-white text-xs font-semibold text-[#0F3040] hover:bg-slate-50 transition-colors shadow-2xs inline-flex items-center gap-2"
                 >
                   <RotateCw className={`w-3.5 h-3.5 ${loadingData ? "animate-spin" : ""}`} />
-                  <span>Segarkan Data</span>
+                  <span>Segarkan</span>
                 </button>
               </div>
             </div>

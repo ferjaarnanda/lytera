@@ -16,6 +16,7 @@ import { LogoutButton } from "@/components/LogoutButton";
 import { Navbar, NavbarVariant } from "@/components/Navbar";
 import { Reveal } from "@/components/Reveal";
 import { PasienDashboard } from "@/components/PasienDashboard";
+import { VerifikatorDashboard } from "@/components/VerifikatorDashboard";
 import {
   isValidRole,
   isValidSubRole,
@@ -60,14 +61,17 @@ export default function PortalSimulasiPage({ params }: PageProps) {
     return <PasienDashboard subperan={subperan} />;
   }
 
+  // Jika peran adalah verifikator, tampilkan Dashboard Verifikator Administrasi Asli
+  if (peran === "verifikator") {
+    return <VerifikatorDashboard subperan={subperan} />;
+  }
+
   // Determine appropriate Navbar variant
   let navVariant: NavbarVariant = "landing";
   if (peran === "fasilitas") {
     if (subperan === "rumah-sakit") navVariant = "rumah-sakit";
     else if (subperan === "apotek") navVariant = "apoteker";
     else navVariant = "dokter-puskesmas";
-  } else if (peran === "verifikator") {
-    navVariant = "verifikator";
   }
 
   return (

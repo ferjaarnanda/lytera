@@ -82,7 +82,7 @@ export const ROLES: Record<RoleId, RoleMeta> = {
   verifikator: {
     id: "verifikator",
     name: "Verifikasi Administrasi",
-    description: "Periksa berkas domisili dan keterangan tidak mampu.",
+    description: "Opsional. Memverifikasi domisili dan keterangan kurang mampu untuk jaminan biaya. Tidak diperlukan untuk rujukan medis.",
     subRoles: [
       {
         id: "kelurahan",

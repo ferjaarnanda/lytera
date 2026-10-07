@@ -40,10 +40,33 @@ Rancang skema sendiri lewat migrasi, dengan aturan:
 - UI: pasien membuat token (kode tampil sekali, hitung mundur, tombol cabut) dan membaca Riwayat Medis serta log akses. Dokter membuka Rekam Medis dengan NIK (find_patient_by_nik) ditambah token. Dokter rumah sakit tujuan dapat menambah catatan kunjungan saat rujukan dijadwalkan atau selesai.
 - Selesai bila: diuji impersonasi (token salah, kedaluwarsa, dicabut, terkunci, dokter tanpa token ditolak, pasien lain tidak melihat), get_advisors bersih untuk objek baru, dan alur UI teruji.
 
-## Tahap 5: Penyesuaian teks Verifikasi Administrasi
-- Kartu peran: "Opsional. Memeriksa berkas domisili dan keterangan tidak mampu untuk pasien yang membutuhkan jaminan di luar BPJS. Tidak diperlukan untuk rujukan medis."
-- Cara kerja: langkah 2 menjadi "Rumah sakit menerima rujukan dan menetapkan jadwal". Verifikasi administrasi disebut sebagai catatan opsional untuk pasien non-BPJS, bukan langkah wajib.
-- Timeline rujukan pasien tidak menampilkan langkah verifikasi.
+## Keputusan produk: Verifikasi Administrasi (pengganti yang lama)
+- Hanya DUA fungsi, keduanya OPSIONAL dan tidak pernah menghalangi rujukan: (1) verifikasi domisili, (2) verifikasi kurang mampu untuk jaminan biaya (SKTM/jaminan daerah).
+- Pasien memilih PENJAMIN saat daftar (BPJS, asuransi swasta, mandiri/umum, jaminan daerah/kurang mampu) dan bisa mengubahnya di halaman Penjamin & Verifikasi. Default: mandiri.
+- Kepesertaan BPJS dan asuransi TIDAK diverifikasi ke pihak luar. Tampilkan label "dicatat sesuai pengakuan pasien (simulasi)".
+- Rumah sakit hanya melihat STATUS (penjamin, domisili terverifikasi, jaminan daerah terverifikasi s.d. tanggal), tidak pernah dokumennya. Verifikator hanya melihat identitas dan data administratif, tanpa data medis.
+
+## Tahap 5a: Database (tanpa UI)
+1. patients dan family_members: tambah payer_type (bpjs|asuransi|mandiri|jaminan_daerah, default mandiri), insurance_name, insurance_policy_number. Kolom bpjs_number sudah ada.
+2. Tabel verification_requests: id, patient_id, family_member_id (opsional), type (domisili|kurang_mampu), status (menunggu|disetujui|ditolak), document_paths text[], patient_note, review_note, reviewed_by, reviewed_at, valid_until date, snapshot wilayah (province, city, district, village berupa NAMA), created_at. Satu pengajuan berstatus menunggu per subjek dan jenis. RLS: pasien membaca miliknya; menulis hanya lewat RPC.
+3. Bucket privat verification-documents (path "{patient_id}/..."): pasien mengunggah dan membaca miliknya; verifikator hanya lewat signed URL yang dibuat server setelah RPC memeriksa cakupan wilayah; pihak lain (dokter, rumah sakit, Dinkes) tidak punya akses.
+4. RPC SECURITY DEFINER (revoke dari anon): submit_verification, list_my_verifications, list_verification_queue(p_status) untuk verifikator aktif dan hanya dalam cakupan wilayahnya (kelurahan: village+district+city sama; kecamatan: district+city; dinas_sosial: city; bandingkan tanpa beda huruf besar/kecil dan spasi), review_verification(p_id, p_decision, p_note, p_valid_until) (satu persetujuan dari verifikator berwenang cukup; tolak wajib alasan).
+5. Perluas list_facility_referrals dan list_my_referrals: payer_type, nomor BPJS/polis dimasker (4 digit terakhir), domisili_terverifikasi, status jaminan daerah (belum|menunggu|terverifikasi + valid_until).
+6. Persetujuan akun verifikator oleh Dinkes: RPC list_pending_verifiers() dan review_verifier(p_id, p_decision), hanya role dinkes.
+7. Data uji lama: wilayah verifikator dan beberapa pasien uji masih berupa KODE (mis. 3374 / 337401 / 33740101). Perbarui lewat SQL ke NAMA wilayah seperti yang disimpan formulir sekarang agar pencocokan berfungsi.
+8. Uji impersonasi: pasien tidak melihat pengajuan orang lain; verifikator di luar cakupan tidak melihat antrean; rumah sakit dan dokter tidak bisa membaca dokumen; setuju dan tolak tercatat; get_advisors bersih.
+
+## Tahap 5b: Tampilan pasien
+- Formulir daftar Pasien Pribadi (dan per anggota di Pasien Keluarga): pilihan Penjamin berupa kartu. BPJS: nomor 13 digit. Asuransi: nama dan nomor polis. Mandiri: tanpa isian. Jaminan daerah: keterangan "akan diverifikasi" dengan opsi ajukan sekarang. Bukan syarat daftar. Sertakan label simulasi.
+- Halaman baru "Penjamin & Verifikasi" di portal pasien: ubah penjamin, daftar pengajuan dengan status dan alasan penolakan, tombol ajukan verifikasi domisili dan verifikasi kurang mampu (unggah PDF/JPG/PNG maks 5 MB ke bucket lalu submit_verification), badge "Terverifikasi s.d. ...".
+- Dashboard: kartu ringkas penjamin dan status verifikasi.
+
+## Tahap 5c: Verifikator, Dinkes, rumah sakit, teks
+- Portal Verifikator (navbar Verifikasi, Riwayat): antrean dari list_verification_queue (nama, NIK dimasker, wilayah, jenis, tanggal), detail dengan dokumen (signed URL dari server), aksi Setujui (berlaku sampai opsional) atau Tolak (alasan wajib). Tanpa data medis.
+- Dinkes: halaman "Verifikasi Petugas" untuk menyetujui akun verifikator.
+- Rumah sakit: detail Rujukan Masuk menampilkan badge penjamin dan status verifikasi (status saja).
+- Teks landing: kartu peran Verifikasi Administrasi menjadi "Opsional. Memverifikasi domisili dan keterangan kurang mampu untuk jaminan biaya. Tidak diperlukan untuk rujukan medis." Cara kerja langkah 2 menjadi "Rumah sakit menerima rujukan dan menetapkan jadwal". Timeline rujukan tidak menampilkan langkah verifikasi.
+- Selesai bila alur dua sisi teruji: pasien mengajukan, verifikator menyetujui, pasien melihat status, rumah sakit melihat badge tanpa dokumen.
 
 ## Masalah terbuka (tanya user, jangan ubah sendiri)
 - Akun Pasien Keluarga berstatus "menunggu" dan belum ada yang menyetujui, jadi belum bisa memakai portal. Saran: aktifkan otomatis untuk demo.

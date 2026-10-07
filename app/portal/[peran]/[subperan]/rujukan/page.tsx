@@ -55,6 +55,11 @@ interface ReferralRow {
   destination_name: string;
   destination_doctor: string | null;
   created_by_name: string | null;
+  payer_type?: string | null;
+  payer_number_masked?: string | null;
+  domisili_terverifikasi?: boolean;
+  jaminan_daerah_status?: string | null;
+  jaminan_daerah_valid_until?: string | null;
 }
 
 const BULAN_NAMES = [
@@ -586,6 +591,51 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
                   <p className="text-xs text-slate-500 font-mono">
                     NIK: {selectedReferral.nik_masked} {selectedReferral.is_family && "(Anggota Keluarga)"}
                   </p>
+
+                  {/* Status Penjamin & Verifikasi Administrasi (Tahap 5c) */}
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-[#FAF5F2] border border-[#E2E8F0] text-[#0F3040]">
+                      <span className="text-slate-400 font-normal">Penjamin:</span>
+                      <strong className="capitalize">
+                        {selectedReferral.payer_type === "bpjs"
+                          ? "BPJS Kesehatan"
+                          : selectedReferral.payer_type === "asuransi"
+                          ? "Asuransi Swasta"
+                          : selectedReferral.payer_type === "jaminan_daerah"
+                          ? "Jaminan Daerah"
+                          : "Umum / Mandiri"}
+                      </strong>
+                      {selectedReferral.payer_number_masked && (
+                        <span className="font-mono text-slate-500 text-[10px]">({selectedReferral.payer_number_masked})</span>
+                      )}
+                    </span>
+
+                    {selectedReferral.domisili_terverifikasi ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#EDF7F2] text-[#1B6B4D] border border-[#A8D5BD]">
+                        ✓ Domisili Terverifikasi
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#F8FAFC] text-slate-500 border border-[#E2E8F0]">
+                        Domisili Belum Diverifikasi
+                      </span>
+                    )}
+
+                    {selectedReferral.payer_type === "jaminan_daerah" && (
+                      selectedReferral.jaminan_daerah_status === "terverifikasi" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#EDF7F2] text-[#1B6B4D] border border-[#A8D5BD]">
+                          ✓ SKTM Terverifikasi {selectedReferral.jaminan_daerah_valid_until ? `s.d. ${selectedReferral.jaminan_daerah_valid_until}` : ""}
+                        </span>
+                      ) : selectedReferral.jaminan_daerah_status === "menunggu" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#FFF4D6] text-[#7A5200] border border-[#FDE68A]">
+                          SKTM Menunggu Verifikasi
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#F8FAFC] text-slate-500 border border-[#E2E8F0]">
+                          SKTM Belum Diajukan
+                        </span>
+                      )
+                    )}
+                  </div>
                 </div>
                 <button
                   type="button"
