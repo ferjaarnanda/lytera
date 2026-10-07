@@ -13,6 +13,7 @@
 | Tahap 4c: Antarmuka Dokter (Buka & Tulis Rekam Medis) | SELESAI | 5754db5 | Komponen RekamMedisDokterPanel di alur rujukan (masuk RS & keluar faskes primer) terintegrasi bukaRekamMedisDokterAction & tambahRekamMedisDokterAction. Token tidak disimpan di URL/storage, read-only riwayat audit PDP, form ICD-10 & ringkasan terhubung rujukan, auto-reset jika token dicabut/expired, non-dokter ditolak. Lolos lint & build 100%, uji 7 skenario SQL lolos. |
 | Tahap 5a & 5c: Verifikasi Administrasi (Backend, Verifikator, Dinkes, RS) | SELESAI | 0296414 | Migrasi skema penjamin & verification_requests, storage verification-documents, RPC SECURITY DEFINER, portal verifikator berwilayah, persetujuan petugas verifikator Dinkes, status penjamin & verifikasi di rujukan RS, copy landing page. Uji impersonasi SQL 100% lolos, lint & build lolos. |
 | Tahap 5b: Formulir Pendaftaran & Halaman Penjamin Pasien | SELESAI | 9bf1615 | Formulir pendaftaran pasien pribadi & keluarga dengan pilihan kartu penjamin (Mandiri, BPJS, Asuransi, Jaminan Daerah), kartu ringkas penjamin di Beranda, halaman Penjamin & Verifikasi di portal pasien (kelola penjamin, pengajuan domisili & SKTM dengan unggah berkas, badge terverifikasi). Lint 0 error/0 warning, build exit 0, uji impersonasi SQL lolos 100%. |
+| Fix: Pasien Keluarga otomatis aktif | SELESAI | 72b1ecf | Masalah terbuka RENCANA.md §72: pasien keluarga kini langsung berstatus 'aktif' saat daftar (sama dengan pasien pribadi) agar bisa demo tanpa approval manual. 1 baris diubah di pendaftaran.ts. Lint 0 error, build exit 0. |
 
 ---
 
