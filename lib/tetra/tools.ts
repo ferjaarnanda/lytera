@@ -1,5 +1,19 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient as createServerClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { TetraRecommendation, TetraUserContext } from "./types";
+
+async function getClient() {
+  try {
+    return await createServerClient();
+  } catch {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    if (url && key) {
+      return createSupabaseClient(url, key);
+    }
+    throw new Error("Supabase environment variables missing");
+  }
+}
 
 export interface FacilityCandidate {
   id: string;
@@ -29,7 +43,7 @@ export async function searchActiveFacilities(options: {
   limit?: number;
 }): Promise<FacilityCandidate[]> {
   try {
-    const supabase = await createClient();
+    const supabase = await getClient();
     const { data, error } = await supabase.rpc("list_active_facilities", {
       p_type: options.type || null,
       p_query: options.query || null,
@@ -54,7 +68,7 @@ export async function searchActiveFacilities(options: {
  */
 export async function searchActiveDoctors(facilityId: string): Promise<DoctorCandidate[]> {
   try {
-    const supabase = await createClient();
+    const supabase = await getClient();
     const { data, error } = await supabase.rpc("list_active_doctors", {
       p_facility_id: facilityId,
     });

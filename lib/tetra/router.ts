@@ -21,17 +21,27 @@ export function classifyTetraIntent(rawInput: string): IntentMatchResult {
     "kejang",
     "tidak sadar",
     "pingsan",
-    "sesak napas berat",
-    "sesak nafas parah",
-    "nyeri dada hebat",
+    "sesak napas",
+    "sesak nafas",
+    "sesak sekali",
+    "sesak berat",
+    "sesak parah",
+    "nyeri dada",
+    "sakit dada",
+    "dada sakit",
+    "dada sesak",
     "serangan jantung",
     "muntah darah",
     "pendarahan hebat",
     "perdarahan banyak",
+    "pendarahan",
+    "perdarahan",
     "koma",
     "tersedak",
   ];
-  if (emergencyKeywords.some((k) => input.includes(k))) {
+  const hasEmergencyWord = emergencyKeywords.some((k) => input.includes(k));
+  const hasSesakAndDada = input.includes("sesak") && input.includes("dada");
+  if (hasEmergencyWord || hasSesakAndDada) {
     return { intent: "emergency", confidence: 0.99 };
   }
 
