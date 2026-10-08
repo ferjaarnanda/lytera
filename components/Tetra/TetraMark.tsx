@@ -1,16 +1,16 @@
 import React from "react";
 
-export interface TeraMarkProps {
+export interface TetraMarkProps {
   size?: "sm" | "md" | "lg";
   className?: string;
   isHovered?: boolean;
 }
 
 /**
- * Komponen Mark/Logo Resmi Tera AI
- * Memiliki border gradient hijau terang -> hijau deep yang berputar secara kontinu saat hover.
+ * Komponen Mark/Logo Resmi Tetra AI
+ * Memiliki 4 garis diagonal dan continuous moving border animation saat hover.
  */
-export const TeraMark: React.FC<TeraMarkProps> = ({
+export const TetraMark: React.FC<TetraMarkProps> = ({
   size = "md",
   className = "",
   isHovered = false,
@@ -40,7 +40,7 @@ export const TeraMark: React.FC<TeraMarkProps> = ({
       {/* 1. CONTINUOUS MOVING BORDER GRADIENT (HIJAU TERANG -> HIJAU DEEP) */}
       <div
         className={`absolute inset-[-100%] transition-opacity duration-300 pointer-events-none ${
-          isHovered ? "opacity-100 animate-tera-spin" : "opacity-40"
+          isHovered ? "opacity-100 animate-tetra-spin" : "opacity-40"
         }`}
         style={{
           background:
@@ -55,7 +55,7 @@ export const TeraMark: React.FC<TeraMarkProps> = ({
           isHovered ? "scale-[0.98]" : "scale-100"
         } ${sizeConfig.inner}`}
       >
-        {/* IKON TERA: Digital Medical Sparkle */}
+        {/* IKON TETRA: Digital Medical Sparkle dengan TEPAT 4 GARIS DIAGONAL */}
         <svg
           width={sizeConfig.iconSize}
           height={sizeConfig.iconSize}
@@ -64,34 +64,70 @@ export const TeraMark: React.FC<TeraMarkProps> = ({
           xmlns="http://www.w3.org/2000/svg"
           aria-hidden="true"
         >
-          {/* Daun / Pelindung Luar */}
+          {/* Daun Pelindung Luar */}
           <path
             d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z"
-            fill="url(#tera-leaf-grad)"
+            fill="url(#tetra-leaf-grad)"
             opacity="0.35"
           />
-          {/* Salib AI Sparkle Medis */}
+          {/* Salib Tegak & Datar Medis */}
           <path
             d="M12 6V18M6 12H18"
-            stroke="url(#tera-cross-grad)"
-            strokeWidth="2.75"
+            stroke="url(#tetra-cross-grad)"
+            strokeWidth="2.5"
             strokeLinecap="round"
           />
-          {/* Kilau AI Pintar di Titik Tengah */}
-          <circle cx="12" cy="12" r="2.25" fill="#34D399" />
-          <path
-            d="M16 8L17.5 6.5M16 16L17.5 17.5M8 8L6.5 6.5"
+          {/* Titik Inti Kilau AI di Pusat */}
+          <circle cx="12" cy="12" r="2.2" fill="#34D399" />
+
+          {/* TEPAT 4 GARIS DIAGONAL DI 4 KUADRAN (TETRA = EMPAT) */}
+          {/* 1. Kuadran Atas-Kanan */}
+          <line
+            x1="15.8"
+            y1="8.2"
+            x2="17.8"
+            y2="6.2"
             stroke="#10B981"
-            strokeWidth="1.5"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+          {/* 2. Kuadran Bawah-Kanan */}
+          <line
+            x1="15.8"
+            y1="15.8"
+            x2="17.8"
+            y2="17.8"
+            stroke="#10B981"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+          {/* 3. Kuadran Atas-Kiri */}
+          <line
+            x1="8.2"
+            y1="8.2"
+            x2="6.2"
+            y2="6.2"
+            stroke="#10B981"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+          {/* 4. Kuadran Bawah-Kiri */}
+          <line
+            x1="8.2"
+            y1="15.8"
+            x2="6.2"
+            y2="17.8"
+            stroke="#10B981"
+            strokeWidth="1.6"
             strokeLinecap="round"
           />
 
           <defs>
-            <linearGradient id="tera-leaf-grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+            <linearGradient id="tetra-leaf-grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
               <stop stopColor="#34D399" />
               <stop offset="1" stopColor="#047857" />
             </linearGradient>
-            <linearGradient id="tera-cross-grad" x1="6" y1="6" x2="18" y2="18" gradientUnits="userSpaceOnUse">
+            <linearGradient id="tetra-cross-grad" x1="6" y1="6" x2="18" y2="18" gradientUnits="userSpaceOnUse">
               <stop stopColor="#A7F3D0" />
               <stop offset="0.5" stopColor="#34D399" />
               <stop offset="1" stopColor="#10B981" />

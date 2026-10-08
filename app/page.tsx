@@ -22,7 +22,7 @@ import { Reveal } from "@/components/Reveal";
 import { HeroSection } from "@/components/HeroSection";
 import { RolePickerDialog } from "@/components/RolePickerDialog";
 import { RoleId } from "@/lib/roles";
-import { TeraWidget } from "@/components/Tera";
+import { TetraWidget } from "@/components/Tetra";
 
 const CARA_KERJA_STEPS = [
   {
@@ -875,8 +875,8 @@ export default function HomePage() {
         initialRole={pickerRole}
       />
 
-      {/* ASISTEN AI TERA (LANDING VARIANT) */}
-      <TeraWidget variant="landing" context={{ role: "landing" }} />
+      {/* ASISTEN AI TETRA (LANDING VARIANT) */}
+      <TetraWidget variant="landing" context={{ role: "landing" }} />
     </div>
   );
 }

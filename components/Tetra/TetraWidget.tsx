@@ -2,16 +2,16 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { X, Send, Sparkles, MapPin, Building, ArrowRight, Loader2, RefreshCw } from "lucide-react";
-import { TeraMark } from "./TeraMark";
-import { TeraMessage, TeraUserContext } from "@/lib/tera/types";
-import { sendTeraMessageAction } from "@/app/actions/tera";
-import { getQuickSuggestions } from "@/lib/tera/context";
+import { TetraMark } from "./TetraMark";
+import { TetraMessage, TetraUserContext } from "@/lib/tetra/types";
+import { sendTetraMessageAction } from "@/app/actions/tetra";
+import { getQuickSuggestions } from "@/lib/tetra/context";
 
-export interface TeraWidgetProps {
-  /** Mode tampilan tombol pemicu: 'landing' menampilkan Mark + Teks 'Tera', 'portal' menampilkan Mark saja */
+export interface TetraWidgetProps {
+  /** Mode tampilan tombol pemicu: 'landing' menampilkan Mark + Teks 'Tetra', 'portal' menampilkan Mark saja */
   variant?: "landing" | "portal";
   /** Konteks user / halaman */
-  context?: Partial<TeraUserContext>;
+  context?: Partial<TetraUserContext>;
   className?: string;
 }
 
@@ -21,7 +21,7 @@ function generateMsgId(prefix: string): string {
   return `${prefix}-${msgSequence}`;
 }
 
-export const TeraWidget: React.FC<TeraWidgetProps> = ({
+export const TetraWidget: React.FC<TetraWidgetProps> = ({
   variant = "landing",
   context = {},
   className = "",
@@ -35,31 +35,31 @@ export const TeraWidget: React.FC<TeraWidgetProps> = ({
   const getInitialGreeting = (): string => {
     const role = context.role || "landing";
     if (role === "landing") {
-      return "Halo! Saya **Tera**, asisten digital Lytera. Saya bisa bantu mencari fasilitas kesehatan terdekat, dokter spesialis, atau menjelaskan alur rujukan berjenjang. Kamu sedang mencari apa hari ini?";
+      return "Halo! Saya **Tetra**, asisten digital resmi Lytera. Saya bisa bantu mencari informasi fasilitas kesehatan aktif, dokter spesialis, alur rujukan berjenjang, dan panduan izin akses rekam medis. Kamu sedang mencari apa hari ini?";
     }
     if (role === "pasien") {
       const nama = context.fullName ? `, ${context.fullName}` : "";
-      return `Halo${nama}! Tera siap membantu mengecek faskes primer terdekat, alur rujukan dokter, atau panduan pembuatan kode izin rekam medis 6 digit.`;
+      return `Halo${nama}! Tetra siap membantu mengecek faskes rujukan, panduan pembuatan kode izin rekam medis 6 digit, atau informasi penjamin biaya.`;
     }
     if (role === "dokter" || role === "puskesmas" || role === "klinik") {
-      return `Halo Dok! Tera siap membantu penapisan fasilitas rujukan lanjutan (Rumah Sakit) dan ketersediaan dokter spesialis untuk kebutuhan rujukan pasien.`;
+      return `Halo Dok! Tetra siap membantu penapisan fasilitas rujukan lanjutan (Rumah Sakit) dan ketersediaan dokter spesialis untuk kebutuhan rujukan pasien.`;
     }
     if (role === "rumah_sakit") {
-      return `Halo! Tera siap membantu informasi layanan spesialis dan alternatif rujukan faskes di sistem Lytera.`;
+      return `Halo! Tetra siap membantu informasi layanan spesialis dan alternatif rujukan faskes di sistem Lytera.`;
     }
     if (role === "verifikator") {
-      return `Halo Petugas! Tera siap membantu panduan verifikasi dokumen administratif (domisili warga dan SKTM kurang mampu).`;
+      return `Halo Petugas! Tetra siap membantu panduan verifikasi dokumen administratif (domisili warga dan SKTM kurang mampu).`;
     }
     if (role === "dinkes") {
-      return `Halo Dinas Kesehatan! Tera siap menyajikan ringkasan fasilitas kesehatan aktif dan alur verifikasi legalitas faskes di daerah.`;
+      return `Halo Dinas Kesehatan! Tetra siap menyajikan ringkasan fasilitas kesehatan aktif dan alur verifikasi legalitas faskes di daerah.`;
     }
-    return "Halo! Saya Tera, asisten AI Lytera. Ada yang bisa saya bantu?";
+    return "Halo! Saya Tetra, asisten AI Lytera. Ada yang bisa saya bantu?";
   };
 
-  const [messages, setMessages] = useState<TeraMessage[]>([
+  const [messages, setMessages] = useState<TetraMessage[]>([
     {
       id: "init-1",
-      sender: "tera",
+      sender: "tetra",
       content: getInitialGreeting(),
       timestamp: 1,
       suggestions: getQuickSuggestions({
@@ -84,7 +84,7 @@ export const TeraWidget: React.FC<TeraWidgetProps> = ({
     const text = (textToSend || inputVal).trim();
     if (!text || isLoading) return;
 
-    const userMsg: TeraMessage = {
+    const userMsg: TetraMessage = {
       id: generateMsgId("user"),
       sender: "user",
       content: text,
@@ -96,43 +96,42 @@ export const TeraWidget: React.FC<TeraWidgetProps> = ({
     setIsLoading(true);
 
     try {
-      // Siapkan payload riwayat untuk context server
       const chatHistory = [...messages, userMsg].map((m) => ({
         role: m.sender === "user" ? ("user" as const) : ("assistant" as const),
         content: m.content,
       }));
 
-      const res = await sendTeraMessageAction(chatHistory, text, context);
+      const res = await sendTetraMessageAction(chatHistory, text, context);
 
       if (res.success) {
-        const teraMsg: TeraMessage = {
-          id: generateMsgId("tera"),
-          sender: "tera",
+        const tetraMsg: TetraMessage = {
+          id: generateMsgId("tetra"),
+          sender: "tetra",
           content: res.message,
           timestamp: 1,
           recommendations: res.recommendations,
           suggestions: res.suggestions,
           navigation: res.navigation,
         };
-        setMessages((prev) => [...prev, teraMsg]);
+        setMessages((prev) => [...prev, tetraMsg]);
       } else {
-        const errorMsg: TeraMessage = {
-          id: generateMsgId("tera-err"),
-          sender: "tera",
+        const errorMsg: TetraMessage = {
+          id: generateMsgId("tetra-err"),
+          sender: "tetra",
           content:
             res.message ||
-            "Maaf, Tera sedang memproses data rujukan. Silakan coba kembali dalam beberapa saat.",
+            "Maaf, Tetra sedang memproses data rujukan. Silakan coba kembali dalam beberapa saat.",
           timestamp: 1,
           isError: true,
         };
         setMessages((prev) => [...prev, errorMsg]);
       }
     } catch {
-      const errorMsg: TeraMessage = {
-        id: generateMsgId("tera-err"),
-        sender: "tera",
+      const errorMsg: TetraMessage = {
+        id: generateMsgId("tetra-err"),
+        sender: "tetra",
         content:
-          "Terjadi kendala jaringan saat menghubungi asisten Tera. Silakan periksa koneksi internetmu.",
+          "Terjadi kendala jaringan saat menghubungi asisten Tetra. Silakan periksa koneksi internetmu.",
         timestamp: 1,
         isError: true,
       };
@@ -153,7 +152,7 @@ export const TeraWidget: React.FC<TeraWidgetProps> = ({
     setMessages([
       {
         id: generateMsgId("reset"),
-        sender: "tera",
+        sender: "tetra",
         content: getInitialGreeting(),
         timestamp: 1,
         suggestions: getQuickSuggestions({
@@ -170,7 +169,7 @@ export const TeraWidget: React.FC<TeraWidgetProps> = ({
   const getRoleBadgeLabel = (): string => {
     const role = context.role || "landing";
     if (role === "landing") return "Panduan Umum";
-    if (role === "pasien") return context.subRole === "keluarga" ? "Pasien Keluarga" : "Pasien Pribadi";
+    if (role === "pasien") return context.subRole === "keluarga" ? "Pasien Keluarga" : "Pasien Mandiri";
     if (role === "dokter" || role === "puskesmas" || role === "klinik") return "Tenaga Medis";
     if (role === "rumah_sakit") return "Rumah Sakit";
     if (role === "verifikator") return "Verifikator";
@@ -191,11 +190,11 @@ export const TeraWidget: React.FC<TeraWidgetProps> = ({
           {/* A. HEADER PANEL */}
           <div className="bg-[#0A2230] text-white px-4 py-3.5 flex items-center justify-between shrink-0 border-b border-white/10">
             <div className="flex items-center gap-2.5">
-              <TeraMark size="sm" isHovered={true} />
+              <TetraMark size="sm" isHovered={true} />
               <div>
                 <div className="flex items-center gap-1.5">
                   <span className="font-extrabold text-[15px] tracking-tight text-white leading-none">
-                    Tera
+                    Tetra
                   </span>
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#34D399]/20 text-[#34D399] border border-[#34D399]/30">
                     {getRoleBadgeLabel()}
@@ -221,7 +220,7 @@ export const TeraWidget: React.FC<TeraWidgetProps> = ({
                 type="button"
                 onClick={() => setIsOpen(false)}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                aria-label="Tutup panel Tera"
+                aria-label="Tutup panel Tetra"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -250,7 +249,7 @@ export const TeraWidget: React.FC<TeraWidgetProps> = ({
                   </div>
                 </div>
 
-                {/* Structured Recommendations Cards */}
+                {/* Structured Recommendations Cards: HANYA TAMPIL JIKA ADA REKOMENDASI NYATA */}
                 {msg.recommendations && msg.recommendations.length > 0 && (
                   <div className="w-full mt-2.5 space-y-2">
                     <span className="text-[11px] font-bold text-[#2E7D51] tracking-wider uppercase block">
@@ -326,7 +325,7 @@ export const TeraWidget: React.FC<TeraWidgetProps> = ({
             {isLoading && (
               <div className="flex items-center gap-2 text-slate-500 text-[12px] bg-white p-2.5 rounded-[12px] border border-[#E2E8F0] w-fit">
                 <Loader2 className="w-3.5 h-3.5 text-[#2E7D51] animate-spin" />
-                <span>Tera sedang mencari data rujukan...</span>
+                <span>Tetra sedang memproses...</span>
               </div>
             )}
 
@@ -347,7 +346,7 @@ export const TeraWidget: React.FC<TeraWidgetProps> = ({
                 value={inputVal}
                 onChange={(e) => setInputVal(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Tanya Tera (misal: RS terdekat, alur rujukan)..."
+                placeholder="Tanya Tetra (misal: RS rujukan, alur rujukan)..."
                 disabled={isLoading}
                 className="flex-1 bg-[#F1F5F3] text-[#0A2230] text-[13px] px-3.5 py-2.5 rounded-[14px] border border-transparent focus:border-[#2E7D51] focus:bg-white focus:outline-none transition-colors placeholder:text-slate-400"
               />
@@ -376,33 +375,33 @@ export const TeraWidget: React.FC<TeraWidgetProps> = ({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Micro-label / Tooltip "Tera" */}
+        {/* Micro-label / Tooltip "Tetra" */}
         <div
           className={`absolute bottom-full right-1/2 translate-x-1/2 mb-2 px-2.5 py-1 rounded-md bg-[#0A2230] text-white text-[11px] font-bold tracking-wide shadow-md pointer-events-none transition-all duration-200 z-50 whitespace-nowrap ${
             isHovered && !isOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"
           }`}
         >
-          Tera
+          Tetra
           <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-[#0A2230]" />
         </div>
 
-        {/* Tombol Utama Tera */}
+        {/* Tombol Utama Tetra */}
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
           className={`flex items-center gap-2.5 p-1.5 pr-4 rounded-full bg-white shadow-xl border border-[#E2E8F0] hover:border-[#2E7D51]/40 transition-all duration-200 cursor-pointer active:scale-95 ${
             variant === "portal" ? "pr-1.5" : "pr-4"
           }`}
-          aria-label={isOpen ? "Tutup asisten Tera" : "Buka asisten Tera"}
+          aria-label={isOpen ? "Tutup asisten Tetra" : "Buka asisten Tetra"}
         >
-          {/* Mark Tera dengan Continuous Rotating Border Gradient */}
-          <TeraMark size="md" isHovered={isHovered} />
+          {/* Mark Tetra dengan 4 Garis Diagonal & Continuous Rotating Border Gradient */}
+          <TetraMark size="md" isHovered={isHovered} />
 
-          {/* Label Teks "Tera" (HANYA DITAMPILKAN DI LANDING PAGE) */}
+          {/* Label Teks "Tetra" (HANYA DITAMPILKAN DI LANDING PAGE) */}
           {variant === "landing" && (
             <div className="text-left flex flex-col justify-center pr-1">
               <span className="font-extrabold text-[14px] text-[#0A2230] leading-none group-hover:text-[#2E7D51] transition-colors">
-                Tera
+                Tetra
               </span>
               <span className="text-[10.5px] text-slate-500 leading-tight block mt-0.5">
                 Tanya Rujukan

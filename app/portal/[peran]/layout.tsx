@@ -1,7 +1,7 @@
 import React from "react";
 import { PortalWallpaper } from "@/components/PortalWallpaper";
-import { TeraWidget } from "@/components/Tera";
-import { TeraRole } from "@/lib/tera/types";
+import { TetraWidget } from "@/components/Tetra";
+import { TetraRole } from "@/lib/tetra/types";
 
 interface PortalPeranLayoutProps {
   children: React.ReactNode;
@@ -13,7 +13,7 @@ export default async function PortalPeranLayout({
   params,
 }: PortalPeranLayoutProps) {
   const { peran } = await params;
-  const mappedRole = (peran === "fasilitas" ? "puskesmas" : peran) as TeraRole;
+  const mappedRole = (peran === "fasilitas" ? "puskesmas" : peran) as TetraRole;
 
   // Terapkan wallpaper rumah sakit untuk pasien dan fasilitas kesehatan
   // (termasuk semua sub-halaman: dashboard, rujukan, rujukan/baru, staf, dokter-petugas, dll)
@@ -21,7 +21,7 @@ export default async function PortalPeranLayout({
     return (
       <PortalWallpaper>
         {children}
-        <TeraWidget variant="portal" context={{ role: mappedRole }} />
+        <TetraWidget variant="portal" context={{ role: mappedRole }} />
       </PortalWallpaper>
     );
   }
@@ -34,7 +34,7 @@ export default async function PortalPeranLayout({
         brightness={1.3}
       >
         {children}
-        <TeraWidget variant="portal" context={{ role: "verifikator" }} />
+        <TetraWidget variant="portal" context={{ role: "verifikator" }} />
       </PortalWallpaper>
     );
   }
@@ -42,7 +42,7 @@ export default async function PortalPeranLayout({
   return (
     <>
       {children}
-      <TeraWidget variant="portal" context={{ role: mappedRole }} />
+      <TetraWidget variant="portal" context={{ role: mappedRole }} />
     </>
   );
 }

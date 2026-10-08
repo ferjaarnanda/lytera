@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { TeraRecommendation, TeraUserContext } from "./types";
+import { TetraRecommendation, TetraUserContext } from "./types";
 
 export interface FacilityCandidate {
   id: string;
@@ -22,7 +22,6 @@ export interface DoctorCandidate {
 
 /**
  * Mencari fasilitas kesehatan aktif di Lytera melalui RPC resmi list_active_facilities.
- * Menghindari query langsung untuk kepatuhan RLS.
  */
 export async function searchActiveFacilities(options: {
   type?: "puskesmas" | "klinik" | "rumah_sakit" | "apotek" | null;
@@ -38,14 +37,14 @@ export async function searchActiveFacilities(options: {
     });
 
     if (error) {
-      console.warn("[Tera] Gagal memanggil list_active_facilities:", error.message);
+      console.warn("[Tetra] Gagal memanggil list_active_facilities:", error.message);
       return [];
     }
 
     if (!Array.isArray(data)) return [];
     return data as FacilityCandidate[];
   } catch (err) {
-    console.warn("[Tera] Error searchActiveFacilities:", err);
+    console.warn("[Tetra] Error searchActiveFacilities:", err);
     return [];
   }
 }
@@ -61,7 +60,7 @@ export async function searchActiveDoctors(facilityId: string): Promise<DoctorCan
     });
 
     if (error) {
-      console.warn("[Tera] Gagal memanggil list_active_doctors:", error.message);
+      console.warn("[Tetra] Gagal memanggil list_active_doctors:", error.message);
       return [];
     }
 
@@ -73,17 +72,54 @@ export async function searchActiveDoctors(facilityId: string): Promise<DoctorCan
       facility_id: facilityId,
     }));
   } catch (err) {
-    console.warn("[Tera] Error searchActiveDoctors:", err);
+    console.warn("[Tetra] Error searchActiveDoctors:", err);
     return [];
   }
 }
 
 /**
+ * Mencari semua dokter aktif di seluruh faskes aktif (dengan mencari faskes lalu mengambil dokternya).
+ */
+export async function searchAllActiveDoctors(options?: {
+  specialization?: string;
+  query?: string;
+}): Promise<DoctorCandidate[]> {
+  const facilities = await searchActiveFacilities({ limit: 20 });
+  const allDoctors: DoctorCandidate[] = [];
+
+  for (const fac of facilities) {
+    const doctors = await searchActiveDoctors(fac.id);
+    for (const doc of doctors) {
+      doc.facility_name = fac.name;
+      doc.facility_type = fac.type;
+      doc.city = fac.city;
+      allDoctors.push(doc);
+    }
+  }
+
+  let filtered = allDoctors;
+  if (options?.specialization) {
+    const specLower = options.specialization.toLowerCase();
+    filtered = filtered.filter((d) => d.specialization?.toLowerCase().includes(specLower));
+  }
+  if (options?.query) {
+    const qLower = options.query.toLowerCase();
+    filtered = filtered.filter(
+      (d) =>
+        d.full_name.toLowerCase().includes(qLower) ||
+        (d.specialization && d.specialization.toLowerCase().includes(qLower)) ||
+        (d.facility_name && d.facility_name.toLowerCase().includes(qLower))
+    );
+  }
+
+  return filtered;
+}
+
+/**
  * Sistem ranking kandidat fasilitas kesehatan berdasarkan:
  * 1. Kecocokan kebutuhan / keluhan / jenis faskes
- * 2. Tingkat faskes yang tepat (primer vs lanjutan)
- * 3. Kedekatan wilayah (Kecamatan -> Kota/Kabupaten -> Provinsi -> Luar)
- * 4. Ketersediaan dokter / layanan
+ * 2. Tingkat faskes yang tepat
+ * 3. Kedekatan wilayah (Kecamatan -> Kabupaten/Kota -> Provinsi)
  */
 export function rankFacilities(
   facilities: FacilityCandidate[],
@@ -101,7 +137,7 @@ export function rankFacilities(
 
   return facilities
     .map((fac) => {
-      let score = 50; // Skor awal faskes aktif
+      let score = 50;
       const reasons: string[] = [];
 
       // 1. Tipe Faskes
@@ -156,13 +192,13 @@ export function rankFacilities(
 }
 
 /**
- * Mengubah kandidat fasilitas terpilih menjadi kartu rekomendasi terstruktur untuk UI Tera.
+ * Format kartu rekomendasi fasilitas untuk UI.
  */
 export function buildFacilityRecommendations(
   ranked: Array<{ facility: FacilityCandidate; relevanceReason: string }>,
   limit = 3,
-  context?: TeraUserContext
-): TeraRecommendation[] {
+  context?: TetraUserContext
+): TetraRecommendation[] {
   return ranked.slice(0, limit).map(({ facility, relevanceReason }) => {
     const isDoctorOrStaff =
       context?.role === "dokter" ||
@@ -203,6 +239,33 @@ export function buildFacilityRecommendations(
       badge: "Faskes Aktif",
       actionUrl,
       actionLabel,
+    };
+  });
+}
+
+/**
+ * Format kartu rekomendasi dokter untuk UI.
+ */
+export function buildDoctorRecommendations(
+  doctors: DoctorCandidate[],
+  limit = 3
+): TetraRecommendation[] {
+  return doctors.slice(0, limit).map((doc) => {
+    const facName = doc.facility_name
+      ? doc.facility_name
+          .split(" ")
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(" ")
+      : "Fasilitas Terdaftar";
+
+    return {
+      type: "doctor",
+      id: doc.staff_id,
+      name: doc.full_name,
+      category: doc.specialization ? `Spesialis ${doc.specialization}` : "Dokter Umum",
+      relevance: `Dokter aktif bertugas di ${facName}.`,
+      location: doc.city || "Kota Semarang",
+      badge: "Dokter Aktif",
     };
   });
 }

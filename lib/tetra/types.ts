@@ -1,4 +1,4 @@
-export type TeraRole =
+export type TetraRole =
   | "landing"
   | "pasien"
   | "dokter"
@@ -9,9 +9,23 @@ export type TeraRole =
   | "verifikator"
   | "dinkes";
 
-export interface TeraUserContext {
+export type TetraIntent =
+  | "identity" // nama saya siapa, siapa saya, identitas
+  | "search_facility" // cari puskesmas, klinik, apotek, faskes
+  | "search_doctor" // cari dokter, spesialis
+  | "search_referral_hospital" // cari rumah sakit rujukan
+  | "search_poli" // cari poli tertentu
+  | "referral_flow" // alur rujukan Lytera
+  | "token_access" // izin akses 6 digit, token
+  | "medical_record" // rekam medis
+  | "payer_verification" // penjamin bpjs, asuransi, sktm, verifikasi domisili
+  | "general_info" // tentang Lytera, fitur
+  | "emergency" // gawat darurat medis
+  | "unsupported"; // percakapan umum / di luar topik
+
+export interface TetraUserContext {
   userId?: string;
-  role: TeraRole;
+  role: TetraRole;
   subRole?: string | null;
   fullName?: string;
   email?: string;
@@ -39,24 +53,24 @@ export interface TeraUserContext {
   activeDiagnosis?: string | null;
 }
 
-export interface TeraRecommendation {
+export interface TetraRecommendation {
   type: "facility" | "doctor" | "service" | "info";
   id?: string;
   name: string;
   category?: string; // misal: "Rumah Sakit", "Puskesmas", "Spesialis Penyakit Dalam"
   relevance: string; // Alasan kenapa kandidat dipilih (bahasa objektif & faktual)
   location?: string; // misal: "Semarang Tengah, Kota Semarang"
-  badge?: string; // misal: "Faskes Aktif", "Rujukan Tingkat Lanjutan"
+  badge?: string; // misal: "Faskes Aktif", "Dokter Spesialis"
   actionUrl?: string; // URL navigasi resmi di Lytera
   actionLabel?: string; // Label tombol
 }
 
-export interface TeraMessage {
+export interface TetraMessage {
   id: string;
-  sender: "user" | "tera" | "system";
+  sender: "user" | "tetra" | "system";
   content: string;
   timestamp: number;
-  recommendations?: TeraRecommendation[];
+  recommendations?: TetraRecommendation[];
   suggestions?: string[];
   navigation?: {
     url: string;
@@ -65,19 +79,20 @@ export interface TeraMessage {
   isError?: boolean;
 }
 
-export interface TeraChatRequest {
+export interface TetraChatRequest {
   messages: Array<{
     role: "user" | "assistant" | "system";
     content: string;
   }>;
-  context: TeraUserContext;
+  context: TetraUserContext;
   userInput: string;
 }
 
-export interface TeraChatResponse {
+export interface TetraChatResponse {
   success: boolean;
   message: string;
-  recommendations?: TeraRecommendation[];
+  intent?: TetraIntent;
+  recommendations?: TetraRecommendation[];
   suggestions?: string[];
   navigation?: {
     url: string;

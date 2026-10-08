@@ -13,8 +13,8 @@
 | Tahap 4c: Antarmuka Dokter (Buka & Tulis Rekam Medis) | SELESAI | 5754db5 | Komponen RekamMedisDokterPanel di alur rujukan (masuk RS & keluar faskes primer) terintegrasi bukaRekamMedisDokterAction & tambahRekamMedisDokterAction. Token tidak disimpan di URL/storage, read-only riwayat audit PDP, form ICD-10 & ringkasan terhubung rujukan, auto-reset jika token dicabut/expired, non-dokter ditolak. Lolos lint & build 100%, uji 7 skenario SQL lolos. |
 | Tahap 5a & 5c: Verifikasi Administrasi (Backend, Verifikator, Dinkes, RS) | SELESAI | 0296414 | Migrasi skema penjamin & verification_requests, storage verification-documents, RPC SECURITY DEFINER, portal verifikator berwilayah, persetujuan petugas verifikator Dinkes, status penjamin & verifikasi di rujukan RS, copy landing page. Uji impersonasi SQL 100% lolos, lint & build lolos. |
 | Tahap 5b: Formulir Pendaftaran & Halaman Penjamin Pasien | SELESAI | 9bf1615 | Formulir pendaftaran pasien pribadi & keluarga dengan pilihan kartu penjamin (Mandiri, BPJS, Asuransi, Jaminan Daerah), kartu ringkas penjamin di Beranda, halaman Penjamin & Verifikasi di portal pasien (kelola penjamin, pengajuan domisili & SKTM dengan unggah berkas, badge terverifikasi). Lint 0 error/0 warning, build exit 0, uji impersonasi SQL lolos 100%. |
-| Fix: Pasien Keluarga otomatis aktif | SELESAI | 72b1ecf | Masalah terbuka RENCANA.md §72: pasien keluarga kini langsung berstatus 'aktif' saat daftar (sama dengan pasien pribadi) agar bisa demo tanpa approval manual. 1 baris diubah di pendaftaran.ts. Lint 0 error, build exit 0. |
-| Tahap Tera AI Assistant | SELESAI | c2056e3 | Arsitektur Tera AI terintegrasi Groq LLM server-only dengan intelligent fallback mode, role-aware context builder untuk 9 peran/halaman, controlled data tools ke RPC list_active_facilities & list_active_doctors dengan ranking hirarki wilayah, guardrails medis ketat, dan UI TeraWidget reusable dengan continuous moving border animation serta non-blocking floating panel. Lint 0 error/0 warning, build exit 0. |
+| Tahap Tetra AI Assistant | SELESAI | c2056e3 | Arsitektur dasar Tera AI terintegrasi Groq LLM server-only dengan intelligent fallback mode, role-aware context builder untuk 9 peran/halaman, controlled data tools ke RPC list_active_facilities & list_active_doctors. |
+| Tahap Tetra AI Context-Aware & Rebranding | SELESAI | [PENDING_COMMIT] | Rebranding Tera -> Tetra, mark logo tepat 4 garis diagonal, strict landing anonymity (tanpa bocor profil demo), intent routing deterministik presisi (hanya cari faskes bila diminta), quick action buttons terkalibrasi, lolos 7 uji skenario via HTTP, lint 0 error, build exit 0. |
 
 ---
 
@@ -305,4 +305,31 @@
   - `npm run lint`: **0 error, 0 warning**.
   - `npm run build`: **Exit 0**, seluruh 19 rute sukses dibangun tanpa error.
   - `npx tsc --noEmit`: 100% type-safe.
+
+### 22. Tahap Tetra AI Context-Aware & Rebranding (Selesai)
+- [x] **Rebranding & Visual Mark Tetra**:
+  - Rebranding nama dari "Tera" menjadi "Tetra" secara konsisten di landing page, portal pengguna, widget UI, tooltip, dan modul kode (`lib/tetra/`, `components/Tetra/`, `app/actions/tetra.ts`).
+  - Mark SVG `TetraMark.tsx` diperbarui dengan **tepat 4 garis diagonal** di 4 kuadran (merepresentasikan Tetra), dengan tetap mempertahankan animasi border gradient hijau berputar (`animate-tetra-spin`).
+- [x] **Anonimitas Ketat Pengunjung Landing Page**:
+  - Pada `app/actions/tetra.ts`, saat pengunjung berada di landing page (`clientContext?.role === 'landing'`), context dipaksa anonim (`isLanding = true`). Sistem tidak pernah membaca cookie sesi pengguna terdaftar atau membocorkan profil pasien demo.
+  - Saat ditanya *"nama saya siapa"* atau identitas diri di landing page, Tetra menjawab secara jujur bahwa pengunjung belum login dan menawarkan bantuan terkait informasi Lytera.
+- [x] **Klasifikasi Intent Deterministik & Non-Overfitting Recommendations**:
+  - Engine `lib/tetra/router.ts` & `lib/tetra/engine.ts` memisahkan intent secara presisi:
+    - Informasi & Edukasi: `identity`, `token_access` (izin akses 6 digit), `referral_flow` (alur berjenjang), `medical_record`, `payer_verification`, `general_info`, `unsupported`. Menghasilkan jawaban informatif tanpa menyertakan kartu rekomendasi fasilitas faskes.
+    - Pencarian Faskes/Dokter: `search_referral_hospital`, `search_facility`, `search_doctor`, `search_poli`. Hanya menjalankan query database faskes/dokter ketika intent memang membutuhkan pencarian faskes.
+    - Kegawatdaruratan: `emergency`. Langsung memberikan peringatan darurat ke IGD / 119 dan rekomendasi IGD rumah sakit terdekat.
+- [x] **Quick Action Chips Terkalibrasi**:
+  - Pertanyaan cepat per peran disesuaikan agar langsung memicu intent yang sesuai tanpa mengarahkan pengguna ke rekomendasi faskes yang tidak relevan.
+- [x] **Pengujian & Validasi**:
+  - 7 skenario pengujian riil terverifikasi via HTTP endpoint:
+    1. Landing identity ("nama saya siapa"): Respon anonim, tanpa kartu faskes (PASS).
+    2. Landing token ("apa itu izin akses 6 digit?"): Penjelasan token 6 digit PDP, tanpa kartu faskes (PASS).
+    3. Landing alur rujukan ("bagaimana alur rujukan Lytera?"): Penjelasan 4 tahap rujukan berjenjang, tanpa kartu faskes (PASS).
+    4. Landing cari RS ("carikan rumah sakit rujukan"): Kartu rekomendasi RS Colombia (PASS).
+    5. Landing cari dokter ("carikan dokter spesialis"): Laporan ketersediaan dokter yang jujur (PASS).
+    6. Portal pasien identity: Mengenali profil pasien login dengan benar (PASS).
+    7. Medical emergency ("dada saya sesak sekali"): Peringatan bahaya IGD 119 + kartu IGD RS (PASS).
+  - `npm run lint`: **0 error, 0 warning**.
+  - `npm run build`: **Exit 0**, seluruh rute Next.js 16 berhasil dikompilasi tanpa galat.
+
 
