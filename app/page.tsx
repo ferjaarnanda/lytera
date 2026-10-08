@@ -92,7 +92,7 @@ export default function HomePage() {
   return (
     <div
       data-hero-wallpaper="true"
-      className="min-h-screen text-[#464858] font-sans antialiased selection:bg-[#8F5A4E] selection:text-white w-full max-w-full relative [overflow-x:clip]"
+      className="min-h-screen text-[#464858] font-sans antialiased selection:bg-[#2E7D51] selection:text-white w-full max-w-full relative [overflow-x:clip]"
     >
       {/* 1. Lapisan Foto Hero Wallpaper Tetap di Layar (Fixed Viewport) */}
       <div
@@ -160,9 +160,9 @@ export default function HomePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Kartu 1: Pasien (Solid Putih) */}
                 <Reveal delay={0}>
-                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#8F5A4E]/35 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
+                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#2E7D51]/30 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
                     <div>
-                      <div className="w-12 h-12 rounded-full bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-4 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
+                      <div className="w-12 h-12 rounded-full bg-[#E8F5EE] text-[#0A2230] flex items-center justify-center mb-4 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
                         <UserRound className="w-6 h-6 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
                       <h3 className="text-lg font-bold text-[#0A2230] mb-1 text-center">
@@ -173,10 +173,10 @@ export default function HomePage() {
                         medismu.
                       </p>
                       <div className="flex flex-wrap justify-center gap-1.5 mb-6">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-medium bg-[#EBF2F6] text-slate-700">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-medium bg-[#E8F5EE] text-slate-700">
                           Pribadi
                         </span>
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-medium bg-[#EBF2F6] text-slate-700">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-medium bg-[#E8F5EE] text-slate-700">
                           Keluarga
                         </span>
                       </div>
@@ -185,7 +185,7 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => openPicker("pasien", "daftar")}
-                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#8F5A4E] hover:bg-[#A56F63] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
+                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#2E7D51] hover:bg-[#3D9162] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
                       >
                         Daftar sebagai Pasien
                       </button>
@@ -196,7 +196,7 @@ export default function HomePage() {
                           className="text-xs text-slate-500 hover:text-[#0A2230] transition-colors"
                         >
                           Sudah punya akun?{" "}
-                          <span className="text-[#8F5A4E] font-semibold">
+                          <span className="text-[#2E7D51] font-semibold">
                             Masuk
                           </span>
                         </button>
@@ -207,9 +207,9 @@ export default function HomePage() {
 
                 {/* Kartu 2: Fasilitas Kesehatan (Solid Putih) */}
                 <Reveal delay={80}>
-                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#8F5A4E]/35 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
+                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#2E7D51]/30 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
                     <div>
-                      <div className="w-12 h-12 rounded-full bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-4 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
+                      <div className="w-12 h-12 rounded-full bg-[#E8F5EE] text-[#0A2230] flex items-center justify-center mb-4 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
                         <Hospital className="w-6 h-6 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
                       <h3 className="text-lg font-bold text-[#0A2230] mb-1 text-center">
@@ -219,16 +219,16 @@ export default function HomePage() {
                         Dokter, petugas, dan apoteker bekerja dari satu tempat.
                       </p>
                       <div className="flex flex-wrap justify-center gap-1.5 mb-6">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EBF2F6] text-slate-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5EE] text-slate-700">
                           Puskesmas
                         </span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EBF2F6] text-slate-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5EE] text-slate-700">
                           Klinik
                         </span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EBF2F6] text-slate-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5EE] text-slate-700">
                           Rumah Sakit
                         </span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EBF2F6] text-slate-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5EE] text-slate-700">
                           Apotek
                         </span>
                       </div>
@@ -237,7 +237,7 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => openPicker("fasilitas", "daftar")}
-                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#8F5A4E] hover:bg-[#A56F63] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
+                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#2E7D51] hover:bg-[#3D9162] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
                       >
                         Daftar Fasilitas
                       </button>
@@ -248,7 +248,7 @@ export default function HomePage() {
                           className="text-xs text-slate-500 hover:text-[#0A2230] transition-colors"
                         >
                           Sudah punya akun?{" "}
-                          <span className="text-[#8F5A4E] font-semibold">
+                          <span className="text-[#2E7D51] font-semibold">
                             Masuk
                           </span>
                         </button>
@@ -259,9 +259,9 @@ export default function HomePage() {
 
                 {/* Kartu 3: Verifikasi Administrasi (Solid Putih) */}
                 <Reveal delay={160}>
-                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#8F5A4E]/35 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
+                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#2E7D51]/30 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
                     <div>
-                      <div className="w-12 h-12 rounded-full bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-4 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
+                      <div className="w-12 h-12 rounded-full bg-[#E8F5EE] text-[#0A2230] flex items-center justify-center mb-4 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
                         <ShieldCheck className="w-6 h-6 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
                       <h3 className="text-lg font-bold text-[#0A2230] mb-1 text-center">
@@ -271,13 +271,13 @@ export default function HomePage() {
                         Opsional. Memverifikasi domisili dan keterangan kurang mampu untuk jaminan biaya. Tidak diperlukan untuk rujukan medis.
                       </p>
                       <div className="flex flex-wrap justify-center gap-1.5 mb-6">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EBF2F6] text-slate-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5EE] text-slate-700">
                           Kelurahan
                         </span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EBF2F6] text-slate-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5EE] text-slate-700">
                           Kecamatan
                         </span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EBF2F6] text-slate-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5EE] text-slate-700">
                           Dinas Sosial
                         </span>
                       </div>
@@ -286,7 +286,7 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => openPicker("verifikator", "daftar")}
-                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#8F5A4E] hover:bg-[#A56F63] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
+                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#2E7D51] hover:bg-[#3D9162] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
                       >
                         Daftar Verifikator
                       </button>
@@ -297,7 +297,7 @@ export default function HomePage() {
                           className="text-xs text-slate-500 hover:text-[#0A2230] transition-colors"
                         >
                           Sudah punya akun?{" "}
-                          <span className="text-[#8F5A4E] font-semibold">
+                          <span className="text-[#2E7D51] font-semibold">
                             Masuk
                           </span>
                         </button>
@@ -308,9 +308,9 @@ export default function HomePage() {
 
                 {/* Kartu 4: Dinas Kesehatan (Solid Putih) */}
                 <Reveal delay={240}>
-                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#8F5A4E]/35 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
+                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#2E7D51]/30 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
                     <div>
-                      <div className="w-12 h-12 rounded-full bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-4 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
+                      <div className="w-12 h-12 rounded-full bg-[#E8F5EE] text-[#0A2230] flex items-center justify-center mb-4 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
                         <Landmark className="w-6 h-6 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
                       <h3 className="text-lg font-bold text-[#0A2230] mb-1 text-center">
@@ -321,10 +321,10 @@ export default function HomePage() {
                         rujukan.
                       </p>
                       <div className="flex flex-wrap justify-center gap-1.5 mb-6">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EBF2F6] text-slate-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5EE] text-slate-700">
                           Dinkes Kota/Kab
                         </span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EBF2F6] text-slate-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5EE] text-slate-700">
                           Provinsi
                         </span>
                       </div>
@@ -332,7 +332,7 @@ export default function HomePage() {
                     <div>
                       <Link
                         href="/masuk/dinkes"
-                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#8F5A4E] hover:bg-[#A56F63] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
+                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#2E7D51] hover:bg-[#3D9162] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
                       >
                         Masuk
                       </Link>
@@ -385,8 +385,8 @@ export default function HomePage() {
                             <div
                               className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold transition-colors transition-transform duration-500 ease-in-out z-10 ${
                                 isActive
-                                  ? "bg-[#8F5A4E] text-white shadow-md ring-4 ring-[#8F5A4E]/20 scale-105"
-                                  : "bg-[#EBF2F6] text-[#464858] border border-[#E2E8F0]"
+                                  ? "bg-[#2E7D51] text-white shadow-md ring-4 ring-[#2E7D51]/20 scale-105"
+                                  : "bg-[#E8F5EE] text-[#464858] border border-[#E2E8F0]"
                               }`}
                             >
                               {item.step}
@@ -394,7 +394,7 @@ export default function HomePage() {
                             {/* Garis penghubung vertikal ke card di bawahnya */}
                             <div
                               className={`w-[2px] h-4 transition-colors duration-500 ${
-                                isActive ? "bg-[#8F5A4E]" : "bg-white/40"
+                                isActive ? "bg-[#2E7D51]" : "bg-white/40"
                               }`}
                             />
                           </div>
@@ -403,13 +403,13 @@ export default function HomePage() {
                           <div
                             className={`w-full p-5 rounded-[20px] border transition-colors transition-shadow duration-500 ease-in-out flex flex-col justify-start h-full text-left ${
                               isActive
-                                ? "bg-[#FAF5F2] border-[#8F5A4E] shadow-sm"
+                                ? "bg-[#F0FAF4] border-[#2E7D51] shadow-sm"
                                 : "bg-white border-[#E2E8F0]/80 shadow-none"
                             }`}
                           >
                             <h3
                               className={`text-[17px] mb-2 font-bold transition-colors duration-500 ${
-                                isActive ? "text-[#8F5A4E]" : "text-[#0A2230]"
+                                isActive ? "text-[#2E7D51]" : "text-[#0A2230]"
                               }`}
                             >
                               {item.title}
@@ -455,7 +455,7 @@ export default function HomePage() {
                   {/* Fitur 1 (Solid Putih) */}
                   <Reveal delay={0}>
                     <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full cursor-default transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
-                      <div className="w-11 h-11 rounded-[12px] bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-3.5">
+                      <div className="w-11 h-11 rounded-[12px] bg-[#E8F5EE] text-[#0A2230] flex items-center justify-center mb-3.5">
                         <ArrowLeftRight className="w-5 h-5 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
                       <h3 className="text-[18px] leading-[26px] text-[#0A2230] mb-1.5 font-bold">
@@ -472,7 +472,7 @@ export default function HomePage() {
                   {/* Fitur 2 (Solid Putih) */}
                   <Reveal delay={80}>
                     <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full cursor-default transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
-                      <div className="w-11 h-11 rounded-[12px] bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-3.5">
+                      <div className="w-11 h-11 rounded-[12px] bg-[#E8F5EE] text-[#0A2230] flex items-center justify-center mb-3.5">
                         <KeyRound className="w-5 h-5 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
                       <h3 className="text-[18px] leading-[26px] text-[#0A2230] mb-1.5 font-bold">
@@ -489,7 +489,7 @@ export default function HomePage() {
                   {/* Fitur 3 (Solid Putih) */}
                   <Reveal delay={160}>
                     <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full cursor-default transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
-                      <div className="w-11 h-11 rounded-[12px] bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-3.5">
+                      <div className="w-11 h-11 rounded-[12px] bg-[#E8F5EE] text-[#0A2230] flex items-center justify-center mb-3.5">
                         <AlertTriangle className="w-5 h-5 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
                       <h3 className="text-[18px] leading-[26px] text-[#0A2230] mb-1.5 font-bold">
@@ -511,7 +511,7 @@ export default function HomePage() {
                   {/* Fitur 4 (Solid Putih) */}
                   <Reveal delay={0}>
                     <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full cursor-default transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
-                      <div className="w-11 h-11 rounded-[12px] bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-3.5">
+                      <div className="w-11 h-11 rounded-[12px] bg-[#E8F5EE] text-[#0A2230] flex items-center justify-center mb-3.5">
                         <Bed className="w-5 h-5 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
                       <h3 className="text-[18px] leading-[26px] text-[#0A2230] mb-1.5 font-bold">
@@ -528,7 +528,7 @@ export default function HomePage() {
                   {/* Fitur 5 (Solid Putih) */}
                   <Reveal delay={80}>
                     <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full cursor-default transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
-                      <div className="w-11 h-11 rounded-[12px] bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-3.5">
+                      <div className="w-11 h-11 rounded-[12px] bg-[#E8F5EE] text-[#0A2230] flex items-center justify-center mb-3.5">
                         <History className="w-5 h-5 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
                       <h3 className="text-[18px] leading-[26px] text-[#0A2230] mb-1.5 font-bold">
@@ -544,7 +544,7 @@ export default function HomePage() {
                   {/* Fitur 6 (Solid Putih) */}
                   <Reveal delay={160}>
                     <div className="bg-white rounded-[20px] p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-start h-full cursor-default transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
-                      <div className="w-11 h-11 rounded-[12px] bg-[#EBF2F6] text-[#0A2230] flex items-center justify-center mb-3.5">
+                      <div className="w-11 h-11 rounded-[12px] bg-[#E8F5EE] text-[#0A2230] flex items-center justify-center mb-3.5">
                         <Sparkles className="w-5 h-5 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
                       <h3 className="text-[18px] leading-[26px] text-[#0A2230] mb-1.5 font-bold">
@@ -608,11 +608,11 @@ export default function HomePage() {
                             <span className="text-[16px] font-bold text-[#0A2230]">
                               Otorisasi Akses Pasien
                             </span>
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-medium bg-[#FAF5F2] text-[#8F5A4E]">
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-medium bg-[#E8F5EE] text-[#2E7D51]">
                               Aman &amp; Terenkripsi
                             </span>
                           </div>
-                          <div className="bg-[#FAF5F2] rounded-[16px] p-4 flex items-center justify-between mb-4">
+                          <div className="bg-[#F0FAF4] rounded-[16px] p-4 flex items-center justify-between mb-4">
                             <div>
                               <span className="text-[12px] text-slate-500 block">
                                 Token Sesi Pemeriksaan
@@ -708,7 +708,7 @@ export default function HomePage() {
                               </span>
                             </div>
                           </div>
-                          <div className="p-4 rounded-[16px] bg-[#FAF5F2] space-y-3">
+                          <div className="p-4 rounded-[16px] bg-[#F0FAF4] space-y-3">
                             <div>
                               <div className="flex justify-between items-center mb-1">
                                 <span className="text-[14px] font-semibold text-[#0A2230]">
@@ -720,7 +720,7 @@ export default function HomePage() {
                               </div>
                               <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
                                 <div
-                                  className="h-full bg-[#8F5A4E] rounded-full"
+                                  className="h-full bg-[#2E7D51] rounded-full"
                                   style={{ width: "73%" }}
                                 />
                               </div>
@@ -757,7 +757,7 @@ export default function HomePage() {
                         {/* Mockup putih solid dipertahankan agar jelas terbaca */}
                         <div className="bg-white rounded-[24px] p-6 shadow-sm border border-[#E2E8F0]">
                           <div className="flex items-center gap-3 pb-2 mb-4 border-b border-[#E2E8F0]/60">
-                            <div className="w-8 h-8 rounded-full bg-[#8F5A4E] text-white flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-full bg-[#2E7D51] text-white flex items-center justify-center">
                               <Sparkles className="w-4 h-4 text-white" />
                             </div>
                             <div>
@@ -770,13 +770,13 @@ export default function HomePage() {
                             </div>
                           </div>
                           <div className="space-y-3">
-                            <div className="bg-[#FAF5F2] rounded-[16px] p-3 text-left">
+                            <div className="bg-[#F0FAF4] rounded-[16px] p-3 text-left">
                               <p className="text-[13px] text-[#0A2230]">
                                 &ldquo;Halo! Saya menerima rujukan ke Poli Jantung
                                 besok. Apa saja berkas yang wajib saya bawa?&rdquo;
                               </p>
                             </div>
-                            <div className="bg-[#EBF2F6] rounded-[16px] p-3 text-left">
+                            <div className="bg-[#E8F5EE] rounded-[16px] p-3 text-left">
                               <p className="text-[13px] text-[#0A2230] leading-relaxed">
                                 Siapkan 3 hal berikut:
                                 <br />
@@ -814,7 +814,7 @@ export default function HomePage() {
                   <a
                     href="#masuk-peran"
                     onClick={handleMulaiSekarang}
-                    className="inline-flex items-center justify-center px-8 py-4 rounded-[14px] bg-[#D99B7F] text-[#0A2230] font-bold text-[15px] hover:bg-[#E4AE94] hover:-translate-y-[1px] active:scale-[0.98] transition-all duration-200 mt-6 shadow-none cursor-pointer"
+                    className="inline-flex items-center justify-center px-8 py-4 rounded-[14px] bg-[#2E7D51] text-white font-bold text-[15px] hover:bg-[#3D9162] hover:-translate-y-[1px] active:scale-[0.98] transition-all duration-200 mt-6 shadow-none cursor-pointer"
                   >
                     Mulai Sekarang
                   </a>
@@ -876,3 +876,4 @@ export default function HomePage() {
     </div>
   );
 }
+
