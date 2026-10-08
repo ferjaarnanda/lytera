@@ -181,7 +181,7 @@ export const IntegrationStatusCard: React.FC<{ className?: string }> = ({
     if (tingkat === 1) {
       return (
         <BriefcaseMedical
-          className="w-5 h-5 text-[#8F5A4E]"
+          className="w-5 h-5 text-[#246843]"
           strokeWidth={1.75}
           aria-hidden="true"
         />
@@ -189,7 +189,7 @@ export const IntegrationStatusCard: React.FC<{ className?: string }> = ({
     }
     return (
       <Building2
-        className="w-5 h-5 text-[#8F5A4E]"
+        className="w-5 h-5 text-[#246843]"
         strokeWidth={1.75}
         aria-hidden="true"
       />
@@ -199,10 +199,10 @@ export const IntegrationStatusCard: React.FC<{ className?: string }> = ({
   // Helper render tiap card fasilitas sesuai struktur compact
   const renderCardItem = (facility: Facility) => (
     <div
-      className="p-3.5 rounded-[16px] bg-[#FAF5F2] border border-[#8F5A4E]/15 flex items-start gap-3 transition-opacity duration-500 ease-in-out"
+      className="p-3.5 rounded-[16px] bg-[#F4FAF6] border border-[#2E7D51]/15 flex items-start gap-3 transition-opacity duration-500 ease-in-out"
       style={{ opacity: fadeOpacity }}
     >
-      <div className="w-10 h-10 rounded-[12px] bg-white border border-[#E2E8F0] flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+      <div className="w-10 h-10 rounded-[12px] bg-white border border-[#2E7D51]/15 flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
         {renderFacilityIcon(facility.tingkat)}
       </div>
 
@@ -222,14 +222,14 @@ export const IntegrationStatusCard: React.FC<{ className?: string }> = ({
         </p>
 
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center text-[10.5px] px-2.5 py-0.5 rounded-full bg-white text-[#8F5A4E] font-medium border border-[#8F5A4E]/20">
+          <span className="inline-flex items-center text-[10.5px] px-2.5 py-0.5 rounded-full bg-white text-[#246843] font-semibold border border-[#2E7D51]/20">
             {TINGKAT_LABELS[facility.tingkat]}
           </span>
         </div>
 
         {/* Indikator Terhubung TEPAT di bawah informasi tingkat faskes / identitas fasilitas */}
-        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-[#1B6B4D]">
-          <span className="w-2 h-2 rounded-full bg-[#1B6B4D] animate-pulse shrink-0 inline-block" />
+        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] font-bold text-[#246843]">
+          <span className="w-2 h-2 rounded-full bg-[#246843] animate-pulse shrink-0 inline-block" />
           <span>Terhubung</span>
         </div>
       </div>
@@ -254,13 +254,13 @@ export const IntegrationStatusCard: React.FC<{ className?: string }> = ({
               <span className="text-[16px] font-bold text-[#0A2230] tracking-tight">
                 Status Integrasi Terkini
               </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#FAF5F2] text-[#8F5A4E] border border-[#8F5A4E]/20">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#E8F5EE] text-[#2E7D51] border border-[#2E7D51]/20">
                 SIMULASI
               </span>
             </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EBF2F6] border border-[#E2E8F0] shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#1B6B4D] animate-pulse shrink-0" />
-              <span className="text-[11px] font-semibold text-[#1B6B4D]">
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#E8F5EE] border border-[#246843]/20 shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#246843] animate-pulse shrink-0" />
+              <span className="text-[11px] font-bold text-[#246843]">
                 Aktif
               </span>
             </div>
@@ -289,7 +289,7 @@ export const IntegrationStatusCard: React.FC<{ className?: string }> = ({
             </span>
           </div>
 
-          <span className="text-[11px] font-bold text-[#0A2230] tabular-nums tracking-wide bg-[#EBF2F6] px-2 py-0.5 rounded">
+          <span className="text-[11px] font-bold text-[#0A2230] tabular-nums tracking-wide bg-[#E8F5EE] border border-[#2E7D51]/15 px-2 py-0.5 rounded">
             {clockDisplay}
           </span>
         </div>

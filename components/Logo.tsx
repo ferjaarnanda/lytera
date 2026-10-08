@@ -4,13 +4,10 @@ import Image from "next/image";
 
 export interface LogoProps {
   /**
-   * Warna teks Lytera:
-   * - 'dark': untuk latar gelap (teks putih)
-   * - 'light': untuk latar terang (teks Deep Navy #0F3040)
-   * - 'auto': mewarisi warna teks saat ini (currentColor)
+   * Warna teks/tone (disimpan untuk kompatibilitas props)
    */
   tone?: "dark" | "light" | "auto";
-  /** Sembunyikan teks tulisan "Lytera", hanya tampilkan ikon */
+  /** Sembunyikan teks (disimpan untuk kompatibilitas) */
   hideText?: boolean;
   /** Ukuran logo */
   size?: "sm" | "md" | "lg";
@@ -21,47 +18,32 @@ export interface LogoProps {
 }
 
 export const Logo: React.FC<LogoProps> = ({
-  tone = "dark",
-  hideText = false,
   size = "md",
   asLink = true,
   href = "/",
   className = "",
 }) => {
+  // Asset asli Lytera-logo.png sudah mencakup icon, tulisan "Lytera", dan tagline "Akses Kesehatan, Lebih Mudah"
+  // Rasio aspek gambar: ~2.5 : 1
   const sizeMap = {
-    sm: { imgSize: 28, text: "text-lg" },
-    md: { imgSize: 36, text: "text-xl" },
-    lg: { imgSize: 44, text: "text-2xl" },
+    sm: { width: 85, height: 34, imgClass: "h-8 sm:h-[34px] w-auto" },
+    md: { width: 115, height: 46, imgClass: "h-10 sm:h-11 w-auto" },
+    lg: { width: 140, height: 56, imgClass: "h-12 sm:h-[52px] w-auto" },
   }[size];
-
-  const textColorClass = {
-    dark: "text-white",
-    light: "text-[#0F3040]",
-    auto: "text-current",
-  }[tone];
 
   const content = (
     <div
-      className={`inline-flex items-center gap-2.5 select-none transition-colors duration-300 ${textColorClass} ${className}`.trim()}
+      className={`inline-flex items-center select-none ${className}`.trim()}
     >
-      {/* LOGO IMAGE RESMI LYTERA */}
+      {/* SATU ASSET GAMBAR LENGKAP LYTERA */}
       <Image
         src="/images/Lytera-logo.png"
-        alt="Lytera"
-        width={sizeMap.imgSize}
-        height={sizeMap.imgSize}
-        className="shrink-0 object-contain"
+        alt="Lytera - Akses Kesehatan, Lebih Mudah"
+        width={sizeMap.width}
+        height={sizeMap.height}
+        className={`${sizeMap.imgClass} shrink-0 object-contain`}
         priority
       />
-
-      {/* TEKS LYTERA */}
-      {!hideText && (
-        <span
-          className={`font-extrabold tracking-tight ${sizeMap.text} transition-colors duration-300`}
-        >
-          Lytera
-        </span>
-      )}
     </div>
   );
 
@@ -69,7 +51,7 @@ export const Logo: React.FC<LogoProps> = ({
     return (
       <Link
         href={href}
-        className="inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3D8B5E] rounded-lg"
+        className="inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2E7D51] rounded-lg transition-transform hover:opacity-95"
         aria-label="Lytera - Beranda"
       >
         {content}

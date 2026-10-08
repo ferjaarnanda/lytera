@@ -814,7 +814,7 @@ export default function HomePage() {
                   <a
                     href="#masuk-peran"
                     onClick={handleMulaiSekarang}
-                    className="inline-flex items-center justify-center px-8 py-4 rounded-[14px] bg-[#2E7D51] text-white font-bold text-[15px] hover:bg-[#3D9162] hover:-translate-y-[1px] active:scale-[0.98] transition-all duration-200 mt-6 shadow-none cursor-pointer"
+                    className="inline-flex items-center justify-center px-8 py-4 rounded-[14px] bg-[#2E7D51] text-white font-bold text-[15px] hover:bg-[#246843] hover:-translate-y-[1px] active:scale-[0.98] transition-all duration-200 mt-6 shadow-md cursor-pointer"
                   >
                     Mulai Sekarang
                   </a>

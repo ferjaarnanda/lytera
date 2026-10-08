@@ -112,7 +112,7 @@ export const HeroSection: React.FC = () => {
                 {typedText}
                 {showCursor && (
                   <span
-                    className="inline-block w-[3px] h-[0.85em] bg-[#D99B7F] ml-1.5 align-baseline animate-pulse"
+                    className="inline-block w-[3px] h-[0.85em] bg-[#2E7D51] ml-1.5 align-baseline animate-pulse"
                     aria-hidden="true"
                   />
                 )}
@@ -136,7 +136,7 @@ export const HeroSection: React.FC = () => {
               <a
                 href="#masuk-peran"
                 onClick={handleMulaiSekarang}
-                className={`inline-flex items-center justify-center px-7 py-3.5 rounded-[14px] bg-[#D99B7F] text-[#0A2230] font-bold text-[15px] hover:bg-[#E4AE94] hover:-translate-y-[1px] active:scale-[0.98] transition-[opacity,transform,background-color] duration-200 shadow-sm cursor-pointer ${
+                className={`inline-flex items-center justify-center px-7 py-3.5 rounded-[14px] bg-[#2E7D51] text-white font-bold text-[15px] hover:bg-[#246843] hover:-translate-y-[1px] active:scale-[0.98] transition-[opacity,transform,background-color] duration-200 shadow-md cursor-pointer ${
                   animStage >= 2
                     ? "opacity-100 translate-y-0"
                     : "opacity-0 translate-y-3 pointer-events-none"
@@ -147,7 +147,7 @@ export const HeroSection: React.FC = () => {
               <a
                 href="#cara-kerja"
                 onClick={handleCaraKerja}
-                className={`inline-flex items-center justify-center px-7 py-3.5 rounded-[14px] bg-white/10 text-white font-semibold text-[15px] hover:bg-white/20 hover:-translate-y-[1px] active:scale-[0.98] transition-[opacity,transform,background-color] duration-200 border border-white/25 shadow-sm cursor-pointer backdrop-blur-sm ${
+                className={`inline-flex items-center justify-center px-7 py-3.5 rounded-[14px] bg-[#E8F5EE]/15 text-white font-semibold text-[15px] hover:bg-[#E8F5EE]/25 hover:-translate-y-[1px] active:scale-[0.98] transition-[opacity,transform,background-color,border-color] duration-200 border border-[#E8F5EE]/30 hover:border-[#2E7D51]/50 shadow-sm cursor-pointer backdrop-blur-md ${
                   animStage >= 3
                     ? "opacity-100 translate-y-0"
                     : "opacity-0 translate-y-3 pointer-events-none"

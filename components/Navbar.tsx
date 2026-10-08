@@ -225,13 +225,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                   marginTop: "calc(var(--p-shape, 0) * 16px)",
                   height: "calc(72px - (var(--p-shape, 0) * 8px))",
                   borderRadius: "calc(var(--p-shape, 0) * 32px)",
-                  backgroundColor: `rgba(255, 255, 255, ${glassAlpha})`,
+                  backgroundColor: "rgba(252, 254, 253, 0.82)",
                   backdropFilter: "blur(20px) saturate(160%)",
                   WebkitBackdropFilter: "blur(20px) saturate(160%)",
                   borderWidth: "1px",
                   borderStyle: "solid",
-                  borderColor: "rgba(255, 255, 255, 0.7)",
-                  boxShadow: "0 8px 28px -8px rgba(10, 34, 48, 0.25)",
+                  borderColor: "rgba(46, 125, 81, 0.22)",
+                  boxShadow: "0 8px 28px -8px rgba(15, 45, 28, 0.15)",
                   willChange: "width, max-width, height, border-radius",
                   // Warna tidak berubah → tidak perlu transisi warna
                   transition: "none",
@@ -274,7 +274,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               />
               <div
                 className={`h-6 w-[1px] hidden lg:block transition-colors duration-300 ${
-                  isDarkTone ? "bg-white/10" : "bg-slate-200"
+                  isLanding
+                    ? "bg-[#2E7D51]/20"
+                    : isDarkTone
+                    ? "bg-white/10"
+                    : "bg-slate-200"
                 }`}
               />
             </div>
@@ -292,7 +296,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                     href={item.href}
                     className={`px-3.5 py-1.5 rounded-full text-[13.5px] ${fontWeight} transition-colors duration-300 ${
                       isActive
-                        ? "bg-[#8F5A4E] text-white shadow-sm"
+                        ? "bg-[#2E7D51] text-white shadow-sm"
+                        : isLanding
+                        ? "text-[#1C3D2D] hover:text-[#2E7D51] hover:bg-[#E8F5EE]/70"
                         : isDarkTone
                         ? "text-slate-300 hover:text-white hover:bg-white/10"
                         : "text-[#464858] hover:text-[#0A2230] hover:bg-black/5"
@@ -307,7 +313,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                     type="button"
                     className={`px-3.5 py-1.5 rounded-full text-[13.5px] ${fontWeight} transition-colors duration-300 ${
                       isActive
-                        ? "bg-[#8F5A4E] text-white shadow-sm"
+                        ? "bg-[#2E7D51] text-white shadow-sm"
+                        : isLanding
+                        ? "text-[#1C3D2D] hover:text-[#2E7D51] hover:bg-[#E8F5EE]/70"
                         : isDarkTone
                         ? "text-slate-300 hover:text-white hover:bg-white/10"
                         : "text-[#464858] hover:text-[#0A2230] hover:bg-black/5"
@@ -327,11 +335,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <button
                     type="button"
                     onClick={() => setRolePickerOpen(true)}
-                    className={`px-4 py-2 rounded-[12px] text-[13.5px] font-bold transition-colors duration-300 ${
-                      isDarkTone
-                        ? "text-white hover:bg-white/10"
-                        : "text-[#0A2230] hover:bg-black/5"
-                    }`}
+                    className="px-4 py-2 rounded-[12px] text-[13.5px] font-bold transition-colors duration-200 text-[#0F3020] hover:text-[#2E7D51] hover:bg-[#E8F5EE]/70"
                   >
                     Masuk
                   </button>
@@ -340,11 +344,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <button
                     type="button"
                     onClick={handleDaftarClick}
-                    className={`px-4 py-2 rounded-[12px] text-[13.5px] font-extrabold transition-colors duration-300 shadow-sm ${
-                      isDarkTone
-                        ? "bg-[#D99B7F] text-[#0A2230] hover:bg-[#E4AE94]"
-                        : "bg-[#8F5A4E] text-white hover:bg-[#A56F63]"
-                    }`}
+                    className="px-4 py-2 rounded-[12px] text-[13.5px] font-extrabold transition-colors duration-200 shadow-sm bg-[#2E7D51] text-white hover:bg-[#246843]"
                   >
                     Daftar
                   </button>
@@ -429,7 +429,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     key={item.label}
                     href={item.href || "#"}
                     onClick={() => setMobileMenuOpen(false)}
-                    className="px-3.5 py-2.5 rounded-xl text-sm font-semibold text-[#0A2230] hover:bg-[#FAF5F2] hover:text-[#8F5A4E] transition-colors"
+                    className="px-3.5 py-2.5 rounded-xl text-sm font-semibold text-[#0A2230] hover:bg-[#E8F5EE] hover:text-[#2E7D51] transition-colors"
                   >
                     {item.label}
                   </a>
@@ -444,7 +444,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setMobileMenuOpen(false);
                     setRolePickerOpen(true);
                   }}
-                  className="w-full py-2.5 rounded-[12px] border border-[#E2E8F0] text-[#0A2230] text-sm font-semibold hover:bg-slate-50 transition-colors"
+                  className="w-full py-2.5 rounded-[12px] border border-[#2E7D51]/30 text-[#0F3020] text-sm font-semibold hover:bg-[#E8F5EE]/60 transition-colors"
                 >
                   Masuk
                 </button>
@@ -453,7 +453,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setMobileMenuOpen(false);
                     handleDaftarClick();
                   }}
-                  className="w-full py-2.5 rounded-[12px] bg-[#8F5A4E] text-white text-sm font-semibold hover:bg-[#A56F63] transition-colors"
+                  className="w-full py-2.5 rounded-[12px] bg-[#2E7D51] text-white text-sm font-semibold hover:bg-[#246843] transition-colors"
                 >
                   Daftar
                 </button>
