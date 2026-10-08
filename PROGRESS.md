@@ -14,6 +14,7 @@
 | Tahap 5a & 5c: Verifikasi Administrasi (Backend, Verifikator, Dinkes, RS) | SELESAI | 0296414 | Migrasi skema penjamin & verification_requests, storage verification-documents, RPC SECURITY DEFINER, portal verifikator berwilayah, persetujuan petugas verifikator Dinkes, status penjamin & verifikasi di rujukan RS, copy landing page. Uji impersonasi SQL 100% lolos, lint & build lolos. |
 | Tahap 5b: Formulir Pendaftaran & Halaman Penjamin Pasien | SELESAI | 9bf1615 | Formulir pendaftaran pasien pribadi & keluarga dengan pilihan kartu penjamin (Mandiri, BPJS, Asuransi, Jaminan Daerah), kartu ringkas penjamin di Beranda, halaman Penjamin & Verifikasi di portal pasien (kelola penjamin, pengajuan domisili & SKTM dengan unggah berkas, badge terverifikasi). Lint 0 error/0 warning, build exit 0, uji impersonasi SQL lolos 100%. |
 | Fix: Pasien Keluarga otomatis aktif | SELESAI | 72b1ecf | Masalah terbuka RENCANA.md §72: pasien keluarga kini langsung berstatus 'aktif' saat daftar (sama dengan pasien pribadi) agar bisa demo tanpa approval manual. 1 baris diubah di pendaftaran.ts. Lint 0 error, build exit 0. |
+| Tahap Tera AI Assistant | SELESAI | [pending] | Arsitektur Tera AI terintegrasi Groq LLM server-only dengan intelligent fallback mode, role-aware context builder untuk 9 peran/halaman, controlled data tools ke RPC list_active_facilities & list_active_doctors dengan ranking hirarki wilayah, guardrails medis ketat, dan UI TeraWidget reusable dengan continuous moving border animation serta non-blocking floating panel. Lint 0 error/0 warning, build exit 0. |
 
 ---
 
@@ -277,3 +278,31 @@
   - Uji Impersonasi SQL Supabase MCP (lytera): Update penjamin pasien menjadi BPJS (`0001234567890`), submit pengajuan SKTM via `submit_verification`, dan verifikasi muncul di `list_my_verifications` teruji lolos 100%.
   - `npm run lint`: **0 error, 0 warning**.
   - `npm run build`: **Exit 0**, seluruh rute statis & dinamis Next.js 16 (Turbopack) berhasil dibangun tanpa galat tipe TypeScript.
+
+### 21. Tahap Tera AI Assistant (Selesai)
+- [x] **Arsitektur Core Engine Reusable (`lib/tera/`)**:
+  - `types.ts`: Kontrak tipe data terstruktur (`TeraRole`, `TeraUserContext`, `TeraRecommendation`, `TeraMessage`, `TeraChatRequest`, `TeraChatResponse`).
+  - `context.ts`: Context builder dan role-specific system prompt untuk 9 konteks: Landing, Pasien, Pasien Keluarga, Dokter, Puskesmas, Klinik, Rumah Sakit, Apotek, Verifikator, dan Dinkes. Dilengkapi chip saran pertanyaan cepat (`getQuickSuggestions`).
+  - `tools.ts`: Controlled data tools yang aman mengakses RPC resmi Lytera (`list_active_facilities`, `list_active_doctors`), algoritma ranking kandidat berbobot hirarki wilayah (Kecamatan → Kabupaten/Kota → Provinsi → Luar), dan formatting kartu rekomendasi.
+  - `engine.ts`: Orkestrasi Groq LLM server-only (`llama-3.3-70b-versatile`) dengan temperature rendah (0.3), data injection faskes nyata untuk mencegah halusinasi, dan intelligent fallback mode yang tetap merespons interaktif serta menampilkan data faskes nyata saat API eksternal bermasalah.
+- [x] **Medical Safety Guardrails & UU PDP**:
+  - Deteksi kata kunci kegawatdaruratan medis (nyeri dada hebat, sesak napas berat, kejang, dll.) $\to$ peringatan tegas segera menuju IGD Rumah Sakit terdekat atau nomor darurat 119.
+  - Penegakan larangan diagnosis pasti, larangan meresepkan/mengubah obat, dan larangan aksi sensitif diam-diam (tidak membuat/mengubah rujukan, token, atau verifikasi secara sepihak).
+  - Isolasi data PDP: Verifikator dan Dinkes dilarang keras menerima data rekam medis pasien.
+- [x] **Server Action Aman (`app/actions/tera.ts`)**:
+  - Eksekusi server-only dengan otentikasi sesi via `createClient()`.
+  - Mengambil profil, wilayah pasien, anggota keluarga, atau fasilitas dokter dari database server tanpa mengekspos token medis atau password ke client bundle.
+- [x] **Komponen UI Tera Reusable (`components/Tera/`)**:
+  - `TeraMark.tsx`: Logo/mark resmi Tera dengan **continuous moving border gradient animation** (hijau terang `#34D399` $\to$ hijau deep `#047857`) saat cursor berada di area tombol.
+  - `TeraWidget.tsx`: Tombol mengambang di pojok kanan bawah dengan micro-tooltip "Tera", panel floating ringkas (360-390px $\times$ 520px) yang **tidak menutup navbar, tidak memakai backdrop blur/overlay modal, dan halaman tetap 100% bisa discroll**.
+  - Varian Landing: menampilkan Mark + Teks "Tera". Varian Portal: menampilkan Mark saja.
+  - Tampilan kartu rekomendasi faskes terstruktur dengan badge status, wilayah, alasan pemilihan, dan tautan aksi resmi.
+- [x] **Integrasi Antarmuka**:
+  - Terintegrasi di Landing Page (`app/page.tsx`).
+  - Terintegrasi di Portal Pasien dan Fasilitas (`app/portal/[peran]/layout.tsx`).
+  - Terintegrasi di Portal Dinas Kesehatan (`app/portal/dinkes/layout.tsx`).
+- [x] **Kualitas & Validasi**:
+  - `npm run lint`: **0 error, 0 warning**.
+  - `npm run build`: **Exit 0**, seluruh 19 rute sukses dibangun tanpa error.
+  - `npx tsc --noEmit`: 100% type-safe.
+

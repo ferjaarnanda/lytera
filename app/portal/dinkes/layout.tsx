@@ -1,5 +1,6 @@
 import React from "react";
 import { PortalWallpaper } from "@/components/PortalWallpaper";
+import { TeraWidget } from "@/components/Tera";
 
 export default function PortalDinkesLayout({
   children,
@@ -12,6 +13,7 @@ export default function PortalDinkesLayout({
       brightness={1.3}
     >
       {children}
+      <TeraWidget variant="portal" context={{ role: "dinkes" }} />
     </PortalWallpaper>
   );
 }
