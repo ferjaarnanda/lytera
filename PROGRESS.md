@@ -20,6 +20,8 @@
 | Sub-tahap B: Persetujuan Staf Faskes, Pengesahan Spesialisasi & Penolakan Berakar Alasan | SELESAI | 3b2f919 | Kolom rejection_reason pada facility_staff. RPC review_facility_staff (keamanan otorisasi admin faskes & dinkes, penetapan role final, verifikasi spesialisasi per item is_verified=true, alasan penolakan wajib). UI kelola staf faskes diperbarui: modal persetujuan & pengesahan spesialisasi interaktif, modal penolakan alasan wajib, rincian profesi, STR, SIP. Teruji nyata via SQL impersonasi 100% lolos, lint 0 error, build exit 0. |
 | Verifikasi Siklus End-to-End Nakes & Tetra | SELESAI | ec93beb | Uji siklus penuh pendaftaran dokter spesialis baru -> status menunggu tidak bocor ke Tetra -> persetujuan admin faskes & pengesahan spesialisasi klinis -> rekomendasi dokter dan poli resmi muncul di Tetra. Lolos uji isolasi unverified 100%, lint 0 error, build exit 0. |
 | Rujukan Berjenjang & Validasi Faskes Tujuan | SELESAI | d2a8c8a | Penyelarasan RPC list_active_doctors ke spesialisasi terverifikasi, sinkronisasi poli otomatis sesuai dokter spesialis di form rujukan, penanganan rujukan terbuka saat RS belum ada dokter DPJP, dan pemrosesan rujukan masuk RS. Uji SQL impersonasi lolos 100%, lint 0 error, build exit 0. |
+| Tetra Intelligence & Data Integrity | SELESAI | (commit ini) | Ekstraksi spesialisasi 20 katalog & wilayah pada intent router, pencarian dokter bertingkat (lokasi spesifik -> alternatif wilayah lain), injeksi data dokter terverifikasi ke Groq, eliminasi async cookies hang di getClient via AbortSignal timeout 6s, 8 skenario pengujian lolos 100%, lint 0 error, build exit 0. |
+
 
 
 
@@ -429,6 +431,34 @@
   - Uji impersonasi SQL MCP Supabase Lytera: `list_active_doctors` faskes Kedung Rejo berhasil mengembalikan dr. Andi Wicaksono dengan spesialisasi `Penyakit Dalam` (PASS).
   - Alur rujukan lengkap teruji via SQL impersonasi: penerbitan rujukan faskes primer -> status awal `diajukan` -> penerimaan oleh admin RS -> penjadwalan pemeriksaan -> penyelesaian tindakan berstatus `selesai` dan seluruh event linimasa tercatat persisten (PASS).
   - Security Advisors: Bersih tanpa temuan kerentanan baru (PASS).
+  - `npm run lint`: **0 error, 0 warning**.
+  - `npm run build`: **Exit 0**, seluruh 19 rute Next.js 16 berhasil dikompilasi tanpa galat.
+
+### 27. Tetra Intelligence & Data Integrity (Selesai)
+- [x] **Ekstraksi Intent Cerdas (Katalog Spesialisasi & Wilayah)**:
+  - Pada `lib/tetra/router.ts`, fungsi `extractSpecialization` mendeteksi seluruh 20 katalog spesialisasi resmi Lytera (Penyakit Dalam, Jantung & Pembuluh Darah, Anak, Bedah, Kebidanan & Kandungan, Paru, Mata, THT-KL, Saraf, Jiwa, Kulit & Kelamin, dll.) dan sinonim sehari-hari.
+  - Fungsi `extractLocation` mengenali target nama wilayah yang disebutkan pengguna (misal: "di Solo", "di Semarang", "wilayah Surakarta").
+  - `IntentMatchResult` kini memuat metadata `targetLocation` untuk navigasi rujukan bertingkat.
+- [x] **Pencarian Dokter Bertingkat & Eliminasi Async Storage Hang**:
+  - Pada `lib/tetra/tools.ts`, fungsi `getClient` diperbaiki untuk menggunakan `createSupabaseClient<any, "public", any>` mandiri dengan batas waktu `AbortSignal.timeout(6000)` agar pemanggilan RPC publik (`list_active_facilities`, `get_active_facility_doctors`) tidak memicu `await cookies()` dari Next.js Server Client yang dapat menggantung di background.
+  - `searchDoctorsWithLocationHierarchy`: Pembersihan `nameQuery` dari kata kunci umum ("cari", "dokter", "spesialis") agar tidak menyaring nama dokter secara keliru saat spesialisasi sudah terdeteksi.
+  - Pembobotan `rankFacilities`: Menambahkan bobot preferensi wilayah target pengguna (+45 poin).
+- [x] **Logika Respons Bertingkat & Grounding Data Groq**:
+  - Pada `lib/tetra/engine.ts`:
+    - **Kasus 1 (Exact Match)**: Jika dokter ditemukan di wilayah yang diminta (misal: "Semarang" -> dr. Andi Wicaksono), rekomendasi disajikan langsung dengan badge faskes dan spesialisasi resmi.
+    - **Kasus 2 (Broader/Alternatif)**: Jika wilayah yang diminta belum memiliki dokter spesialis terkait (misal: "Solo"), sistem secara jujur dan transparan menjelaskan bahwa wilayah tersebut belum memiliki dokter spesialis tersebut, lalu menyajikan alternatif dokter terdekat dari wilayah lain yang terdaftar (Kota Semarang).
+    - **Kasus 3 (Spesialisasi Kosong)**: Jika spesialisasi belum terdaftar di sistem sama sekali (misal: "Jantung di Solo"), jelaskan secara jujur dan berikan rekomendasi Rumah Sakit rujukan berjenjang terdekat.
+    - **Ground-Truth Injeksi Groq**: Ringkasan dokter aktif terverifikasi (`doctorsSummary`) diinjeksikan ke dalam system prompt Groq bersama `facilitiesSummary` agar LLM tidak mengarang nama dokter atau faskes fiktif.
+- [x] **Pengujian & Validasi Nyata (8/8 Skenario PASS)**:
+  - Skenario 1 (Izin Akses Token 6 Digit): Teruji intent `token_access`, edukasi PDP tanpa kartu faskes yang tidak relevan (PASS).
+  - Skenario 2 (Alur Rujukan Berjenjang): Teruji intent `referral_flow`, edukasi faskes primer tingkat pertama (PASS).
+  - Skenario 3 (Cari Dokter Spesialis Penyakit Dalam di Semarang): dr. Andi Wicaksono terverifikasi tampil sebagai exact match (PASS).
+  - Skenario 4 (Cari Dokter Spesialis Penyakit Dalam di Solo): Penjelasan transparan ketiadaan di Solo + sajian alternatif dr. Andi di Kota Semarang (PASS).
+  - Skenario 5 (Cari Dokter Spesialis Jantung di Solo): Penjelasan transparan spesialisasi belum ada di sistem + rekomendasi RS rujukan terdekat (PASS).
+  - Skenario 6 (Pasien Keluarga): Kenali identitas dan sapaan pasien keluarga (Budi Santoso) (PASS).
+  - Skenario 7 (Landing Page Anonim): Tolak tebakan nama pengguna dan arahkan login (PASS).
+  - Skenario 8 (Quick Action): Penelusuran RS rujukan mengembalikan RS Colombia (PASS).
+- [x] **Kualitas Kode & Linting**:
   - `npm run lint`: **0 error, 0 warning**.
   - `npm run build`: **Exit 0**, seluruh 19 rute Next.js 16 berhasil dikompilasi tanpa galat.
 

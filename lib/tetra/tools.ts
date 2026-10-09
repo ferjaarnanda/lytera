@@ -1,20 +1,83 @@
-import { createClient as createServerClient } from "@/lib/supabase/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createClient as createSupabaseClient, SupabaseClient } from "@supabase/supabase-js";
 import { TetraRecommendation, TetraUserContext } from "./types";
 import { formatFacilityLocation, resolveRegionName } from "@/lib/region-utils";
 
-async function getClient() {
-  try {
-    return await createServerClient();
-  } catch {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-    if (url && key) {
-      return createSupabaseClient(url, key);
-    }
-    throw new Error("Supabase environment variables missing");
-  }
+interface TetraRpcDoctorRow {
+  staff_id: string;
+  full_name: string;
+  specialization: string | null;
+  facility_id?: string;
+  facility_name?: string;
+  facility_type?: string;
+  city?: string | null;
+  district?: string | null;
 }
+
+interface TetraRpcFacilityRow {
+  id: string;
+  name: string;
+  type: "puskesmas" | "klinik" | "rumah_sakit" | "apotek";
+  city: string | null;
+  district: string | null;
+}
+
+interface TetraRpcDatabase {
+  public: {
+    Tables: Record<string, never>;
+    Views: Record<string, never>;
+    Functions: {
+      list_active_facilities: {
+        Args: {
+          p_type?: "puskesmas" | "klinik" | "rumah_sakit" | "apotek" | null;
+          p_query?: string | null;
+          p_limit?: number;
+        };
+        Returns: TetraRpcFacilityRow[];
+      };
+      get_active_facility_doctors: {
+        Args: {
+          p_facility_id: string;
+        };
+        Returns: TetraRpcDoctorRow[];
+      };
+      list_active_doctors: {
+        Args: {
+          p_facility_id: string;
+        };
+        Returns: TetraRpcDoctorRow[];
+      };
+    };
+  };
+}
+
+let cachedClient: SupabaseClient<TetraRpcDatabase> | null = null;
+
+function getClient(): SupabaseClient<TetraRpcDatabase> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) {
+    throw new Error("Variabel NEXT_PUBLIC_SUPABASE_URL atau NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY belum disetel");
+  }
+  if (!cachedClient) {
+    cachedClient = createSupabaseClient<TetraRpcDatabase>(url, key, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+      global: {
+        fetch: (input, init) => {
+          return fetch(input, {
+            ...init,
+            signal: init?.signal || AbortSignal.timeout(6000),
+          });
+        },
+      },
+    });
+  }
+  return cachedClient;
+}
+
+
 
 export interface FacilityCandidate {
   id: string;
@@ -92,24 +155,15 @@ export async function searchActiveDoctors(facilityId: string): Promise<DoctorCan
     }
 
     if (!Array.isArray(data)) return [];
-    return data.map((d: {
-      staff_id: string;
-      full_name: string;
-      specialization: string | null;
-      facility_id: string;
-      facility_name: string;
-      facility_type: string;
-      city: string | null;
-      district: string | null;
-    }) => ({
+    return data.map((d: TetraRpcDoctorRow) => ({
       staff_id: d.staff_id,
       full_name: d.full_name,
       specialization: d.specialization,
       facility_id: d.facility_id || facilityId,
-      facility_name: d.facility_name,
-      facility_type: d.facility_type,
-      city: d.city,
-      district: d.district,
+      facility_name: d.facility_name || "",
+      facility_type: d.facility_type || "",
+      city: d.city || null,
+      district: d.district || null,
     }));
   } catch (err) {
     console.warn("[Tetra] Error searchActiveDoctors:", err);
@@ -177,9 +231,22 @@ export async function searchDoctorsWithLocationHierarchy(options: {
   userDistrict?: string | null;
   query?: string;
 }): Promise<DoctorHierarchySearchResult> {
+  let nameQuery = options.query;
+  if (nameQuery) {
+    const qLower = nameQuery.toLowerCase();
+    if (
+      qLower.includes("cari") ||
+      qLower.includes("dokter") ||
+      qLower.includes("spesialis") ||
+      options.specialization
+    ) {
+      nameQuery = undefined;
+    }
+  }
+
   const allDoctors = await searchAllActiveDoctors({
     specialization: options.specialization,
-    query: options.query,
+    query: nameQuery,
   });
 
   const reqLoc = (options.location || "").toLowerCase().trim();

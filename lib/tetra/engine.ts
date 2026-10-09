@@ -204,7 +204,8 @@ async function generateIntentResponse(
     // KASUS 1: Ada kecocokan dokter di wilayah yang diminta
     if (searchResult.exactMatches.length > 0) {
       const recommendations = buildDoctorRecommendations(searchResult.exactMatches, 3);
-      let msg = requestedLoc
+      
+      const msg = requestedLoc
         ? `Berikut adalah dokter aktif${requestedSpec ? ` spesialis **${requestedSpec}**` : ""} di wilayah **${requestedLoc}**:`
         : `Berikut adalah dokter aktif${requestedSpec ? ` spesialis **${requestedSpec}**` : ""} yang terdaftar di platform Lytera:`;
 
