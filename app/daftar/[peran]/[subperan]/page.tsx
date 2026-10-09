@@ -169,6 +169,8 @@ export default function PendaftaranPage({ params }: PageProps) {
     nik: "",
     profesi: subperan === "apotek" ? "Apoteker" : "Dokter Umum",
     noStr: "",
+    sipNomor: "",
+    spesialisasi: "",
     facilityId: "",
     faskesTujuan: "",
     kodeUndangan: "",
@@ -409,7 +411,10 @@ export default function PendaftaranPage({ params }: PageProps) {
             newErrors.nik = "NIK harus 16 digit angka";
           }
           if (!faskesNakesData.noStr.trim() || faskesNakesData.noStr.trim().length < 5) {
-            newErrors.noStr = "Nomor STR / SIP / STRA / SIPA aktif wajib diisi";
+            newErrors.noStr = "Nomor STR aktif wajib diisi";
+          }
+          if (faskesNakesData.profesi === "Dokter Spesialis" && !faskesNakesData.spesialisasi.trim()) {
+            newErrors.spesialisasi = "Bidang spesialisasi wajib dipilih untuk dokter spesialis";
           }
         } else if (currentStep === 1) {
           if (faskesNakesData.metodeFaskes === "cari" && !faskesNakesData.facilityId) {
@@ -1960,8 +1965,70 @@ export default function PendaftaranPage({ params }: PageProps) {
                           </div>
 
                           <div>
+                            <label htmlFor="profesiNakes" className="block text-sm font-semibold text-[#0F3040] mb-1">
+                              Profesi Tenaga Kesehatan *
+                            </label>
+                            <select
+                              id="profesiNakes"
+                              value={faskesNakesData.profesi}
+                              onChange={(e) =>
+                                setFaskesNakesData({
+                                  ...faskesNakesData,
+                                  profesi: e.target.value,
+                                  spesialisasi: e.target.value === "Dokter Spesialis" ? faskesNakesData.spesialisasi : "",
+                                })
+                              }
+                              className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] bg-white focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm text-[#0F3040]"
+                            >
+                              <option value="Dokter Umum">Dokter Umum</option>
+                              <option value="Dokter Spesialis">Dokter Spesialis</option>
+                              <option value="Dokter Gigi">Dokter Gigi</option>
+                              <option value="Apoteker">Apoteker</option>
+                              <option value="Petugas Medis / Admisi">Petugas Medis / Admisi</option>
+                            </select>
+                            {errors.profesi && <p className="text-xs text-[#B3261E] mt-1">{errors.profesi}</p>}
+                          </div>
+                        </div>
+
+                        {faskesNakesData.profesi === "Dokter Spesialis" && (
+                          <div>
+                            <label htmlFor="spesialisasiNakes" className="block text-sm font-semibold text-[#0F3040] mb-1">
+                              Bidang Spesialisasi Medis *
+                            </label>
+                            <select
+                              id="spesialisasiNakes"
+                              value={faskesNakesData.spesialisasi}
+                              onChange={(e) =>
+                                setFaskesNakesData({ ...faskesNakesData, spesialisasi: e.target.value })
+                              }
+                              className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] bg-white focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm text-[#0F3040]"
+                            >
+                              <option value="">-- Pilih Bidang Spesialisasi --</option>
+                              <option value="Penyakit Dalam">Spesialis Penyakit Dalam (Sp.PD)</option>
+                              <option value="Anak">Spesialis Anak (Sp.A)</option>
+                              <option value="Bedah">Spesialis Bedah (Sp.B)</option>
+                              <option value="Obstetri dan Ginekologi (Kebidanan & Kandungan)">Spesialis Kebidanan & Kandungan (Sp.OG)</option>
+                              <option value="Jantung dan Pembuluh Darah">Spesialis Jantung & Pembuluh Darah (Sp.JP)</option>
+                              <option value="Saraf (Neurologi)">Spesialis Saraf / Neurologi (Sp.S / Sp.N)</option>
+                              <option value="Mata">Spesialis Mata (Sp.M)</option>
+                              <option value="THT-KL">Spesialis THT-KL (Sp.THT-KL)</option>
+                              <option value="Kulit dan Kelamin (Dermatologi)">Spesialis Kulit & Kelamin (Sp.DV / Sp.KK)</option>
+                              <option value="Kedokteran Jiwa (Psikiatri)">Spesialis Kedokteran Jiwa (Sp.KJ)</option>
+                              <option value="Paru (Pulmonologi)">Spesialis Paru / Pulmonologi (Sp.P)</option>
+                              <option value="Ortopedi dan Traumatologi">Spesialis Ortopedi & Traumatologi (Sp.OT)</option>
+                              <option value="Anestesiologi dan Terapi Intensif">Spesialis Anestesiologi (Sp.An)</option>
+                              <option value="Radiologi">Spesialis Radiologi (Sp.Rad)</option>
+                              <option value="Patologi Klinik">Spesialis Patologi Klinik (Sp.PK)</option>
+                              <option value="Rehabilitasi Medik">Spesialis Kedokteran Fisik & Rehabilitasi (Sp.KFR)</option>
+                            </select>
+                            {errors.spesialisasi && <p className="text-xs text-[#B3261E] mt-1">{errors.spesialisasi}</p>}
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
                             <label htmlFor="noStr" className="block text-sm font-semibold text-[#0F3040] mb-1">
-                              Nomor STR / SIP / SIPA *
+                              Nomor STR (Surat Tanda Registrasi) *
                             </label>
                             <input
                               id="noStr"
@@ -1970,10 +2037,27 @@ export default function PendaftaranPage({ params }: PageProps) {
                               onChange={(e) =>
                                 setFaskesNakesData({ ...faskesNakesData, noStr: e.target.value })
                               }
-                              placeholder="Nomor izin praktik aktif"
+                              placeholder="Nomor STR aktif KKI/KTKI"
                               className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm"
                             />
                             {errors.noStr && <p className="text-xs text-[#B3261E] mt-1">{errors.noStr}</p>}
+                          </div>
+
+                          <div>
+                            <label htmlFor="sipNomor" className="block text-sm font-semibold text-[#0F3040] mb-1">
+                              Nomor SIP / SIPA (Izin Praktik)
+                            </label>
+                            <input
+                              id="sipNomor"
+                              type="text"
+                              value={faskesNakesData.sipNomor}
+                              onChange={(e) =>
+                                setFaskesNakesData({ ...faskesNakesData, sipNomor: e.target.value })
+                              }
+                              placeholder="Nomor SIP dari Dinas Kesehatan"
+                              className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm"
+                            />
+                            {errors.sipNomor && <p className="text-xs text-[#B3261E] mt-1">{errors.sipNomor}</p>}
                           </div>
                         </div>
                       </>

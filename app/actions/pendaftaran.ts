@@ -94,7 +94,9 @@ const FasilitasNakesSchema = z.object({
   namaLengkap: z.string().min(2, "Nama lengkap tenaga medis beserta gelar wajib diisi"),
   nik: z.string().regex(/^\d{16}$/, "NIK harus 16 digit angka"),
   profesi: z.string().min(2, "Profesi tenaga kesehatan wajib diisi"),
-  noStr: z.string().min(5, "Nomor STR / SIP aktif wajib diisi"),
+  noStr: z.string().min(5, "Nomor STR aktif wajib diisi"),
+  sipNomor: z.string().optional().or(z.literal("")),
+  spesialisasi: z.string().optional().or(z.literal("")),
   facilityId: z.string().optional().nullable(),
   faskesTujuan: z.string().min(2, "Fasilitas kesehatan tempat bertugas wajib dipilih"),
   kodeUndangan: z.string().optional().or(z.literal("")),
@@ -182,6 +184,8 @@ export async function submitPendaftaranAction(
   let passwordToRegister = "";
   let fullName = "";
   let userMetadata: Record<string, unknown> = {};
+
+  const supabase = await createClient();
 
   let pasienPribadiData: z.infer<typeof PasienPribadiSchema> | null = null;
   let pasienKeluargaData: z.infer<typeof PasienKeluargaSchema> | null = null;
@@ -362,6 +366,66 @@ export async function submitPendaftaranAction(
       };
     }
     fasilitasNakesData = result.data;
+
+    // Validasi penempatan faskes di server
+    if (fasilitasNakesData.metodeFaskes === "undangan") {
+      if (!fasilitasNakesData.kodeUndangan || !fasilitasNakesData.kodeUndangan.trim()) {
+        return {
+          success: false,
+          error: "Kode undangan fasilitas wajib diisi",
+          fieldErrors: { kodeUndangan: "Kode undangan wajib diisi" },
+        };
+      }
+
+      // Panggil RPC validate_invitation_code di server
+      const { data: invResult, error: invRpcErr } = await supabase.rpc("validate_invitation_code", {
+        p_code: fasilitasNakesData.kodeUndangan.trim(),
+      });
+
+      if (invRpcErr || !invResult || !(invResult as { valid?: boolean }).valid) {
+        const msg = (invResult as { message?: string })?.message || "Kode undangan tidak valid atau kedaluwarsa";
+        return {
+          success: false,
+          error: msg,
+          fieldErrors: { kodeUndangan: msg },
+        };
+      }
+
+      const invData = invResult as {
+        valid: boolean;
+        facility_id: string;
+        facility_name: string;
+      };
+
+      fasilitasNakesData.facilityId = invData.facility_id;
+      fasilitasNakesData.faskesTujuan = invData.facility_name;
+    } else {
+      // Metode cari dari fasilitas terdaftar
+      if (!fasilitasNakesData.facilityId) {
+        return {
+          success: false,
+          error: "Fasilitas kesehatan penugasan wajib dipilih",
+          fieldErrors: { faskesTujuan: "Pilih fasilitas kesehatan penugasan" },
+        };
+      }
+
+      // Verifikasi faskes aktif di DB
+      const { data: targetFac, error: facErr } = await supabase
+        .from("facilities")
+        .select("id, name, status")
+        .eq("id", fasilitasNakesData.facilityId)
+        .eq("status", "aktif")
+        .maybeSingle();
+
+      if (facErr || !targetFac) {
+        return {
+          success: false,
+          error: "Fasilitas kesehatan yang dipilih tidak aktif atau tidak ditemukan",
+          fieldErrors: { faskesTujuan: "Fasilitas tidak valid atau belum aktif" },
+        };
+      }
+    }
+
     emailToRegister = fasilitasNakesData.email;
     passwordToRegister = fasilitasNakesData.password;
     fullName = fasilitasNakesData.namaLengkap;
@@ -374,7 +438,9 @@ export async function submitPendaftaranAction(
       nik: fasilitasNakesData.nik,
       profesi: fasilitasNakesData.profesi,
       noStr: fasilitasNakesData.noStr,
-      facilityId: fasilitasNakesData.facilityId || null,
+      sipNomor: fasilitasNakesData.sipNomor || null,
+      spesialisasi: fasilitasNakesData.spesialisasi || null,
+      facilityId: fasilitasNakesData.facilityId,
       faskesTujuan: fasilitasNakesData.faskesTujuan,
       kodeUndangan: fasilitasNakesData.kodeUndangan || null,
       metodeFaskes: fasilitasNakesData.metodeFaskes,
@@ -420,8 +486,6 @@ export async function submitPendaftaranAction(
   }
 
   try {
-    const supabase = await createClient();
-
     // 2. Daftar akun via Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: emailToRegister.trim(),
@@ -720,7 +784,7 @@ export async function submitPendaftaranAction(
       let sRole: "dokter" | "petugas" | "apoteker" = "petugas";
       const prof = fasilitasNakesData.profesi.toLowerCase();
       const sp = String(subperan).toLowerCase();
-      if (prof.includes("apotek") || sp === "apotek") {
+      if (prof.includes("apoteker") || sp === "apotek") {
         sRole = "apoteker";
       } else if (prof.includes("dokter")) {
         sRole = "dokter";
@@ -728,23 +792,62 @@ export async function submitPendaftaranAction(
         sRole = "petugas";
       }
 
-      const { error: staffError } = await supabase
+      // 1. Simpan penempatan staf nakes (status tetap 'menunggu' persetujuan)
+      const { data: insertedStaff, error: staffError } = await supabase
         .from("facility_staff")
         .insert({
           profile_id: userId,
-          facility_id: fasilitasNakesData.facilityId || null,
+          facility_id: fasilitasNakesData.facilityId,
           staff_role: sRole,
+          profession: fasilitasNakesData.profesi,
           str_number: fasilitasNakesData.noStr,
-          sip_number: null,
-          specialization: null,
+          sip_number: fasilitasNakesData.sipNomor || null,
+          specialization: fasilitasNakesData.spesialisasi || null,
           status: "menunggu",
-        });
+        })
+        .select("id")
+        .single();
 
       if (staffError) {
         return {
           success: false,
           error: "Gagal menyimpan data staf tenaga medis: " + staffError.message,
         };
+      }
+
+      // 2. Jika ada spesialisasi yang diajukan, hubungkan ke katalog staff_specializations
+      if (insertedStaff?.id && fasilitasNakesData.spesialisasi) {
+        const specName = fasilitasNakesData.spesialisasi.trim();
+        // Cari id di staff_specializations jika cocok
+        const { data: matchedSpec } = await supabase
+          .from("staff_specializations")
+          .select("id")
+          .ilike("name", specName)
+          .maybeSingle();
+
+        await supabase.from("facility_staff_specializations").insert({
+          facility_staff_id: insertedStaff.id,
+          specialization_id: matchedSpec?.id || null,
+          custom_specialization: matchedSpec?.id ? null : specName,
+          is_verified: false, // Menunggu persetujuan admin faskes
+        });
+      }
+
+      // 3. Jika menggunakan kode undangan, catat penambahan uses_count
+      if (fasilitasNakesData.metodeFaskes === "undangan" && fasilitasNakesData.kodeUndangan) {
+        const trimmedCode = fasilitasNakesData.kodeUndangan.trim();
+        const { data: invRow } = await supabase
+          .from("facility_invitations")
+          .select("id, uses_count")
+          .ilike("code", trimmedCode)
+          .maybeSingle();
+
+        if (invRow) {
+          await supabase
+            .from("facility_invitations")
+            .update({ uses_count: invRow.uses_count + 1 })
+            .eq("id", invRow.id);
+        }
       }
     } else if (peran === "verifikator" && verifikatorData) {
       let vLevel: "kelurahan" | "kecamatan" | "dinas_sosial" = "kelurahan";

@@ -115,7 +115,7 @@ export function getFieldStep(
       }
     } else {
       // Tenaga Kesehatan (Nakes)
-      if (["namalengkap", "nama", "nik", "profesi", "nostr"].includes(f)) {
+      if (["namalengkap", "nama", "nik", "profesi", "nostr", "sipnomor", "spesialisasi"].includes(f)) {
         return 0;
       }
       if (["metodefaskes", "kodeundangan", "faskestujuan"].includes(f)) {
@@ -218,6 +218,13 @@ export function getFieldElementId(
       return fieldName;
     } else {
       if (f === "namalengkap") return "namaNakes";
+      if (f === "nik") return "nikNakes";
+      if (f === "profesi") return "profesiNakes";
+      if (f === "spesialisasi") return "spesialisasiNakes";
+      if (f === "nostr") return "noStr";
+      if (f === "sipnomor") return "sipNomor";
+      if (f === "faskestujuan") return "faskesTujuan";
+      if (f === "kodeundangan") return "kodeUndangan";
       if (f === "email") return "emailNakes";
       if (f === "password") return "passwordNakes";
       if (f === "konfirmasipassword") return "konfirmasiPasswordNakes";

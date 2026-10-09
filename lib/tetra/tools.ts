@@ -33,6 +33,7 @@ export interface DoctorCandidate {
   facility_name?: string;
   facility_type?: string;
   city?: string | null;
+  district?: string | null;
 }
 
 /**
@@ -65,26 +66,50 @@ export async function searchActiveFacilities(options: {
 }
 
 /**
- * Mencari dokter aktif di fasilitas tertentu melalui RPC resmi list_active_doctors.
+ * Mencari dokter aktif di fasilitas tertentu melalui RPC get_active_facility_doctors.
  */
 export async function searchActiveDoctors(facilityId: string): Promise<DoctorCandidate[]> {
   try {
     const supabase = await getClient();
-    const { data, error } = await supabase.rpc("list_active_doctors", {
+    const { data, error } = await supabase.rpc("get_active_facility_doctors", {
       p_facility_id: facilityId,
     });
 
     if (error) {
-      console.warn("[Tetra] Gagal memanggil list_active_doctors:", error.message);
+      // Fallback ke list_active_doctors jika get_active_facility_doctors tidak tersedia
+      const { data: fallbackData } = await supabase.rpc("list_active_doctors", {
+        p_facility_id: facilityId,
+      });
+      if (Array.isArray(fallbackData)) {
+        return fallbackData.map((d: { staff_id: string; full_name: string; specialization: string | null }) => ({
+          staff_id: d.staff_id,
+          full_name: d.full_name,
+          specialization: d.specialization,
+          facility_id: facilityId,
+        }));
+      }
       return [];
     }
 
     if (!Array.isArray(data)) return [];
-    return data.map((d: { staff_id: string; full_name: string; specialization: string | null }) => ({
+    return data.map((d: {
+      staff_id: string;
+      full_name: string;
+      specialization: string | null;
+      facility_id: string;
+      facility_name: string;
+      facility_type: string;
+      city: string | null;
+      district: string | null;
+    }) => ({
       staff_id: d.staff_id,
       full_name: d.full_name,
       specialization: d.specialization,
-      facility_id: facilityId,
+      facility_id: d.facility_id || facilityId,
+      facility_name: d.facility_name,
+      facility_type: d.facility_type,
+      city: d.city,
+      district: d.district,
     }));
   } catch (err) {
     console.warn("[Tetra] Error searchActiveDoctors:", err);
@@ -272,13 +297,18 @@ export function buildDoctorRecommendations(
           .join(" ")
       : "Fasilitas Terdaftar";
 
+    const docLocation = formatFacilityLocation({
+      district: doc.district,
+      city: doc.city,
+    });
+
     return {
       type: "doctor",
       id: doc.staff_id,
       name: doc.full_name,
       category: doc.specialization ? `Spesialis ${doc.specialization}` : "Dokter Umum",
       relevance: `Dokter aktif bertugas di ${facName}.`,
-      location: resolveRegionName(doc.city) || "Wilayah terdaftar",
+      location: docLocation,
       badge: "Dokter Aktif",
     };
   });
