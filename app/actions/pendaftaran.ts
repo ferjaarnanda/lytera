@@ -805,71 +805,43 @@ export async function submitPendaftaranAction(
         sRole = "petugas";
       }
 
-      // 1. Simpan penempatan staf nakes (status tetap 'menunggu' persetujuan)
-      const { data: insertedStaff, error: staffError } = await supabase
-        .from("facility_staff")
-        .insert({
-          profile_id: userId,
-          facility_id: fasilitasNakesData.facilityId,
-          staff_role: sRole,
-          profession: fasilitasNakesData.profesi,
-          str_number: fasilitasNakesData.noStr,
-          sip_number: fasilitasNakesData.sipNomor || null,
-          specialization: fasilitasNakesData.spesialisasi || null,
-          status: "menunggu",
-        })
-        .select("id")
-        .single();
+      // Pendaftaran staf penempatan nakes secara transaksional (atomic)
+      const specList = fasilitasNakesData.spesialisasi
+        ? fasilitasNakesData.spesialisasi
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
 
-      if (staffError) {
+      const { data: regStaffResult, error: regStaffError } = await supabase.rpc(
+        "register_facility_staff",
+        {
+          p_profile_id: userId,
+          p_facility_id:
+            fasilitasNakesData.metodeFaskes === "undangan"
+              ? null
+              : fasilitasNakesData.facilityId || null,
+          p_staff_role: sRole,
+          p_profession: fasilitasNakesData.profesi,
+          p_str_number: fasilitasNakesData.noStr,
+          p_sip_number: fasilitasNakesData.sipNomor || null,
+          p_specialization: fasilitasNakesData.spesialisasi || null,
+          p_specialization_names: specList,
+          p_invitation_code:
+            fasilitasNakesData.metodeFaskes === "undangan" && fasilitasNakesData.kodeUndangan
+              ? fasilitasNakesData.kodeUndangan.trim()
+              : null,
+        }
+      );
+
+      if (regStaffError || !regStaffResult || !(regStaffResult as { success?: boolean }).success) {
+        const errorMsg =
+          regStaffError?.message ||
+          ((regStaffResult as { message?: string })?.message || "Gagal mendaftarkan penempatan tenaga kesehatan");
         return {
           success: false,
-          error: "Gagal menyimpan data staf tenaga medis: " + staffError.message,
+          error: errorMsg,
         };
-      }
-
-      // 2. Jika ada spesialisasi yang diajukan, hubungkan ke katalog staff_specializations
-      if (insertedStaff?.id && fasilitasNakesData.spesialisasi) {
-        // Mendukung beberapa spesialisasi yang dipisahkan koma
-        const specList = fasilitasNakesData.spesialisasi
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
-
-        for (const specName of specList) {
-          const { data: matchedSpec } = await supabase
-            .from("staff_specializations")
-            .select("id")
-            .ilike("name", specName)
-            .maybeSingle();
-
-          const { error: fssErr } = await supabase
-            .from("facility_staff_specializations")
-            .insert({
-              facility_staff_id: insertedStaff.id,
-              specialization_id: matchedSpec?.id || null,
-              custom_specialization: matchedSpec?.id ? null : specName,
-              is_verified: false, // Menunggu persetujuan admin faskes
-            });
-
-          if (fssErr) {
-            console.error("Gagal menghubungkan spesialisasi staf:", fssErr.message);
-          }
-        }
-      }
-
-      // 3. Jika menggunakan kode undangan, konsumsi kuota secara atomik di server
-      if (fasilitasNakesData.metodeFaskes === "undangan" && fasilitasNakesData.kodeUndangan) {
-        const trimmedCode = fasilitasNakesData.kodeUndangan.trim();
-        const { error: consumeErr } = await supabase.rpc("consume_invitation_code", {
-          p_code: trimmedCode,
-          p_expected_role: sRole,
-          p_expected_profession: fasilitasNakesData.profesi,
-        });
-
-        if (consumeErr) {
-          console.error("Gagal mengonsumsi kuota kode undangan:", consumeErr.message);
-        }
       }
     } else if (peran === "verifikator" && verifikatorData) {
       let vLevel: "kelurahan" | "kecamatan" | "dinas_sosial" = "kelurahan";
