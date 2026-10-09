@@ -572,7 +572,10 @@ export default function HomePage() {
           >
             <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
               <Reveal>
-                <div className="glass-frost rounded-[24px] p-6 sm:p-8 md:py-8 md:px-10 mb-16">
+                <div
+                  className="glass-frost rounded-[24px] p-6 sm:p-8 md:py-8 md:px-10 mb-16"
+                  style={{ "--frost-blur": "50px" } as React.CSSProperties}
+                >
                   <h2 className="text-3xl sm:text-[32px] font-bold text-[#0F3040] tracking-tight">
                     Mengapa Lytera?
                   </h2>
