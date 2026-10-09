@@ -132,7 +132,8 @@ export async function searchAllActiveDoctors(options?: {
     for (const doc of doctors) {
       doc.facility_name = fac.name;
       doc.facility_type = fac.type;
-      doc.city = fac.city;
+      doc.city = doc.city || fac.city;
+      doc.district = doc.district || fac.district;
       allDoctors.push(doc);
     }
   }
@@ -155,6 +156,98 @@ export async function searchAllActiveDoctors(options?: {
   return filtered;
 }
 
+export interface DoctorHierarchySearchResult {
+  exactMatches: DoctorCandidate[];
+  broaderMatches: DoctorCandidate[];
+  allSpecialtyMatches: DoctorCandidate[];
+  requestedSpecialization?: string;
+  requestedLocation?: string;
+}
+
+/**
+ * Pencarian dokter cerdas bertingkat:
+ * 1. Wilayah spesifik yang diminta (kecamatan / kota)
+ * 2. Jika tidak ada di wilayah tersebut, cari alternatif di wilayah lain yang tersedia
+ * 3. Menghormati spesialisasi terverifikasi
+ */
+export async function searchDoctorsWithLocationHierarchy(options: {
+  specialization?: string;
+  location?: string;
+  userCity?: string | null;
+  userDistrict?: string | null;
+  query?: string;
+}): Promise<DoctorHierarchySearchResult> {
+  const allDoctors = await searchAllActiveDoctors({
+    specialization: options.specialization,
+    query: options.query,
+  });
+
+  const reqLoc = (options.location || "").toLowerCase().trim();
+  const userCity = (options.userCity || "").toLowerCase().trim();
+  const userDistrict = (options.userDistrict || "").toLowerCase().trim();
+
+  if (reqLoc) {
+    // Filter kandidat yang cocok dengan nama lokasi pencarian (di city atau district)
+    const matched = allDoctors.filter((d) => {
+      const cityLower = (d.city || "").toLowerCase();
+      const distLower = (d.district || "").toLowerCase();
+      return (
+        cityLower.includes(reqLoc) ||
+        reqLoc.includes(cityLower) ||
+        distLower.includes(reqLoc) ||
+        reqLoc.includes(distLower)
+      );
+    });
+
+    if (matched.length > 0) {
+      return {
+        exactMatches: matched,
+        broaderMatches: [],
+        allSpecialtyMatches: allDoctors,
+        requestedSpecialization: options.specialization,
+        requestedLocation: options.location,
+      };
+    } else {
+      // Tidak ditemukan di lokasi yang diminta, sediakan kandidat di wilayah lain sebagai broaderMatches
+      return {
+        exactMatches: [],
+        broaderMatches: allDoctors,
+        allSpecialtyMatches: allDoctors,
+        requestedSpecialization: options.specialization,
+        requestedLocation: options.location,
+      };
+    }
+  }
+
+  // Jika tidak menyebutkan lokasi spesifik di pesan, tetapi user login memiliki data domisili
+  if (userCity || userDistrict) {
+    const userLocalDoctors = allDoctors.filter((d) => {
+      const cityLower = (d.city || "").toLowerCase();
+      const distLower = (d.district || "").toLowerCase();
+      const cityMatch = userCity && (cityLower.includes(userCity) || userCity.includes(cityLower));
+      const distMatch = userDistrict && (distLower.includes(userDistrict) || userDistrict.includes(distLower));
+      return cityMatch || distMatch;
+    });
+
+    const otherDoctors = allDoctors.filter((d) => !userLocalDoctors.includes(d));
+
+    return {
+      exactMatches: userLocalDoctors.length > 0 ? userLocalDoctors : allDoctors,
+      broaderMatches: userLocalDoctors.length > 0 ? otherDoctors : [],
+      allSpecialtyMatches: allDoctors,
+      requestedSpecialization: options.specialization,
+      requestedLocation: options.userCity || options.userDistrict || undefined,
+    };
+  }
+
+  return {
+    exactMatches: allDoctors,
+    broaderMatches: [],
+    allSpecialtyMatches: allDoctors,
+    requestedSpecialization: options.specialization,
+  };
+}
+
 /**
  * Sistem ranking kandidat fasilitas kesehatan berdasarkan:
  * 1. Kecocokan kebutuhan / keluhan / jenis faskes
@@ -166,12 +259,14 @@ export function rankFacilities(
   criteria: {
     query?: string;
     preferredType?: "puskesmas" | "klinik" | "rumah_sakit" | "apotek";
+    targetLocation?: string | null;
     userCity?: string | null;
     userDistrict?: string | null;
     userProvince?: string | null;
   }
 ): Array<{ facility: FacilityCandidate; score: number; relevanceReason: string }> {
   const q = (criteria.query || "").toLowerCase();
+  const targetLoc = (criteria.targetLocation || "").toLowerCase().trim();
   const targetCity = (criteria.userCity || "").toLowerCase().trim();
   const targetDistrict = (criteria.userDistrict || "").toLowerCase().trim();
 
@@ -207,11 +302,16 @@ export function rankFacilities(
         }
       }
 
-      // 3. Hirarki Wilayah (Kecamatan -> Kabupaten/Kota -> Provinsi)
+      // 3. Hirarki Wilayah
       const facDistrict = (fac.district || "").toLowerCase().trim();
       const facCity = (fac.city || "").toLowerCase().trim();
 
-      if (targetDistrict && facDistrict && (facDistrict.includes(targetDistrict) || targetDistrict.includes(facDistrict))) {
+      if (targetLoc) {
+        if (facCity.includes(targetLoc) || targetLoc.includes(facCity) || facDistrict.includes(targetLoc) || targetLoc.includes(facDistrict)) {
+          score += 45;
+          reasons.push(`Berlokasi di ${criteria.targetLocation}`);
+        }
+      } else if (targetDistrict && facDistrict && (facDistrict.includes(targetDistrict) || targetDistrict.includes(facDistrict))) {
         score += 35;
         reasons.push("Terletak di kecamatan yang sama");
       } else if (targetCity && facCity && (facCity.includes(targetCity) || targetCity.includes(facCity))) {
@@ -230,6 +330,7 @@ export function rankFacilities(
     })
     .sort((a, b) => b.score - a.score);
 }
+
 
 /**
  * Format kartu rekomendasi fasilitas untuk UI.

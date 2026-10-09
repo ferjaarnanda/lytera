@@ -6,6 +6,52 @@ export interface IntentMatchResult {
   extractedQuery?: string;
   targetType?: "puskesmas" | "klinik" | "rumah_sakit" | "apotek";
   targetSpecialization?: string;
+  targetLocation?: string;
+}
+
+/**
+ * Ekstraksi spesialisasi medis dari teks input berdasarkan katalog spesialisasi resmi Lytera.
+ */
+export function extractSpecialization(input: string): string | undefined {
+  const lower = input.toLowerCase();
+  if (lower.includes("penyakit dalam") || lower.includes("sp.pd") || lower.includes("internist")) return "Penyakit Dalam";
+  if (lower.includes("jantung") || lower.includes("kardiolog") || lower.includes("sp.jp")) return "Jantung dan Pembuluh Darah";
+  if (lower.includes("anak") || lower.includes("pediatri") || lower.includes("sp.a")) return "Anak";
+  if (lower.includes("bedah mulut")) return "Bedah Mulut dan Maksilofasial";
+  if (lower.includes("bedah") || lower.includes("sp.b")) return "Bedah";
+  if (lower.includes("saraf") || lower.includes("neurolog") || lower.includes("sp.s") || lower.includes("sp.n")) return "Saraf (Neurologi)";
+  if (lower.includes("mata") || lower.includes("oftalmolog") || lower.includes("sp.m")) return "Mata";
+  if (lower.includes("kandungan") || lower.includes("kebidanan") || lower.includes("obgyn") || lower.includes("sp.og")) return "Obstetri dan Ginekologi (Kebidanan & Kandungan)";
+  if (lower.includes("tht") || lower.includes("telinga") || lower.includes("hidung") || lower.includes("sp.tht")) return "THT-KL";
+  if (lower.includes("paru") || lower.includes("pulmonolog") || lower.includes("sp.p")) return "Paru (Pulmonologi)";
+  if (lower.includes("kulit") || lower.includes("kelamin") || lower.includes("dermatolog") || lower.includes("sp.kk") || lower.includes("sp.dv")) return "Kulit dan Kelamin (Dermatologi)";
+  if (lower.includes("jiwa") || lower.includes("psikiater") || lower.includes("psikiatri") || lower.includes("sp.kj")) return "Kedokteran Jiwa (Psikiatri)";
+  if (lower.includes("ortopedi") || lower.includes("tulang") || lower.includes("sp.ot")) return "Ortopedi dan Traumatologi";
+  if (lower.includes("gigi anak")) return "Gigi Anak (Pedodonsia)";
+  if (lower.includes("gigi")) return "Konservasi Gigi (Endodonsia)";
+  if (lower.includes("anestesi")) return "Anestesiologi dan Terapi Intensif";
+  if (lower.includes("radiolog")) return "Radiologi";
+  if (lower.includes("rehabilitasi") || lower.includes("fisioterapi")) return "Rehabilitasi Medik";
+  return undefined;
+}
+
+/**
+ * Ekstraksi nama wilayah (kota, kabupaten, kecamatan) dari teks input.
+ */
+export function extractLocation(input: string): string | undefined {
+  const match = input.match(/\b(?:di|wilayah|daerah|kota|kecamatan)\s+([a-zA-Z\s]+?)(?:\s+(?:yang|untuk|dengan|terdekat|aktif|ada|tersedia)|[.,?!]|$)/i);
+  if (match && match[1]) {
+    const loc = match[1].trim();
+    const stopwords = [
+      "lytera", "sini", "mana", "faskes", "rumah", "sakit", "rs",
+      "puskesmas", "klinik", "dokter", "spesialis", "poli", "rujukan",
+      "terdekat", "aktif", "atas", "bawah"
+    ];
+    if (loc.length >= 3 && !stopwords.includes(loc.toLowerCase())) {
+      return loc;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -13,6 +59,8 @@ export interface IntentMatchResult {
  */
 export function classifyTetraIntent(rawInput: string): IntentMatchResult {
   const input = rawInput.toLowerCase().trim();
+  const detectedLocation = extractLocation(rawInput);
+  const detectedSpecialization = extractSpecialization(rawInput);
 
   // 1. KONDISI DARURAT MEDIS (PRIORITAS TERTINGGI)
   const emergencyKeywords = [
@@ -42,7 +90,7 @@ export function classifyTetraIntent(rawInput: string): IntentMatchResult {
   const hasEmergencyWord = emergencyKeywords.some((k) => input.includes(k));
   const hasSesakAndDada = input.includes("sesak") && input.includes("dada");
   if (hasEmergencyWord || hasSesakAndDada) {
-    return { intent: "emergency", confidence: 0.99 };
+    return { intent: "emergency", confidence: 0.99, targetLocation: detectedLocation };
   }
 
   // 2. IDENTITAS DIRI / PERSONAL CONTEXT
@@ -132,17 +180,13 @@ export function classifyTetraIntent(rawInput: string): IntentMatchResult {
     "sp.a",
     "sp.b",
   ];
-  const isDoctorSearch = doctorKeywords.some((k) => input.includes(k));
-  if (isDoctorSearch && (input.includes("cari") || input.includes("carikan") || input.includes("rekomendasi") || input.includes("daftar") || input.includes("siapa"))) {
-    let spec = undefined;
-    if (input.includes("dalam") || input.includes("penyakit dalam")) spec = "Penyakit Dalam";
-    if (input.includes("jantung")) spec = "Jantung";
-    if (input.includes("anak")) spec = "Anak";
-    if (input.includes("bedah")) spec = "Bedah";
+  const isDoctorSearch = doctorKeywords.some((k) => input.includes(k)) || !!detectedSpecialization;
+  if (isDoctorSearch && (input.includes("cari") || input.includes("carikan") || input.includes("rekomendasi") || input.includes("daftar") || input.includes("siapa") || input.includes("tersedia") || input.includes("ada"))) {
     return {
       intent: "search_doctor",
-      confidence: 0.9,
-      targetSpecialization: spec,
+      confidence: 0.95,
+      targetSpecialization: detectedSpecialization,
+      targetLocation: detectedLocation,
       extractedQuery: input,
     };
   }
@@ -157,11 +201,12 @@ export function classifyTetraIntent(rawInput: string): IntentMatchResult {
     "rs colombia",
   ];
   const isRSSearch = rsKeywords.some((k) => input.includes(k));
-  if (isRSSearch && (input.includes("cari") || input.includes("carikan") || input.includes("rekomendasi") || input.includes("rujukan") || input.includes("mana"))) {
+  if (isRSSearch && (input.includes("cari") || input.includes("carikan") || input.includes("rekomendasi") || input.includes("rujukan") || input.includes("mana") || input.includes("daftar") || input.includes("di "))) {
     return {
       intent: "search_referral_hospital",
       confidence: 0.9,
       targetType: "rumah_sakit",
+      targetLocation: detectedLocation,
       extractedQuery: input,
     };
   }
@@ -171,6 +216,7 @@ export function classifyTetraIntent(rawInput: string): IntentMatchResult {
     return {
       intent: "search_poli",
       confidence: 0.85,
+      targetLocation: detectedLocation,
       extractedQuery: input,
     };
   }
@@ -183,7 +229,7 @@ export function classifyTetraIntent(rawInput: string): IntentMatchResult {
     input.includes("faskes") ||
     input.includes("fasilitas")
   ) {
-    if (input.includes("cari") || input.includes("carikan") || input.includes("dekat") || input.includes("terdekat") || input.includes("rekomendasi") || input.includes("daftar")) {
+    if (input.includes("cari") || input.includes("carikan") || input.includes("dekat") || input.includes("terdekat") || input.includes("rekomendasi") || input.includes("daftar") || input.includes("di ")) {
       let ftype: "puskesmas" | "klinik" | "rumah_sakit" | "apotek" | undefined = undefined;
       if (input.includes("puskesmas")) ftype = "puskesmas";
       else if (input.includes("klinik")) ftype = "klinik";
@@ -193,6 +239,7 @@ export function classifyTetraIntent(rawInput: string): IntentMatchResult {
         intent: "search_facility",
         confidence: 0.88,
         targetType: ftype,
+        targetLocation: detectedLocation,
         extractedQuery: input,
       };
     }
@@ -214,3 +261,4 @@ export function classifyTetraIntent(rawInput: string): IntentMatchResult {
   // 12. UNSUPPORTED / SALAM PEMBUKA UMUM
   return { intent: "unsupported", confidence: 0.5 };
 }
+
