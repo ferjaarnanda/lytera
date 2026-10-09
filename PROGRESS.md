@@ -17,7 +17,8 @@
 | Tahap Tetra AI Context-Aware & Rebranding | SELESAI | 6f06a5c | Rebranding Tera -> Tetra, mark logo tepat 4 garis diagonal, strict landing anonymity (tanpa bocor profil demo), intent routing deterministik presisi (hanya cari faskes bila diminta), quick action buttons terkalibrasi, lolos 7 uji skenario via HTTP, lint 0 error, build exit 0. |
 | Normalisasi Wilayah Fasilitas | SELESAI | d8dc457 | resolveRegionName() + formatFacilityLocation() reusable di lib/region-utils.ts. FacilityCombobox, Tetra tools.ts, engine.ts semua pakai nama manusiawi. Migrasi DB: 7 fasilitas diperbarui dari kode (33/3374/337401) ke nama (Jawa Tengah/Kota Semarang/Semarang Tengah). Lint 0 error, build exit 0. |
 | Sub-tahap A: Finalisasi Keamanan Pendaftaran Nakes & Integritas Tetra | SELESAI | 51e8daa | RPC transaksional register_facility_staff atomik (verifikasi caller auth.uid(), faskes penerbit, FOR UPDATE kuota, insert staff menunggu, insert fss is_verified=false, kuota terpotong tepat 1 kali). Mandiri consume_invitation_code dinonaktifkan & dicabut haknya. validate_invitation_code diperketat. Fallback unverified di get_active_facility_doctors dihapus total demi integritas Tetra. Migrasi 20261009170000 tercatat di DB. Lint 0 error, build exit 0, seluruh uji lolos 100%. |
-| Sub-tahap B: Persetujuan Staf Faskes, Pengesahan Spesialisasi & Penolakan Berakar Alasan | SELESAI | (commit ini) | Kolom rejection_reason pada facility_staff. RPC review_facility_staff (keamanan otorisasi admin faskes & dinkes, penetapan role final, verifikasi spesialisasi per item is_verified=true, alasan penolakan wajib). UI kelola staf faskes diperbarui: modal persetujuan & pengesahan spesialisasi interaktif, modal penolakan alasan wajib, rincian profesi, STR, SIP. Teruji nyata via SQL impersonasi 100% lolos, lint 0 error, build exit 0. |
+| Sub-tahap B: Persetujuan Staf Faskes, Pengesahan Spesialisasi & Penolakan Berakar Alasan | SELESAI | 3b2f919 | Kolom rejection_reason pada facility_staff. RPC review_facility_staff (keamanan otorisasi admin faskes & dinkes, penetapan role final, verifikasi spesialisasi per item is_verified=true, alasan penolakan wajib). UI kelola staf faskes diperbarui: modal persetujuan & pengesahan spesialisasi interaktif, modal penolakan alasan wajib, rincian profesi, STR, SIP. Teruji nyata via SQL impersonasi 100% lolos, lint 0 error, build exit 0. |
+| Verifikasi Siklus End-to-End Nakes & Tetra | SELESAI | (commit ini) | Uji siklus penuh pendaftaran dokter spesialis baru -> status menunggu tidak bocor ke Tetra -> persetujuan admin faskes & pengesahan spesialisasi klinis -> rekomendasi dokter dan poli resmi muncul di Tetra. Lolos uji isolasi unverified 100%, lint 0 error, build exit 0. |
 
 ---
 
@@ -396,10 +397,26 @@
   - `npm run lint`: **0 error, 0 warning**.
   - `npm run build`: **Exit 0**, seluruh 19 rute Next.js 16 berhasil dikompilasi tanpa galat.
 
+### 25. Verifikasi Siklus End-to-End Nakes & Integritas Tetra (Selesai)
+- [x] **Alur Pendaftaran $\to$ Isolasi Menunggu**:
+  - Dokter spesialis baru mendaftar penempatan di Puskesmas Kedung Rejo dengan spesialisasi `Anak`.
+  - Terverifikasi pada database: status penempatan `'menunggu'`, spesialisasi `is_verified = false`.
+  - Verifikasi isolasi data Tetra: RPC `get_active_facility_doctors` menghasilkan **0 dokter** (`before_count = 0`). Klaim pendaftar yang belum diverifikasi terbukti tidak bocor ke publik atau asisten AI Tetra.
+- [x] **Alur Peninjauan Admin Faskes $\to$ Pengesahan Spesialisasi**:
+  - Admin fasilitas kesehatan Kedung Rejo meninjau permohonan via RPC transaksional `review_facility_staff`.
+  - Admin menyetujui peran `'dokter'` dan mengesahkan spesialisasi `Anak` (`is_verified = true`).
+  - Verifikasi data Tetra: seketika setelah disahkan, dokter langsung muncul pada hasil `get_active_facility_doctors` dengan spesialisasi resmi `Anak`.
+- [x] **Alur Persetujuan Dokter Umum Tanpa Pengesahan Spesialisasi**:
+  - Jika admin menyetujui nakes sebagai dokter aktif namun tidak mengesahkan klaim spesialisasi (array verified kosong), dokter berstatus aktif tetapi spesialisasinya di Tetra bernilai `<NULL>` (dokter umum), tanpa klaim unverified yang menyesatkan.
+- [x] **Kualitas Kode & Linting**:
+  - `npm run lint`: **0 error, 0 warning**.
+  - `npm run build`: **Exit 0**, seluruh 19 rute Next.js 16 berhasil dikompilasi tanpa galat.
+
 ---
 
 ### Berikutnya
-- Uji alur antarmuka pengguna (end-to-end browser walkthrough) dari pendaftaran dokter spesialis baru -> peninjauan & pengesahan spesialisasi oleh admin faskes di portal -> verifikasi hasil rekomendasi Tetra di landing/portal.
+- Rujukan Berjenjang & Validasi Faskes Tujuan: Pastikan alur rujukan dokter spesialis di faskes primer terhubung secara mulus dengan ketersediaan poli dan dokter spesialis terverifikasi di Rumah Sakit tujuan.
+
 
 
 
