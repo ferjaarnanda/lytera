@@ -1,6 +1,7 @@
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { TetraRecommendation, TetraUserContext } from "./types";
+import { formatFacilityLocation, resolveRegionName } from "@/lib/region-utils";
 
 async function getClient() {
   try {
@@ -192,7 +193,7 @@ export function rankFacilities(
         score += 25;
         reasons.push("Tersedia di kota/kabupaten yang sama");
       } else if (fac.city) {
-        reasons.push(`Berlokasi di ${fac.city}`);
+        reasons.push(`Berlokasi di ${resolveRegionName(fac.city) || fac.city}`);
       }
 
       const relevanceReason =
@@ -237,8 +238,7 @@ export function buildFacilityRecommendations(
         ? "Klinik Pratama"
         : "Apotek";
 
-    const locParts = [facility.district, facility.city].filter(Boolean);
-    const location = locParts.length > 0 ? locParts.join(", ") : "Wilayah terdaftar";
+    const location = formatFacilityLocation({ district: facility.district, city: facility.city });
 
     return {
       type: "facility",
@@ -278,7 +278,7 @@ export function buildDoctorRecommendations(
       name: doc.full_name,
       category: doc.specialization ? `Spesialis ${doc.specialization}` : "Dokter Umum",
       relevance: `Dokter aktif bertugas di ${facName}.`,
-      location: doc.city || "Kota Semarang",
+      location: resolveRegionName(doc.city) || "Wilayah terdaftar",
       badge: "Dokter Aktif",
     };
   });

@@ -14,6 +14,7 @@ import {
   buildDoctorRecommendations,
   FacilityCandidate,
 } from "./tools";
+import { formatFacilityLocation } from "@/lib/region-utils";
 
 /**
  * Fallback Generator berbasis Intent yang cerdas, faktual, dan patuh guardrails.
@@ -336,7 +337,7 @@ export async function executeTetraChat(request: TetraChatRequest): Promise<Tetra
     id: f.id,
     nama: f.name,
     jenis: f.type,
-    wilayah: `${f.district || ""}, ${f.city || ""}`.trim(),
+    wilayah: formatFacilityLocation({ district: f.district, city: f.city }),
   }));
 
   const dataContextMessage =

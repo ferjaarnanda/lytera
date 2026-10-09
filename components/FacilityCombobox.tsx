@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useId, useCallback } from "react";
 import { Search, Loader2, Check, X, ChevronDown, Building2, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { formatFacilityLocation } from "@/lib/region-utils";
 
 export interface ActiveFacility {
   id: string;
@@ -297,8 +298,7 @@ export const FacilityCombobox: React.FC<FacilityComboboxProps> = ({
               facilities.map((fac) => {
                 const isSelected = fac.id === value;
                 const typeLabel = TYPE_LABELS[fac.type] || fac.type;
-                const locationParts = [fac.district, fac.city].filter(Boolean);
-                const locationStr = locationParts.length > 0 ? locationParts.join(", ") : null;
+                const locationStr = formatFacilityLocation({ district: fac.district, city: fac.city }) || null;
 
                 return (
                   <li
