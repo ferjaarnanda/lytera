@@ -168,6 +168,24 @@ body:has([data-hero-wallpaper]),
   -webkit-backdrop-filter: blur(8px);
 }
 
+/* Panel kaca frost putih bertekstur lembut & kontras tinggi */
+.glass-frost {
+  --frost-alpha: 0.65;
+  --frost-blur: 18px;
+  background: rgba(255, 255, 255, 0.88); /* Fallback untuk browser tanpa backdrop-filter */
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 10px 36px rgba(6, 28, 40, 0.22);
+  border-radius: 24px;
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .glass-frost {
+    background: rgba(255, 255, 255, var(--frost-alpha));
+    backdrop-filter: blur(var(--frost-blur)) saturate(140%);
+    -webkit-backdrop-filter: blur(var(--frost-blur)) saturate(140%);
+  }
+}
+
 /* Tombol kembali di atas halaman sub-portal (misal: Buat Rujukan, Daftar Rujukan) */
 [data-portal-wallpaper="true"] main > div.mb-6 > a[class*="text-[#0F3040]"] {
   background-color: rgba(255, 255, 255, 0.92);

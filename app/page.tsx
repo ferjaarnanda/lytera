@@ -572,11 +572,11 @@ export default function HomePage() {
           >
             <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
               <Reveal>
-                <div className="glass-panel p-6 sm:p-8 md:py-8 md:px-10 mb-16">
-                  <h2 className="text-3xl sm:text-[32px] font-bold text-white tracking-tight">
+                <div className="glass-frost rounded-[24px] p-6 sm:p-8 md:py-8 md:px-10 mb-16">
+                  <h2 className="text-3xl sm:text-[32px] font-bold text-[#0F3040] tracking-tight">
                     Mengapa Lytera?
                   </h2>
-                  <p className="text-base text-white/88 mt-2 max-w-3xl">
+                  <p className="text-base text-[#26404F] mt-2 max-w-3xl leading-relaxed">
                     Lytera hadir untuk membantu mengatasi berbagai permasalahan
                     dalam proses rujukan dan pengelolaan rekam medis. Selain
                     mengurangi penumpukan rujukan dan risiko tercecernya rekam
@@ -805,11 +805,11 @@ export default function HomePage() {
           <section data-navbar-tone="dark" className="w-full max-w-full overflow-hidden py-[96px] bg-transparent">
             <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
               <Reveal>
-                <div className="w-full rounded-[24px] glass-card p-10 sm:p-14 text-center flex flex-col items-center">
-                  <h2 className="text-3xl sm:text-[36px] leading-[44px] font-extrabold text-white tracking-tight">
+                <div className="w-full rounded-[24px] glass-frost p-10 sm:p-14 text-center flex flex-col items-center">
+                  <h2 className="text-3xl sm:text-[36px] leading-[44px] font-extrabold text-[#0F3040] tracking-tight">
                     Mulai dari peranmu
                   </h2>
-                  <p className="text-base text-white/86 max-w-xl mx-auto mt-3">
+                  <p className="text-base text-[#26404F] max-w-xl mx-auto mt-3">
                     Pilih peranmu, lalu mulai dari rujukan pertama.
                   </p>
                   <a
@@ -832,34 +832,34 @@ export default function HomePage() {
         className="w-full max-w-full overflow-hidden bg-transparent pb-6 text-left"
       >
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="glass-card rounded-[24px] p-6 sm:p-8">
+          <div className="glass-frost rounded-[24px] p-6 sm:p-8">
             <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6">
               <div className="flex items-center gap-3">
                 <Logo tone="dark" size="sm" />
               </div>
               <div className="flex flex-wrap items-center justify-center gap-6">
                 <a
-                  className="text-xs text-white/86 hover:text-white transition-colors"
+                  className="text-xs text-[#0F3040] font-semibold hover:underline transition-colors"
                   href="#fitur"
                 >
                   Fitur Layanan
                 </a>
                 <a
-                  className="text-xs text-white/86 hover:text-white transition-colors"
+                  className="text-xs text-[#0F3040] font-semibold hover:underline transition-colors"
                   href="#cara-kerja"
                 >
                   Cara Kerja
                 </a>
                 <a
-                  className="text-xs text-white/86 hover:text-white transition-colors"
+                  className="text-xs text-[#0F3040] font-semibold hover:underline transition-colors"
                   href="#kenapa-lytera"
                 >
                   Kenapa Lytera?
                 </a>
               </div>
             </div>
-            <div className="border-t border-white/[0.12] pt-4 text-center">
-              <p className="text-xs text-white/70">
+            <div className="border-t border-[#0F3040]/15 pt-4 text-center">
+              <p className="text-xs text-[#2F4858]">
                 Prototipe sistem rujukan dan rekam medis digital. Seluruh data adalah data simulasi.
               </p>
             </div>
