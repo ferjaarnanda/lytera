@@ -20,7 +20,8 @@
 | Sub-tahap B: Persetujuan Staf Faskes, Pengesahan Spesialisasi & Penolakan Berakar Alasan | SELESAI | 3b2f919 | Kolom rejection_reason pada facility_staff. RPC review_facility_staff (keamanan otorisasi admin faskes & dinkes, penetapan role final, verifikasi spesialisasi per item is_verified=true, alasan penolakan wajib). UI kelola staf faskes diperbarui: modal persetujuan & pengesahan spesialisasi interaktif, modal penolakan alasan wajib, rincian profesi, STR, SIP. Teruji nyata via SQL impersonasi 100% lolos, lint 0 error, build exit 0. |
 | Verifikasi Siklus End-to-End Nakes & Tetra | SELESAI | ec93beb | Uji siklus penuh pendaftaran dokter spesialis baru -> status menunggu tidak bocor ke Tetra -> persetujuan admin faskes & pengesahan spesialisasi klinis -> rekomendasi dokter dan poli resmi muncul di Tetra. Lolos uji isolasi unverified 100%, lint 0 error, build exit 0. |
 | Rujukan Berjenjang & Validasi Faskes Tujuan | SELESAI | d2a8c8a | Penyelarasan RPC list_active_doctors ke spesialisasi terverifikasi, sinkronisasi poli otomatis sesuai dokter spesialis di form rujukan, penanganan rujukan terbuka saat RS belum ada dokter DPJP, dan pemrosesan rujukan masuk RS. Uji SQL impersonasi lolos 100%, lint 0 error, build exit 0. |
-| Tetra Intelligence & Data Integrity | SELESAI | (commit ini) | Ekstraksi spesialisasi 20 katalog & wilayah pada intent router, pencarian dokter bertingkat (lokasi spesifik -> alternatif wilayah lain), injeksi data dokter terverifikasi ke Groq, eliminasi async cookies hang di getClient via AbortSignal timeout 6s, 8 skenario pengujian lolos 100%, lint 0 error, build exit 0. |
+| Tahap Tetra Intelligence & Data Integrity | SELESAI | d6b51bc | Ekstraksi spesialisasi 20 katalog & wilayah pada intent router, pencarian dokter bertingkat (lokasi spesifik -> alternatif wilayah lain), injeksi data dokter terverifikasi ke Groq, eliminasi async cookies hang di getClient via AbortSignal timeout 6s, 8 skenario pengujian lolos 100%, lint 0 error, build exit 0. |
+| Pengujian Alur Pasien Keluarga & Demo Interaktif | SELESAI | (commit ini) | Uji 8 skenario end-to-end database (keluarga, pencarian NIK anak, rujukan anak, list_my_referrals, token izin wali, buka & catat rekam medis anak oleh dokter DPJP, audit PDP). Penyempurnaan demo interaktif visual (?demo=1) pada portal pasien keluarga & penjamin untuk penjurian lomba. Lint 0 error, build exit 0. |
 
 
 
@@ -464,8 +465,27 @@
 
 ---
 
+### 28. Pengujian Alur Pasien Keluarga & Demo Interaktif (Selesai)
+- [x] **Validasi & Simulasi Siklus End-to-End Database Pasien Keluarga (8 Skenario Lolos 100%)**:
+  1. *Perwalian & Pendaftaran Keluarga*: Penambahan baris anggota keluarga (`family_members`) di bawah wali `iwak peyek` (anak 'Bocil Peyek', NIK 16 digit, penjamin BPJS).
+  2. *Pencarian NIK Anak oleh Dokter Primer*: Dokter aktif (dr. Andi Wicaksono) memanggil `find_patient_by_nik` untuk NIK anak, data anak ditemukan dengan `family_member_id` terisi, hubungan `'anak'`, dan log audit tercatat persisten di `patient_lookup_logs`.
+  3. *Penerbitan Rujukan Anak*: Dokter menerbitkan rujukan dengan `patient_id` wali dan `family_member_id` anak ke Poli Anak Rumah Sakit Colombia dengan status awal `diajukan`.
+  4. *Akses Rujukan Keluarga Pasien*: Wali mengakses portal pasien via `list_my_referrals()`. Rujukan anak langsung tampil dengan `is_family = true`, nama subjek `'Bocil Peyek'`, nomor penjamin termasker (`payer_number_masked`), serta status verifikasi domisili terhubung.
+  5. *Pembuatan Token Otorisasi Pasien*: Wali membuat token akses medis 6 digit via `create_patient_access_token()`.
+  6. *Otorisasi Dokter Membuka Rekam Medis Anak*: Dokter membuka rekam medis anak via `open_patient_medical_record(patient_id, token_code, family_member_id)` dengan token izin wali; log `medical_record_access_logs` berstatus `berhasil` tercatat.
+  7. *Pencatatan Rekam Medis Anak*: Dokter mencatat diagnosis ICD-10 (`J00`) dan terapi anak melalui `add_medical_record` dengan verifikasi token wali.
+  8. *Transparansi Rekam Medis di Portal Wali*: Wali melihat rekam medis anak di riwayat medis via `list_my_medical_records()`.
+- [x] **Penyempurnaan Demo Interaktif Visual (?demo=1)**:
+  - Pada `components/PasienDashboard.tsx`: Saat mode `?demo=1` diakses untuk subperan keluarga, dashboard secara otomatis menyajikan data simulasi perwalian (pasangan Siti Rahmawati dan anak Dimas Santoso), kartu rujukan aktif anak Dimas Santoso ke Poli Anak RS Colombia, serta penjamin BPJS keluarga.
+  - Pada `components/PenjaminVerifikasiSection.tsx`: Tab Penjamin Biaya dan Verifikasi Administrasi secara interaktif menyediakan pemilih subjek anggota keluarga (Wali Budi Santoso, Pasangan Siti Rahmawati, Anak Dimas Santoso), form kartu penjamin, serta riwayat verifikasi domisili simulasi yang siap dipresentasikan kepada dewan juri tanpa perlu dependensi sesi login aktif.
+- [x] **Kualitas Kode, Linting & Build**:
+  - `npm run lint`: **0 error, 0 warning**.
+  - `npm run build`: **Exit 0**, seluruh 19 rute Next.js 16 berhasil dikompilasi tanpa galat.
+
+---
+
 ### Berikutnya
-- Pengujian Alur Pasien Keluarga & Penyempurnaan Demo Interaktif: Evaluasi status akun perwalian keluarga, ketersediaan anggota keluarga pada penjamin dan rujukan, serta skenario pengujian menyeluruh untuk penjurian lomba.
+- Persiapan Final Berkas Proyek & Dokumentasi Penjurian: Audit akhir seluruh alur platform (Landing page, Pasien Pribadi/Keluarga, Faskes Primer, RS Rujukan, Verifikator, Dinkes), pembuatan panduan demo penjurian, dan verifikasi akhir security advisors Supabase.
 
 
 

@@ -80,6 +80,50 @@ export function PenjaminVerifikasiSection({
         }
         return prev;
       });
+    } else {
+      // Mode simulasi/demo visual jika URL memuat ?demo=1
+      const urlParams =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search)
+          : null;
+      if (urlParams?.get("demo") === "1") {
+        const demoSubs: PayerSubjectInfo[] = [
+          {
+            id: "demo-wali",
+            full_name: "Budi Santoso",
+            relation: undefined,
+            is_family: false,
+            payer_type: "bpjs",
+            bpjs_number: "0001928374650",
+            insurance_name: null,
+            insurance_policy_number: null,
+          },
+          {
+            id: "demo-fam-1",
+            full_name: "Siti Rahmawati",
+            relation: "pasangan",
+            is_family: true,
+            payer_type: "bpjs",
+            bpjs_number: "0001928374651",
+            insurance_name: null,
+            insurance_policy_number: null,
+          },
+          {
+            id: "demo-fam-2",
+            full_name: "Dimas Santoso",
+            relation: "anak",
+            is_family: true,
+            payer_type: "bpjs",
+            bpjs_number: "0001928374652",
+            insurance_name: null,
+            insurance_policy_number: null,
+          },
+        ];
+        setPayerSubjects(demoSubs);
+        setSelectedSubjectId("demo-wali");
+        setFormPayerType("bpjs");
+        setFormBpjsNumber("0001928374650");
+      }
     }
     setLoadingPayer(false);
   }, []);
@@ -87,8 +131,30 @@ export function PenjaminVerifikasiSection({
   const loadVerifications = useCallback(async () => {
     setLoadingVerifications(true);
     const res = await listMyVerificationsAction();
-    if (res.success && res.data) {
+    if (res.success && res.data && res.data.length > 0) {
       setVerifications(res.data);
+    } else {
+      const urlParams =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search)
+          : null;
+      if (urlParams?.get("demo") === "1") {
+        setVerifications([
+          {
+            id: "demo-verif-1",
+            type: "domisili",
+            status: "disetujui",
+            document_paths: ["demo-user-id/ktp-budi.jpg"],
+            patient_note: "KTP dan Kartu Keluarga Kota Semarang",
+            review_note: "Disetujui. Berkas sesuai kependudukan wilayah.",
+            reviewed_at: new Date().toISOString(),
+            valid_until: null,
+            subject_name: "Budi Santoso",
+            is_family: false,
+            created_at: new Date().toISOString(),
+          },
+        ]);
+      }
     }
     setLoadingVerifications(false);
   }, []);

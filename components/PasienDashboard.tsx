@@ -927,6 +927,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
               ? new URLSearchParams(window.location.search)
               : null;
           if (urlParams?.get("demo") === "1") {
+            const isDemoKeluarga = subperan === "keluarga";
             setProfile({
               id: "demo-user-id",
               full_name: "Budi Santoso",
@@ -938,7 +939,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
             setPatient({
               id: "demo-user-id",
               nik: "3301012345670001",
-              patient_type: subperan === "keluarga" ? "keluarga" : "pribadi",
+              patient_type: isDemoKeluarga ? "keluarga" : "pribadi",
               dob: "1995-05-15",
               gender: "Laki-laki",
               blood_type: "O+",
@@ -949,8 +950,51 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
               district: "Semarang Tengah",
               city: "Kota Semarang",
               province: "Jawa Tengah",
-              bpjs_number: null,
+              bpjs_number: "0001928374650",
+              payer_type: "bpjs",
             });
+            if (isDemoKeluarga) {
+              setFamilyMembers([
+                {
+                  id: "demo-fam-1",
+                  guardian_id: "demo-user-id",
+                  full_name: "Siti Rahmawati",
+                  nik: "3301015508980002",
+                  dob: "1998-08-20",
+                  relation: "pasangan",
+                  bpjs_number: "0001928374651",
+                  allergies: null,
+                  payer_type: "bpjs",
+                },
+                {
+                  id: "demo-fam-2",
+                  guardian_id: "demo-user-id",
+                  full_name: "Dimas Santoso",
+                  nik: "3301011204200003",
+                  dob: "2020-04-12",
+                  relation: "anak",
+                  bpjs_number: "0001928374652",
+                  allergies: "Dingin",
+                  payer_type: "bpjs",
+                },
+              ]);
+              setReferrals([
+                {
+                  id: "demo-ref-1",
+                  status: "diajukan",
+                  priority: "elektif",
+                  poli: "Poli Anak (Pediatri)",
+                  diagnosis_icd10: "J00",
+                  jadwal_pemeriksaan: null,
+                  created_at: new Date().toISOString(),
+                  origin_name: "Puskesmas Kedung Rejo",
+                  destination_name: "Rumah Sakit Colombia",
+                  destination_doctor: null,
+                  subject_name: "Dimas Santoso",
+                  is_family: true,
+                },
+              ]);
+            }
             setLoading(false);
             return;
           }
