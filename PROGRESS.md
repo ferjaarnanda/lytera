@@ -18,7 +18,10 @@
 | Normalisasi Wilayah Fasilitas | SELESAI | d8dc457 | resolveRegionName() + formatFacilityLocation() reusable di lib/region-utils.ts. FacilityCombobox, Tetra tools.ts, engine.ts semua pakai nama manusiawi. Migrasi DB: 7 fasilitas diperbarui dari kode (33/3374/337401) ke nama (Jawa Tengah/Kota Semarang/Semarang Tengah). Lint 0 error, build exit 0. |
 | Sub-tahap A: Finalisasi Keamanan Pendaftaran Nakes & Integritas Tetra | SELESAI | 51e8daa | RPC transaksional register_facility_staff atomik (verifikasi caller auth.uid(), faskes penerbit, FOR UPDATE kuota, insert staff menunggu, insert fss is_verified=false, kuota terpotong tepat 1 kali). Mandiri consume_invitation_code dinonaktifkan & dicabut haknya. validate_invitation_code diperketat. Fallback unverified di get_active_facility_doctors dihapus total demi integritas Tetra. Migrasi 20261009170000 tercatat di DB. Lint 0 error, build exit 0, seluruh uji lolos 100%. |
 | Sub-tahap B: Persetujuan Staf Faskes, Pengesahan Spesialisasi & Penolakan Berakar Alasan | SELESAI | 3b2f919 | Kolom rejection_reason pada facility_staff. RPC review_facility_staff (keamanan otorisasi admin faskes & dinkes, penetapan role final, verifikasi spesialisasi per item is_verified=true, alasan penolakan wajib). UI kelola staf faskes diperbarui: modal persetujuan & pengesahan spesialisasi interaktif, modal penolakan alasan wajib, rincian profesi, STR, SIP. Teruji nyata via SQL impersonasi 100% lolos, lint 0 error, build exit 0. |
-| Verifikasi Siklus End-to-End Nakes & Tetra | SELESAI | (commit ini) | Uji siklus penuh pendaftaran dokter spesialis baru -> status menunggu tidak bocor ke Tetra -> persetujuan admin faskes & pengesahan spesialisasi klinis -> rekomendasi dokter dan poli resmi muncul di Tetra. Lolos uji isolasi unverified 100%, lint 0 error, build exit 0. |
+| Verifikasi Siklus End-to-End Nakes & Tetra | SELESAI | ec93beb | Uji siklus penuh pendaftaran dokter spesialis baru -> status menunggu tidak bocor ke Tetra -> persetujuan admin faskes & pengesahan spesialisasi klinis -> rekomendasi dokter dan poli resmi muncul di Tetra. Lolos uji isolasi unverified 100%, lint 0 error, build exit 0. |
+| Rujukan Berjenjang & Validasi Faskes Tujuan | SELESAI | d2a8c8a | Penyelarasan RPC list_active_doctors ke spesialisasi terverifikasi, sinkronisasi poli otomatis sesuai dokter spesialis di form rujukan, penanganan rujukan terbuka saat RS belum ada dokter DPJP, dan pemrosesan rujukan masuk RS. Uji SQL impersonasi lolos 100%, lint 0 error, build exit 0. |
+
+
 
 ---
 
@@ -412,10 +415,28 @@
   - `npm run lint`: **0 error, 0 warning**.
   - `npm run build`: **Exit 0**, seluruh 19 rute Next.js 16 berhasil dikompilasi tanpa galat.
 
+### 26. Rujukan Berjenjang & Validasi Faskes Tujuan (Selesai)
+- [x] **Penyelarasan RPC `list_active_doctors` ke Spesialisasi Terverifikasi**:
+  - Migrasi `20261010010000_update_list_active_doctors.sql` diterapkan ke Supabase Lytera.
+  - RPC `list_active_doctors(p_facility_id)` kini membaca agregat spesialisasi resmi dari tabel relasi `facility_staff_specializations` (`is_verified = true`), sinkron 100% dengan `get_active_facility_doctors` dan sistem peninjauan nakes Sub-tahap B.
+  - Hak eksekusi `EXECUTE` diberikan ke peran `authenticated` dan `anon`.
+- [x] **Koneksi Cerdas Dokter Spesialis & Poli di Formulir Rujukan Primer**:
+  - Pada formulir penerbitan rujukan (`app/portal/[peran]/[subperan]/rujukan/baru/page.tsx`), pemilihan dokter tujuan dari rumah sakit rujukan kini langsung menyelaraskan pilihan Poli secara cerdas via mapping spesialisasi (misal dokter spesialis Anak otomatis mengarahkan ke Poli Anak, Penyakit Dalam ke Poli Penyakit Dalam, dll.).
+  - Penanganan transparan dan ramah jika rumah sakit rujukan belum memiliki daftar dokter terdaftar: rujukan tetap dapat dikirimkan ke poli tujuan, dengan penugasan Dokter Penanggung Jawab Pelayanan (DPJP) dilakukan oleh pihak Rumah Sakit saat penjadwalan.
+- [x] **Penyempurnaan Alur Penjadwalan Rujukan di Rumah Sakit**:
+  - Pada modal aksi rumah sakit (`app/portal/[peran]/[subperan]/rujukan/page.tsx`), petugas rumah sakit dapat melihat dengan jelas poli rujukan yang diminta sebelum menugaskan dokter DPJP spesialis terverifikasi.
+- [x] **Pengujian & Validasi Nyata**:
+  - Uji impersonasi SQL MCP Supabase Lytera: `list_active_doctors` faskes Kedung Rejo berhasil mengembalikan dr. Andi Wicaksono dengan spesialisasi `Penyakit Dalam` (PASS).
+  - Alur rujukan lengkap teruji via SQL impersonasi: penerbitan rujukan faskes primer -> status awal `diajukan` -> penerimaan oleh admin RS -> penjadwalan pemeriksaan -> penyelesaian tindakan berstatus `selesai` dan seluruh event linimasa tercatat persisten (PASS).
+  - Security Advisors: Bersih tanpa temuan kerentanan baru (PASS).
+  - `npm run lint`: **0 error, 0 warning**.
+  - `npm run build`: **Exit 0**, seluruh 19 rute Next.js 16 berhasil dikompilasi tanpa galat.
+
 ---
 
 ### Berikutnya
-- Rujukan Berjenjang & Validasi Faskes Tujuan: Pastikan alur rujukan dokter spesialis di faskes primer terhubung secara mulus dengan ketersediaan poli dan dokter spesialis terverifikasi di Rumah Sakit tujuan.
+- Pengujian Alur Pasien Keluarga & Penyempurnaan Demo Interaktif: Evaluasi status akun perwalian keluarga, ketersediaan anggota keluarga pada penjamin dan rujukan, serta skenario pengujian menyeluruh untuk penjurian lomba.
+
 
 
 

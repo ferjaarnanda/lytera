@@ -72,6 +72,26 @@ function formatDateIndo(dateStr?: string | null): string {
   return dateStr;
 }
 
+function mapSpecializationToPoli(spec?: string | null): string | null {
+  if (!spec) return null;
+  const s = spec.toLowerCase();
+  if (s.includes("penyakit dalam")) return "Poli Penyakit Dalam";
+  if (s.includes("jantung")) return "Poli Jantung & Pembuluh Darah";
+  if (s.includes("bedah")) return "Poli Bedah Umum";
+  if (s.includes("anak") || s.includes("pediatri")) return "Poli Anak (Pediatri)";
+  if (s.includes("saraf") || s.includes("neurologi")) return "Poli Saraf (Neurologi)";
+  if (s.includes("mata") || s.includes("oftalmologi")) return "Poli Mata (Oftalmologi)";
+  if (s.includes("tht") || s.includes("telinga")) return "Poli Telinga Hidung Tenggorok (THT)";
+  if (s.includes("kebidanan") || s.includes("kandungan") || s.includes("obgyn")) return "Poli Kebidanan & Kandungan (Obgyn)";
+  if (s.includes("paru")) return "Poli Paru & Saluran Napas";
+  if (s.includes("kulit") || s.includes("kelamin") || s.includes("dermatologi")) return "Poli Kulit & Kelamin (Dermatologi)";
+  if (s.includes("jiwa") || s.includes("psikiatri")) return "Poli Jiwa (Psikiatri)";
+  if (s.includes("ortopedi") || s.includes("traumatologi")) return "Poli Ortopedi & Traumatologi";
+  if (s.includes("gigi")) return "Poli Gigi & Mulut Spesialistik";
+  return null;
+}
+
+
 // ============================================================================
 // FacilityCombobox — kotak ketik + dropdown daftar RS
 // ============================================================================
@@ -583,30 +603,57 @@ export default function BuatRujukanBaruPage({ params }: PageProps) {
                 Dokter Tujuan
                 <span className="ml-1 text-xs font-normal text-slate-400">(opsional)</span>
               </h2>
+              {/* (c) Dokter Tujuan */}
               {loadingDoctors ? (
-                <div className="flex items-center gap-2 text-sm text-slate-500">
+                <div className="flex items-center gap-2 text-sm text-slate-500 py-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Memuat daftar dokter...
+                  Memuat daftar dokter spesialis terverifikasi...
+                </div>
+              ) : doctors.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Stethoscope className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    <select
+                      value={selectedDoctorId}
+                      onChange={(e) => {
+                        const newDocId = e.target.value;
+                        setSelectedDoctorId(newDocId);
+                        if (newDocId) {
+                          const doc = doctors.find((d) => d.staff_id === newDocId);
+                          if (doc?.specialization) {
+                            const suggestedPoli = mapSpecializationToPoli(doc.specialization);
+                            if (suggestedPoli && POLI_OPTIONS.includes(suggestedPoli)) {
+                              setPoli(suggestedPoli);
+                            }
+                          }
+                        }
+                      }}
+                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-sm text-[#0F3040] focus:outline-none focus:ring-2 focus:ring-[#8F5A4E]/40 focus:border-[#8F5A4E] appearance-none"
+                    >
+                      <option value="">Tanpa dokter tertentu (Ditugaskan oleh RS)</option>
+                      {doctors.map((d) => (
+                        <option key={d.staff_id} value={d.staff_id}>
+                          {d.full_name}{d.specialization ? ` — Sp. ${d.specialization}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {selectedDoctorId && (
+                    <div className="flex items-center gap-1.5 text-xs text-[#16A34A] bg-[#F0FDF4] border border-[#DCFCE7] rounded-lg px-3 py-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>
+                        Dokter spesialis terpilih. Poli tujuan otomatis diselaraskan sesuai kompetensi.
+                      </span>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="relative">
-                  <Stethoscope className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                  <select
-                    value={selectedDoctorId}
-                    onChange={(e) => setSelectedDoctorId(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-sm text-[#0F3040] focus:outline-none focus:ring-2 focus:ring-[#8F5A4E]/40 focus:border-[#8F5A4E] appearance-none"
-                  >
-                    <option value="">Tanpa dokter tertentu</option>
-                    {doctors.map((d) => (
-                      <option key={d.staff_id} value={d.staff_id}>
-                        {d.full_name}{d.specialization ? ` — ${d.specialization}` : ""}
-                      </option>
-                    ))}
-                  </select>
+                <div className="rounded-xl border border-[#E2E8F0] bg-[#FAF5F2] p-3.5 text-xs text-slate-600 space-y-1">
+                  <p className="font-semibold text-[#0F3040]">Rujukan Berjenjang Terbuka</p>
+                  <p>
+                    Rumah sakit ini melayani rujukan poli. Dokter Penanggung Jawab Pelayanan (DPJP) spesialis akan ditugaskan langsung oleh tim medis rumah sakit saat penjadwalan antrean.
+                  </p>
                 </div>
-              )}
-              {!loadingDoctors && doctors.length === 0 && (
-                <p className="mt-2 text-xs text-slate-500">Belum ada dokter aktif terdaftar di rumah sakit ini.</p>
               )}
             </Card>
           )}
@@ -621,7 +668,14 @@ export default function BuatRujukanBaruPage({ params }: PageProps) {
             <div className="space-y-4">
               {/* Poli */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Poli / Spesialisasi Tujuan</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-600">Poli / Spesialisasi Tujuan</label>
+                  {selectedHospital && doctors.length > 0 && (
+                    <span className="text-[11px] text-slate-500">
+                      Tersedia {doctors.length} dokter di RS ini
+                    </span>
+                  )}
+                </div>
                 <div className="relative">
                   <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                   <select

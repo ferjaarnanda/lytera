@@ -821,25 +821,34 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
                             />
                           </div>
 
+                          <div className="bg-white p-2.5 rounded-xl border border-[#E2E8F0] text-xs flex items-center justify-between">
+                            <span className="text-slate-500">Poli Permohonan Rujukan:</span>
+                            <span className="font-semibold text-[#0F3040]">{selectedReferral.poli}</span>
+                          </div>
+
                           <div>
                             <label className="block text-xs font-semibold text-[#0F3040] mb-1">
-                              Tugaskan Dokter Spesialis <span className="text-slate-400 font-normal">(opsional)</span>
+                              Tugaskan Dokter Spesialis DPJP <span className="text-slate-400 font-normal">(opsional)</span>
                             </label>
                             {loadingActionDoctors ? (
                               <p className="text-xs text-slate-400">Memuat dokter...</p>
-                            ) : (
+                            ) : hospitalDoctors.length > 0 ? (
                               <select
                                 value={selectedDoctorStaffId}
                                 onChange={(e) => setSelectedDoctorStaffId(e.target.value)}
                                 className="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] bg-white text-xs text-[#0F3040] focus:outline-none focus:ring-2 focus:ring-[#8F5A4E]"
                               >
-                                <option value="">Tanpa penugasan dokter tertentu</option>
+                                <option value="">Tanpa penugasan dokter tertentu (Poli Umum/Tim Medis)</option>
                                 {hospitalDoctors.map((doc) => (
                                   <option key={doc.staff_id} value={doc.staff_id}>
-                                    {doc.full_name}{doc.specialization ? ` (${doc.specialization})` : ""}
+                                    {doc.full_name}{doc.specialization ? ` — Sp. ${doc.specialization}` : ""}
                                   </option>
                                 ))}
                               </select>
+                            ) : (
+                              <p className="text-[11px] text-slate-500 bg-white p-2 rounded-lg border border-[#E2E8F0]">
+                                Belum ada staf dokter spesialis aktif di RS ini. Rujukan akan langsung dijadwalkan ke poli tujuan.
+                              </p>
                             )}
                           </div>
                         </div>
