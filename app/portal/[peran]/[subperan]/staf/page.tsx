@@ -17,12 +17,15 @@ import {
   Search,
   Check,
   X,
+  FileCheck2,
+  ShieldCheck,
+  AlertTriangle,
 } from "lucide-react";
 import { Navbar, NavbarVariant } from "@/components/Navbar";
 import { Reveal } from "@/components/Reveal";
 import {
   getAdminFacilityStaffAction,
-  updateStaffStatusAction,
+  reviewFacilityStaffAction,
   StaffItem,
   FacilityAdminInfo,
 } from "@/app/actions/staf";
@@ -81,7 +84,18 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
   // Tab & Filter
   const [activeTab, setActiveTab] = useState<"menunggu" | "aktif" | "semua">("menunggu");
   const [searchQuery, setSearchQuery] = useState("");
-  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // Modal States
+  const [approveModalStaff, setApproveModalStaff] = useState<StaffItem | null>(null);
+  const [selectedRole, setSelectedRole] = useState<"dokter" | "petugas" | "apoteker">("dokter");
+  const [selectedSpecIds, setSelectedSpecIds] = useState<string[]>([]);
+
+  const [rejectModalStaff, setRejectModalStaff] = useState<StaffItem | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [reasonError, setReasonError] = useState<string | null>(null);
+
+  const [viewDetailStaff, setViewDetailStaff] = useState<StaffItem | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -114,29 +128,46 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
     };
   }, [loadData]);
 
-  // Handle Approve / Reject
-  const handleUpdateStatus = async (staffId: string, newStatus: "aktif" | "ditolak", staffName: string) => {
-    const actionLabel = newStatus === "aktif" ? "menyetujui" : "menolak";
-    if (!confirm(`Apakah Anda yakin ingin ${actionLabel} permohonan staf '${staffName}'?`)) {
-      return;
-    }
+  // Buka modal persetujuan
+  const openApproveModal = (staff: StaffItem) => {
+    setApproveModalStaff(staff);
+    setSelectedRole(staff.staff_role);
+    // Default: pilih semua spesialisasi yang diajukan
+    setSelectedSpecIds((staff.specializations || []).map((s) => s.id));
+  };
 
-    setActionLoadingId(staffId);
+  // Buka modal penolakan
+  const openRejectModal = (staff: StaffItem) => {
+    setRejectModalStaff(staff);
+    setRejectionReason("");
+    setReasonError(null);
+  };
+
+  // Submit persetujuan staf
+  const handleApproveSubmit = async () => {
+    if (!approveModalStaff) return;
+    setActionLoading(true);
     setFeedbackMessage(null);
 
     try {
-      const res = await updateStaffStatusAction(staffId, newStatus);
+      const res = await reviewFacilityStaffAction({
+        staffId: approveModalStaff.id,
+        decision: "aktif",
+        staffRole: selectedRole,
+        verifiedSpecIds: selectedSpecIds,
+      });
+
       if (!res.success) {
         setFeedbackMessage({
           type: "error",
-          text: res.error || `Gagal ${actionLabel} staf.`,
+          text: res.error || "Gagal menyetujui permohonan staf.",
         });
       } else {
         setFeedbackMessage({
           type: "success",
-          text: res.message || `Staf '${staffName}' berhasil ${newStatus === "aktif" ? "disetujui" : "ditolak"}.`,
+          text: res.message || "Permohonan staf berhasil disetujui.",
         });
-        // Muat ulang daftar
+        setApproveModalStaff(null);
         await loadData();
       }
     } catch (err: unknown) {
@@ -146,22 +177,72 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
         text: "Kesalahan sistem: " + msg,
       });
     } finally {
-      setActionLoadingId(null);
+      setActionLoading(false);
+    }
+  };
+
+  // Submit penolakan staf
+  const handleRejectSubmit = async () => {
+    if (!rejectModalStaff) return;
+    if (!rejectionReason.trim()) {
+      setReasonError("Alasan penolakan wajib diisi");
+      return;
+    }
+
+    setActionLoading(true);
+    setFeedbackMessage(null);
+
+    try {
+      const res = await reviewFacilityStaffAction({
+        staffId: rejectModalStaff.id,
+        decision: "ditolak",
+        rejectionReason: rejectionReason.trim(),
+      });
+
+      if (!res.success) {
+        setFeedbackMessage({
+          type: "error",
+          text: res.error || "Gagal menolak permohonan staf.",
+        });
+      } else {
+        setFeedbackMessage({
+          type: "success",
+          text: res.message || "Permohonan staf telah ditolak.",
+        });
+        setRejectModalStaff(null);
+        await loadData();
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setFeedbackMessage({
+        type: "error",
+        text: "Kesalahan sistem: " + msg,
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Toggle checklist spesialisasi
+  const handleToggleSpec = (specId: string) => {
+    if (selectedSpecIds.includes(specId)) {
+      setSelectedSpecIds(selectedSpecIds.filter((id) => id !== specId));
+    } else {
+      setSelectedSpecIds([...selectedSpecIds, specId]);
     }
   };
 
   // Filter list
   const filteredStaff = staffList.filter((s) => {
-    // Filter tab
     if (activeTab === "menunggu" && s.status !== "menunggu") return false;
     if (activeTab === "aktif" && s.status !== "aktif") return false;
 
-    // Filter search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       const name = s.profiles?.full_name?.toLowerCase() || "";
       const email = s.profiles?.email?.toLowerCase() || "";
       const role = s.staff_role.toLowerCase();
+      const prof = s.profession?.toLowerCase() || "";
       const str = s.str_number?.toLowerCase() || "";
       const sip = s.sip_number?.toLowerCase() || "";
       const spec = s.specialization?.toLowerCase() || "";
@@ -170,6 +251,7 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
         name.includes(q) ||
         email.includes(q) ||
         role.includes(q) ||
+        prof.includes(q) ||
         str.includes(q) ||
         sip.includes(q) ||
         spec.includes(q)
@@ -232,7 +314,7 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
                   Dokter & Petugas Fasilitas
                 </h1>
                 <p className="text-sm text-[#464858]/80 mt-1 max-w-2xl">
-                  Tinjau dan verifikasi permohonan staf medis (dokter, petugas, apoteker) yang terafiliasi dengan fasilitas kesehatan Anda sebelum mereka dapat menerbitkan rujukan atau mengakses data pasien.
+                  Tinjau identitas, nomor izin (STR/SIP), tetapkan role staf, dan sahkan bidang spesialisasi klinis tenaga kesehatan sebelum mereka dapat berpraktik atau direkomendasikan oleh sistem Tetra.
                 </p>
               </div>
 
@@ -349,7 +431,7 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Cari nama, peran, STR..."
+                    placeholder="Cari nama, profesi, STR/SIP..."
                     className="w-full h-10 pl-9 pr-4 rounded-[12px] border border-[#E2E8F0] text-xs focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none"
                   />
                   {searchQuery && (
@@ -388,9 +470,9 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
                     <thead>
                       <tr className="bg-slate-50 border-b border-[#E2E8F0] text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
                         <th className="py-3.5 px-4 sm:px-6">Nama & Kontak</th>
-                        <th className="py-3.5 px-4">Peran</th>
+                        <th className="py-3.5 px-4">Profesi & Peran</th>
                         <th className="py-3.5 px-4">No. STR / SIP</th>
-                        <th className="py-3.5 px-4">Spesialisasi</th>
+                        <th className="py-3.5 px-4">Spesialisasi Klinis</th>
                         <th className="py-3.5 px-4">Status</th>
                         <th className="py-3.5 px-4 sm:px-6 text-right">Aksi</th>
                       </tr>
@@ -404,7 +486,6 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
                           text: "text-slate-700",
                         };
 
-                        const isActionLoading = actionLoadingId === staff.id;
                         const fullName = staff.profiles?.full_name || "Nama tidak terdata";
 
                         return (
@@ -417,33 +498,62 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
                               </div>
                             </td>
 
-                            {/* Peran */}
+                            {/* Profesi & Peran */}
                             <td className="py-4 px-4">
-                              <span
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${roleCfg.bg} ${roleCfg.text}`}
-                              >
-                                {roleCfg.icon}
-                                <span>{roleCfg.label}</span>
-                              </span>
+                              <div className="font-medium text-[#0F3040] text-xs">
+                                {staff.profession || "Tenaga Kesehatan"}
+                              </div>
+                              <div className="mt-1">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${roleCfg.bg} ${roleCfg.text}`}
+                                >
+                                  {roleCfg.icon}
+                                  <span>{roleCfg.label}</span>
+                                </span>
+                              </div>
                             </td>
 
                             {/* No. STR / SIP */}
                             <td className="py-4 px-4 text-[#0F3040]">
                               {staff.str_number ? (
-                                <div className="font-mono text-xs">{staff.str_number}</div>
+                                <div className="font-mono text-xs text-slate-700">
+                                  <span className="text-[10px] text-slate-400 font-sans block">STR</span>
+                                  {staff.str_number}
+                                </div>
                               ) : (
-                                <span className="text-slate-400 italic">Tidak ada STR</span>
+                                <span className="text-slate-400 italic text-xs">Tidak ada STR</span>
                               )}
                               {staff.sip_number && (
-                                <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                                  SIP: {staff.sip_number}
+                                <div className="text-xs text-slate-700 font-mono mt-1">
+                                  <span className="text-[10px] text-slate-400 font-sans block">SIP</span>
+                                  {staff.sip_number}
                                 </div>
                               )}
                             </td>
 
-                            {/* Spesialisasi */}
-                            <td className="py-4 px-4 text-slate-600">
-                              {staff.specialization || "-"}
+                            {/* Spesialisasi Klinis */}
+                            <td className="py-4 px-4">
+                              {staff.specializations && staff.specializations.length > 0 ? (
+                                <div className="flex flex-wrap gap-1 max-w-[240px]">
+                                  {staff.specializations.map((spec) => (
+                                    <span
+                                      key={spec.id}
+                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[11px] font-medium ${
+                                        spec.is_verified
+                                          ? "bg-[#EDF7F2] text-[#1B6B4D] border border-[#1B6B4D]/20"
+                                          : "bg-slate-100 text-slate-600 border border-slate-200"
+                                      }`}
+                                    >
+                                      {spec.is_verified && <Check className="w-3 h-3 text-[#1B6B4D]" />}
+                                      <span>{spec.name}</span>
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : staff.specialization ? (
+                                <span className="text-xs text-slate-600">{staff.specialization}</span>
+                              ) : (
+                                <span className="text-xs text-slate-400 italic">Umum / Tidak ada</span>
+                              )}
                             </td>
 
                             {/* Status */}
@@ -461,10 +571,21 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
                                 </span>
                               )}
                               {staff.status === "ditolak" && (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#FDECEA] text-[#B3261E]">
-                                  <XCircle className="w-3.5 h-3.5" />
-                                  <span>Ditolak</span>
-                                </span>
+                                <div>
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#FDECEA] text-[#B3261E]">
+                                    <XCircle className="w-3.5 h-3.5" />
+                                    <span>Ditolak</span>
+                                  </span>
+                                  {staff.rejection_reason && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setViewDetailStaff(staff)}
+                                      className="block text-[11px] text-[#B3261E] hover:underline mt-1 font-medium"
+                                    >
+                                      Lihat Alasan
+                                    </button>
+                                  )}
+                                </div>
                               )}
                             </td>
 
@@ -474,32 +595,33 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
                                 <div className="inline-flex items-center gap-2">
                                   <button
                                     type="button"
-                                    disabled={isActionLoading}
-                                    onClick={() => handleUpdateStatus(staff.id, "aktif", fullName)}
-                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[10px] text-xs font-semibold bg-[#1B6B4D] text-white hover:bg-[#14533C] transition-colors disabled:opacity-50"
+                                    onClick={() => openApproveModal(staff)}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[10px] text-xs font-semibold bg-[#1B6B4D] text-white hover:bg-[#14533C] transition-colors shadow-xs"
                                   >
-                                    {isActionLoading ? (
-                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                    ) : (
-                                      <Check className="w-3.5 h-3.5" />
-                                    )}
-                                    <span>Setujui</span>
+                                    <ShieldCheck className="w-3.5 h-3.5" />
+                                    <span>Tinjau & Setujui</span>
                                   </button>
 
                                   <button
                                     type="button"
-                                    disabled={isActionLoading}
-                                    onClick={() => handleUpdateStatus(staff.id, "ditolak", fullName)}
-                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[10px] text-xs font-semibold border border-[#B3261E] text-[#B3261E] hover:bg-[#FDECEA] transition-colors disabled:opacity-50"
+                                    onClick={() => openRejectModal(staff)}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[10px] text-xs font-semibold border border-[#B3261E] text-[#B3261E] hover:bg-[#FDECEA] transition-colors"
                                   >
                                     <X className="w-3.5 h-3.5" />
                                     <span>Tolak</span>
                                   </button>
                                 </div>
+                              ) : staff.status === "aktif" ? (
+                                <button
+                                  type="button"
+                                  onClick={() => openApproveModal(staff)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                                >
+                                  <FileCheck2 className="w-3.5 h-3.5 text-[#1B6B4D]" />
+                                  <span>Ubah Otorisasi</span>
+                                </button>
                               ) : (
-                                <span className="text-xs text-slate-400 select-none">
-                                  {staff.status === "aktif" ? "Terverifikasi" : "Telah Ditolak"}
-                                </span>
+                                <span className="text-xs text-slate-400 select-none">Telah Ditolak</span>
                               )}
                             </td>
                           </tr>
@@ -513,6 +635,248 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
           </Reveal>
         )}
       </main>
+
+      {/* MODAL PERSETUJUAN & PENGESAHAN STAF */}
+      {approveModalStaff && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white rounded-[24px] border border-[#E2E8F0] shadow-xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Header Modal */}
+            <div className="p-6 border-b border-[#E2E8F0] flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-full bg-[#EDF7F2] flex items-center justify-center text-[#1B6B4D]">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-[#0F3040] text-base">Persetujuan & Pengesahan Staf</h3>
+                  <p className="text-xs text-slate-500">Tetapkan role dan verifikasi spesialisasi</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setApproveModalStaff(null)}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Body Modal */}
+            <div className="p-6 space-y-5 text-xs sm:text-sm">
+              {/* Ringkasan Profil */}
+              <div className="p-3.5 rounded-[14px] bg-slate-50 border border-slate-200/80 space-y-1.5">
+                <div className="font-bold text-[#0F3040] text-sm">
+                  {approveModalStaff.profiles?.full_name || "Nama Nakes"}
+                </div>
+                <div className="text-xs text-slate-600 flex flex-wrap gap-x-4 gap-y-1">
+                  <span>Profesi: <strong>{approveModalStaff.profession || "-"}</strong></span>
+                  <span>STR: <strong>{approveModalStaff.str_number || "-"}</strong></span>
+                  {approveModalStaff.sip_number && (
+                    <span>SIP: <strong>{approveModalStaff.sip_number}</strong></span>
+                  )}
+                </div>
+              </div>
+
+              {/* Penetapan Role Akses Final */}
+              <div>
+                <label className="block text-xs font-bold text-[#0F3040] mb-1.5">
+                  Peran Akses Sistem (Role Final)
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["dokter", "petugas", "apoteker"] as const).map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setSelectedRole(r)}
+                      className={`p-2.5 rounded-[12px] border text-xs font-semibold capitalize flex flex-col items-center gap-1 transition-all ${
+                        selectedRole === r
+                          ? "border-[#1B6B4D] bg-[#EDF7F2] text-[#1B6B4D] shadow-xs"
+                          : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      <span>{r}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Peran &quot;dokter&quot; memiliki wewenang membuat rujukan dan membuka rekam medis berizin.
+                </p>
+              </div>
+
+              {/* Pengesahan Bidang Spesialisasi */}
+              {approveModalStaff.specializations && approveModalStaff.specializations.length > 0 ? (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-[#0F3040]">
+                      Pengesahan Bidang Spesialisasi
+                    </label>
+                    <span className="text-[11px] text-slate-400">
+                      Pilih yang disahkan (hanya spesialisasi terpilih yang akan tampil di Tetra)
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto border border-slate-200 rounded-[12px] p-2 bg-slate-50/50">
+                    {approveModalStaff.specializations.map((spec) => {
+                      const isChecked = selectedSpecIds.includes(spec.id);
+                      return (
+                        <label
+                          key={spec.id}
+                          className="flex items-center gap-2.5 p-2 rounded-[8px] hover:bg-white transition-colors cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleToggleSpec(spec.id)}
+                            className="w-4 h-4 rounded text-[#1B6B4D] focus:ring-[#1B6B4D]"
+                          />
+                          <span className="text-xs font-medium text-[#0F3040]">{spec.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-[12px] bg-slate-50 text-xs text-slate-500">
+                  Staf ini tidak mendaftarkan spesialisasi klinis tambahan (akan berpraktik sebagai dokter umum / tenaga umum).
+                </div>
+              )}
+            </div>
+
+            {/* Footer Modal */}
+            <div className="p-4 sm:p-6 bg-slate-50 border-t border-[#E2E8F0] flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={() => setApproveModalStaff(null)}
+                className="px-4 py-2 rounded-[10px] text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={handleApproveSubmit}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[10px] text-xs font-semibold bg-[#1B6B4D] text-white hover:bg-[#14533C] transition-colors shadow-xs disabled:opacity-50"
+              >
+                {actionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Setujui & Sahkan</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PENOLAKAN STAF */}
+      {rejectModalStaff && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white rounded-[24px] border border-[#E2E8F0] shadow-xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Header Modal */}
+            <div className="p-6 border-b border-[#E2E8F0] flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-full bg-[#FDECEA] flex items-center justify-center text-[#B3261E]">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-[#0F3040] text-base">Tolak Permohonan Staf</h3>
+                  <p className="text-xs text-slate-500">Wajib mencantumkan alasan penolakan</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRejectModalStaff(null)}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Body Modal */}
+            <div className="p-6 space-y-4 text-xs sm:text-sm">
+              <p className="text-xs text-slate-600">
+                Anda akan menolak permohonan penempatan dari{" "}
+                <strong>{rejectModalStaff.profiles?.full_name}</strong> ({rejectModalStaff.profession || "Tenaga Medis"}).
+              </p>
+
+              <div>
+                <label className="block text-xs font-bold text-[#0F3040] mb-1.5">
+                  Alasan Penolakan <span className="text-[#B3261E]">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={rejectionReason}
+                  onChange={(e) => {
+                    setRejectionReason(e.target.value);
+                    if (reasonError) setReasonError(null);
+                  }}
+                  placeholder="Contoh: Dokumen STR/SIP tidak sesuai, kuota formasi staf penuh, dsb."
+                  className={`w-full p-3 rounded-[12px] border text-xs outline-none focus:ring-2 ${
+                    reasonError
+                      ? "border-[#B3261E] focus:ring-[#B3261E]/20"
+                      : "border-[#E2E8F0] focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E]"
+                  }`}
+                />
+                {reasonError && (
+                  <p className="text-[11px] text-[#B3261E] font-medium mt-1">{reasonError}</p>
+                )}
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Alasan penolakan ini akan dicatat dan transparan bagi pemohon.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer Modal */}
+            <div className="p-4 sm:p-6 bg-slate-50 border-t border-[#E2E8F0] flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={() => setRejectModalStaff(null)}
+                className="px-4 py-2 rounded-[10px] text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={handleRejectSubmit}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[10px] text-xs font-semibold bg-[#B3261E] text-white hover:bg-[#8F1D16] transition-colors shadow-xs disabled:opacity-50"
+              >
+                {actionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Tolak Permohonan</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL LIHAT DETAIL ALASAN PENOLAKAN */}
+      {viewDetailStaff && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white rounded-[24px] border border-[#E2E8F0] shadow-xl max-w-sm w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150 p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-[#0F3040] text-sm">Alasan Penolakan Permohonan</h3>
+              <button
+                type="button"
+                onClick={() => setViewDetailStaff(null)}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-[12px] bg-[#FDECEA] border border-[#B3261E]/20 text-xs text-[#B3261E]">
+              {viewDetailStaff.rejection_reason || "Tidak ada catatan alasan yang tersimpan."}
+            </div>
+
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => setViewDetailStaff(null)}
+                className="px-4 py-1.5 rounded-[8px] bg-slate-100 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -16,7 +16,8 @@
 | Tahap Tetra AI Assistant | SELESAI | c2056e3 | Arsitektur dasar Tera AI terintegrasi Groq LLM server-only dengan intelligent fallback mode, role-aware context builder untuk 9 peran/halaman, controlled data tools ke RPC list_active_facilities & list_active_doctors. |
 | Tahap Tetra AI Context-Aware & Rebranding | SELESAI | 6f06a5c | Rebranding Tera -> Tetra, mark logo tepat 4 garis diagonal, strict landing anonymity (tanpa bocor profil demo), intent routing deterministik presisi (hanya cari faskes bila diminta), quick action buttons terkalibrasi, lolos 7 uji skenario via HTTP, lint 0 error, build exit 0. |
 | Normalisasi Wilayah Fasilitas | SELESAI | d8dc457 | resolveRegionName() + formatFacilityLocation() reusable di lib/region-utils.ts. FacilityCombobox, Tetra tools.ts, engine.ts semua pakai nama manusiawi. Migrasi DB: 7 fasilitas diperbarui dari kode (33/3374/337401) ke nama (Jawa Tengah/Kota Semarang/Semarang Tengah). Lint 0 error, build exit 0. |
-| Sub-tahap A: Finalisasi Keamanan Pendaftaran Nakes & Integritas Tetra | SELESAI | (commit ini) | RPC transaksional register_facility_staff atomik (verifikasi caller auth.uid(), faskes penerbit, FOR UPDATE kuota, insert staff menunggu, insert fss is_verified=false, kuota terpotong tepat 1 kali). Mandiri consume_invitation_code dinonaktifkan & dicabut haknya. validate_invitation_code diperketat. Fallback unverified di get_active_facility_doctors dihapus total demi integritas Tetra. Migrasi 20261009170000 tercatat di DB. Lint 0 error, build exit 0, seluruh uji lolos 100%. |
+| Sub-tahap A: Finalisasi Keamanan Pendaftaran Nakes & Integritas Tetra | SELESAI | 51e8daa | RPC transaksional register_facility_staff atomik (verifikasi caller auth.uid(), faskes penerbit, FOR UPDATE kuota, insert staff menunggu, insert fss is_verified=false, kuota terpotong tepat 1 kali). Mandiri consume_invitation_code dinonaktifkan & dicabut haknya. validate_invitation_code diperketat. Fallback unverified di get_active_facility_doctors dihapus total demi integritas Tetra. Migrasi 20261009170000 tercatat di DB. Lint 0 error, build exit 0, seluruh uji lolos 100%. |
+| Sub-tahap B: Persetujuan Staf Faskes, Pengesahan Spesialisasi & Penolakan Berakar Alasan | SELESAI | (commit ini) | Kolom rejection_reason pada facility_staff. RPC review_facility_staff (keamanan otorisasi admin faskes & dinkes, penetapan role final, verifikasi spesialisasi per item is_verified=true, alasan penolakan wajib). UI kelola staf faskes diperbarui: modal persetujuan & pengesahan spesialisasi interaktif, modal penolakan alasan wajib, rincian profesi, STR, SIP. Teruji nyata via SQL impersonasi 100% lolos, lint 0 error, build exit 0. |
 
 ---
 
@@ -362,11 +363,44 @@
   - `npm run lint`: **0 error, 0 warning**.
   - `npm run build`: **Exit 0**, seluruh 19 rute Next.js 16 berhasil dikompilasi tanpa galat.
 
-### 24. Rencana Berikutnya (Sub-tahap B)
-- Antarmuka persetujuan staf faskes oleh admin: daftar nakes menunggu, review berkas STR, SIP, dan spesialisasi yang diajukan.
-- Fitur penetapan role final dan verifikasi spesialisasi per item (`is_verified = true`).
-- Aksi penolakan pendaftaran staf dengan catatan alasan wajib.
-- Pengujian end-to-end integrasi rekomendasi dokter dan spesialisasi Tetra setelah pengesahan admin.
+### 24. Sub-tahap B: Persetujuan Staf Faskes, Pengesahan Spesialisasi & Penolakan Berakar Alasan (Selesai)
+- [x] **Skema Database & Migrasi Korektif (`20261009180000_subtahap_b_persetujuan_staf.sql`)**:
+  - Penambahan kolom `rejection_reason text` pada tabel `facility_staff`.
+  - RPC Transaksional `review_facility_staff(p_staff_id, p_decision, p_staff_role, p_verified_spec_ids, p_rejection_reason)`:
+    - Otorisasi ketat: hanya admin fasilitas terkait (`is_facility_admin(facility_id)`) atau akun `dinkes` yang dapat mengeksekusi peninjauan.
+    - Opsi persetujuan (`'aktif'`): penetapan role akses final (`'dokter' | 'petugas' | 'apoteker'`) dan pengesahan spesialisasi per item (menandai `is_verified = true`, `verified_by = auth.uid()`, `verified_at = now()`). Spesialisasi yang tidak dipilih tetap `is_verified = false`.
+    - Opsi penolakan (`'ditolak'`): mewajibkan alasan penolakan (`p_rejection_reason` tidak boleh kosong), mencatatnya ke `facility_staff.rejection_reason`, serta membatalkan status verifikasi spesialisasi.
+    - Hak akses: dicabut dari publik/anon, hanya diberikan ke `authenticated`.
+  - Riwayat migrasi `20261009180000` tercatat di `supabase_migrations.schema_migrations`.
+- [x] **Server Actions (`app/actions/staf.ts`)**:
+  - `StaffItem` diperluas dengan kolom `profession`, `rejection_reason`, serta array relasi `specializations` (`id`, `name`, `is_verified`).
+  - `getAdminFacilityStaffAction`: Mengambil data staf lengkap dengan profesi, STR, SIP, alasan penolakan, serta join ke `facility_staff_specializations`.
+  - `reviewFacilityStaffAction`: Server action aman yang memanggil RPC `review_facility_staff` dengan validasi parameter server-side.
+  - `updateStaffStatusAction`: Dipertahankan untuk kompatibilitas mundur.
+- [x] **Antarmuka Pengguna Admin Faskes (`app/portal/[peran]/[subperan]/staf/page.tsx`)**:
+  - Kolom tabel menampilkan Profesi, No. STR, No. SIP secara terpisah dan terstruktur.
+  - Badge spesialisasi menampilkan status pengesahan: hijau dengan ikon centang untuk yang telah diverifikasi, abu-abu untuk yang belum diverifikasi.
+  - Modal Persetujuan & Pengesahan Staf:
+    - Menampilkan ringkasan nakes (Nama, Profesi, STR, SIP).
+    - Pilihan role akses final (Dokter / Petugas / Apoteker) interaktif.
+    - Checklist pengesahan bidang spesialisasi per item yang diajukan oleh nakes.
+  - Modal Penolakan Staf:
+    - Input wajib alasan penolakan (textarea) dengan validasi form.
+  - Modal Lihat Alasan: Memungkinkan admin/staf melihat catatan alasan jika permohonan berstatus ditolak.
+- [x] **Pengujian & Validasi Nyata**:
+  - Persetujuan & pengesahan staf: Teruji nyata via impersonasi SQL admin faskes Kedung Rejo. Staf berubah menjadi `'aktif'`, spesialisasi terverifikasi (`is_verified = true`), dan dokter langsung terbukti muncul di hasil `get_active_facility_doctors` untuk Tetra (PASS).
+  - Penolakan tanpa alasan: Dicegat dan ditolak oleh database (PASS).
+  - Penolakan dengan alasan sah: Status berubah menjadi `'ditolak'` dan alasan tersimpan rapi (PASS).
+  - Otorisasi akun tidak sah: Pasien atau staf luar yang mencoba mereview staf faskes lain ditolak 100% oleh guard database (PASS).
+  - Security Advisors: Bebas dari temuan kerentanan baru (PASS).
+  - `npm run lint`: **0 error, 0 warning**.
+  - `npm run build`: **Exit 0**, seluruh 19 rute Next.js 16 berhasil dikompilasi tanpa galat.
+
+---
+
+### Berikutnya
+- Uji alur antarmuka pengguna (end-to-end browser walkthrough) dari pendaftaran dokter spesialis baru -> peninjauan & pengesahan spesialisasi oleh admin faskes di portal -> verifikasi hasil rekomendasi Tetra di landing/portal.
+
 
 
 

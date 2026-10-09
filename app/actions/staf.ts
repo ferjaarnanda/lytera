@@ -3,16 +3,26 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
+export interface StaffSpecializationDetail {
+  id: string;
+  specialization_id: string | null;
+  name: string;
+  is_verified: boolean;
+}
+
 export interface StaffItem {
   id: string;
   profile_id: string;
   facility_id: string;
   staff_role: "dokter" | "petugas" | "apoteker";
+  profession: string | null;
   str_number: string | null;
   sip_number: string | null;
   specialization: string | null;
+  rejection_reason: string | null;
   status: "menunggu" | "aktif" | "ditolak";
   created_at: string;
+  specializations: StaffSpecializationDetail[];
   profiles: {
     id?: string;
     full_name: string | null;
@@ -42,8 +52,16 @@ export interface UpdateStaffResult {
   message?: string;
 }
 
+export interface ReviewStaffInput {
+  staffId: string;
+  decision: "aktif" | "ditolak";
+  staffRole?: "dokter" | "petugas" | "apoteker";
+  verifiedSpecIds?: string[];
+  rejectionReason?: string;
+}
+
 /**
- * Mengambil data fasilitas milik admin faskes yang sedang login beserta daftar stafnya.
+ * Mengambil data fasilitas milik admin faskes yang sedang login beserta daftar stafnya dan rincian spesialisasi.
  */
 export async function getAdminFacilityStaffAction(): Promise<GetStaffResult> {
   try {
@@ -65,7 +83,7 @@ export async function getAdminFacilityStaffAction(): Promise<GetStaffResult> {
     // 2. Ambil profil user untuk mengecek peran
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id, role, subrole, full_name")
+      .select("id, role, sub_role, full_name")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -76,7 +94,6 @@ export async function getAdminFacilityStaffAction(): Promise<GetStaffResult> {
       .eq("admin_id", user.id)
       .maybeSingle();
 
-    // Jika bukan admin fasilitas dan bukan dinkes
     if (facError) {
       return {
         success: false,
@@ -85,7 +102,6 @@ export async function getAdminFacilityStaffAction(): Promise<GetStaffResult> {
     }
 
     if (!facility) {
-      // Cek apakah akun adalah staf faskes atau dinkes
       if (profile?.role === "dinkes") {
         return {
           success: false,
@@ -106,9 +122,11 @@ export async function getAdminFacilityStaffAction(): Promise<GetStaffResult> {
         profile_id,
         facility_id,
         staff_role,
+        profession,
         str_number,
         sip_number,
         specialization,
+        rejection_reason,
         status,
         created_at,
         profiles(id, full_name, email)
@@ -124,7 +142,52 @@ export async function getAdminFacilityStaffAction(): Promise<GetStaffResult> {
       };
     }
 
-    // Normalisasi join profiles jika berbentuk array
+    const staffIds = (staffList || []).map((s) => s.id);
+
+    // 5. Ambil data spesialisasi dari facility_staff_specializations untuk seluruh staf ini
+    const specMap: Record<string, StaffSpecializationDetail[]> = {};
+    if (staffIds.length > 0) {
+      const { data: fssList, error: fssError } = await supabase
+        .from("facility_staff_specializations")
+        .select(`
+          id,
+          facility_staff_id,
+          specialization_id,
+          custom_specialization,
+          is_verified,
+          staff_specializations(name)
+        `)
+        .in("facility_staff_id", staffIds);
+
+      if (!fssError && fssList) {
+        fssList.forEach((row) => {
+          const rawItem = row as {
+            id: string;
+            facility_staff_id: string;
+            specialization_id: string | null;
+            custom_specialization: string | null;
+            is_verified: boolean;
+            staff_specializations: { name?: string } | { name?: string }[] | null;
+          };
+          const specObj = Array.isArray(rawItem.staff_specializations)
+            ? rawItem.staff_specializations[0]
+            : rawItem.staff_specializations;
+          const sName =
+            specObj?.name || rawItem.custom_specialization || "Spesialisasi";
+          if (!specMap[rawItem.facility_staff_id]) {
+            specMap[rawItem.facility_staff_id] = [];
+          }
+          specMap[rawItem.facility_staff_id].push({
+            id: rawItem.id,
+            specialization_id: rawItem.specialization_id,
+            name: sName,
+            is_verified: !!rawItem.is_verified,
+          });
+        });
+      }
+    }
+
+    // Normalisasi staf list
     const normalizedStaff: StaffItem[] = (staffList || []).map((item) => {
       const rawProfile = item.profiles;
       const prof = Array.isArray(rawProfile) ? rawProfile[0] : rawProfile;
@@ -133,11 +196,14 @@ export async function getAdminFacilityStaffAction(): Promise<GetStaffResult> {
         profile_id: item.profile_id,
         facility_id: item.facility_id,
         staff_role: item.staff_role,
-        str_number: item.str_number,
-        sip_number: item.sip_number,
-        specialization: item.specialization,
+        profession: item.profession || null,
+        str_number: item.str_number || null,
+        sip_number: item.sip_number || null,
+        specialization: item.specialization || null,
+        rejection_reason: item.rejection_reason || null,
         status: item.status,
         created_at: item.created_at,
+        specializations: specMap[item.id] || [],
         profiles: prof
           ? {
               id: prof.id,
@@ -164,109 +230,78 @@ export async function getAdminFacilityStaffAction(): Promise<GetStaffResult> {
 }
 
 /**
- * Menyetujui atau menolak permohonan staf fasilitas kesehatan.
- * Memverifikasi hak akses admin fasilitas atau Dinkes di server sebelum melakukan update.
+ * Menyetujui atau menolak permohonan staf fasilitas kesehatan dengan penetapan role final,
+ * pengesahan spesialisasi terstruktur, dan catatan alasan penolakan wajib.
  */
-export async function updateStaffStatusAction(
-  staffId: string,
-  newStatus: "aktif" | "ditolak"
+export async function reviewFacilityStaffAction(
+  input: ReviewStaffInput
 ): Promise<UpdateStaffResult> {
-  if (!staffId || (newStatus !== "aktif" && newStatus !== "ditolak")) {
+  const { staffId, decision, staffRole, verifiedSpecIds, rejectionReason } = input;
+
+  if (!staffId || (decision !== "aktif" && decision !== "ditolak")) {
     return {
       success: false,
       error: "Parameter permohonan staf tidak valid",
     };
   }
 
+  if (decision === "ditolak" && (!rejectionReason || !rejectionReason.trim())) {
+    return {
+      success: false,
+      error: "Alasan penolakan wajib diisi agar pendaftar memahami catatan evaluasi",
+    };
+  }
+
   try {
     const supabase = await createClient();
 
-    // 1. Cek sesi login
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    // Panggil RPC review_facility_staff yang aman dan transaksional
+    const { data: res, error: rpcError } = await supabase.rpc("review_facility_staff", {
+      p_staff_id: staffId,
+      p_decision: decision,
+      p_staff_role: staffRole || null,
+      p_verified_spec_ids: verifiedSpecIds || null,
+      p_rejection_reason: rejectionReason ? rejectionReason.trim() : null,
+    });
 
-    if (userError || !user) {
+    if (rpcError) {
+      console.error("Database review error:", rpcError);
       return {
         success: false,
-        error: "Sesi login Anda telah kedaluwarsa. Silakan masuk kembali.",
-      };
-    }
-
-    // 2. Ambil data staf yang akan diperbarui
-    const { data: staff, error: staffFetchError } = await supabase
-      .from("facility_staff")
-      .select("id, facility_id, status, staff_role")
-      .eq("id", staffId)
-      .maybeSingle();
-
-    if (staffFetchError || !staff) {
-      return {
-        success: false,
-        error: "Data staf tidak ditemukan: " + (staffFetchError?.message || ""),
-      };
-    }
-
-    // 3. Verifikasi kepemilikan: Pengguna harus admin dari fasilitas tempat staf terdaftar
-    const { data: ownedFacility, error: facCheckError } = await supabase
-      .from("facilities")
-      .select("id, name, admin_id")
-      .eq("id", staff.facility_id)
-      .eq("admin_id", user.id)
-      .maybeSingle();
-
-    if (facCheckError) {
-      return {
-        success: false,
-        error: "Gagal memverifikasi kepemilikan fasilitas: " + facCheckError.message,
-      };
-    }
-
-    // Jika bukan admin fasilitas tersebut, periksa apakah pengguna adalah Dinkes
-    if (!ownedFacility) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (profile?.role !== "dinkes") {
-        return {
-          success: false,
-          error:
-            "Akses ditolak: Anda tidak memiliki wewenang untuk menyetujui atau menolak staf di fasilitas ini.",
-        };
-      }
-    }
-
-    // 4. Update status staf di database
-    const { error: updateError } = await supabase
-      .from("facility_staff")
-      .update({ status: newStatus })
-      .eq("id", staffId);
-
-    if (updateError) {
-      // Laporkan pesan galat yang jujur sesuai instruksi
-      console.error("Database update error on facility_staff:", updateError);
-      return {
-        success: false,
-        error: "Aksi ditolak basis data: " + updateError.message,
+        error: "Gagal memproses permohonan staf: " + rpcError.message,
       };
     }
 
     revalidatePath("/portal", "layout");
 
+    const responseObj = res as { success?: boolean; message?: string } | null;
     return {
       success: true,
-      message: `Permohonan staf berhasil ${newStatus === "aktif" ? "disetujui (status: aktif)" : "ditolak"}.`,
+      message:
+        responseObj?.message ||
+        `Permohonan staf berhasil ${decision === "aktif" ? "disetujui" : "ditolak"}.`,
     };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("Error updateStaffStatusAction:", msg);
+    console.error("Error reviewFacilityStaffAction:", msg);
     return {
       success: false,
-      error: "Terjadi galat sistem saat memperbarui status staf: " + msg,
+      error: "Terjadi galat sistem saat meninjau staf: " + msg,
     };
   }
+}
+
+/**
+ * Backward compatibility handler untuk updateStaffStatusAction
+ */
+export async function updateStaffStatusAction(
+  staffId: string,
+  newStatus: "aktif" | "ditolak",
+  rejectionReason?: string
+): Promise<UpdateStaffResult> {
+  return reviewFacilityStaffAction({
+    staffId,
+    decision: newStatus,
+    rejectionReason,
+  });
 }
