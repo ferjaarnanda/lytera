@@ -21,11 +21,8 @@ function generateMsgId(prefix: string): string {
   return `${prefix}-${msgSequence}`;
 }
 
-export const TetraWidget: React.FC<TetraWidgetProps> = ({
-  variant = "landing",
-  context = {},
-  className = "",
-}) => {
+export const TetraWidget: React.FC<TetraWidgetProps> = (props) => {
+  const { context = {}, className = "" } = props;
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [inputVal, setInputVal] = useState("");
@@ -177,41 +174,115 @@ export const TetraWidget: React.FC<TetraWidgetProps> = ({
     return "Asisten AI";
   };
 
+// Helper sederhana & aman untuk render Markdown ringan (**bold**, *italic*, bullet points, link teks)
+function renderFormattedContent(text: string): React.ReactNode {
+  if (!text) return null;
+  const lines = text.split("\n");
+
+  return lines.map((line, lIdx) => {
+    // Cek apakah list item
+    const isBullet = line.trim().startsWith("- ") || line.trim().startsWith("* ");
+    const cleanLine = isBullet ? line.trim().replace(/^[-*]\s+/, "") : line;
+
+    // Parser inline: **bold**, *italic*
+    const tokens: React.ReactNode[] = [];
+    const regex = /(\*\*([^*]+)\*\*|\*([^*]+)\*)/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(cleanLine)) !== null) {
+      if (match.index > lastIndex) {
+        tokens.push(cleanLine.substring(lastIndex, match.index));
+      }
+      if (match[2]) {
+        // **bold**
+        tokens.push(
+          <strong key={`${lIdx}-${match.index}`} className="font-bold text-[#1B4D3E]">
+            {match[2]}
+          </strong>
+        );
+      } else if (match[3]) {
+        // *italic*
+        tokens.push(
+          <em key={`${lIdx}-${match.index}`} className="italic">
+            {match[3]}
+          </em>
+        );
+      }
+      lastIndex = regex.lastIndex;
+    }
+
+    if (lastIndex < cleanLine.length) {
+      tokens.push(cleanLine.substring(lastIndex));
+    }
+
+    if (isBullet) {
+      return (
+        <div key={lIdx} className="flex items-start gap-1.5 my-0.5 ml-1">
+          <span className="text-[#2E7D51] font-bold mt-[-1px] select-none">•</span>
+          <span className="flex-1">{tokens}</span>
+        </div>
+      );
+    }
+
+    return (
+      <React.Fragment key={lIdx}>
+        {tokens}
+        {lIdx < lines.length - 1 && <br />}
+      </React.Fragment>
+    );
+  });
+}
+
   return (
-    <div className={`fixed bottom-6 right-6 z-40 select-none ${className}`}>
+    <div className={`fixed bottom-5 right-5 z-40 select-none ${className}`}>
       {/* =========================================================================
-          1. FLOATING CHAT PANEL (RINGKAS, NON-BLOCKING SCROLL, TANPA BACKDROP BLUR)
+          1. FLOATING CHAT PANEL (RINGKAS, NON-BLOCKING SCROLL, DI BAWAH NAVBAR)
           ========================================================================= */}
       {isOpen && (
         <div
-          className="fixed bottom-[88px] right-6 w-[360px] sm:w-[390px] h-[520px] max-h-[calc(100vh-110px)] bg-white rounded-[24px] shadow-2xl border border-[#E2E8F0] flex flex-col overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-3 duration-200"
-          style={{ boxShadow: "0 18px 48px -12px rgba(10, 34, 48, 0.28), 0 0 0 1px rgba(46, 125, 81, 0.12)" }}
+          className="fixed bottom-[76px] right-5 w-[360px] sm:w-[390px] h-[520px] max-h-[calc(100vh-160px)] bg-white rounded-[24px] shadow-2xl border border-[#D1E7DD] flex flex-col overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-3 duration-200"
+          style={{ boxShadow: "0 18px 48px -12px rgba(27, 77, 62, 0.24), 0 0 0 1px rgba(46, 125, 81, 0.15)" }}
         >
-          {/* A. HEADER PANEL */}
-          <div className="bg-[#0A2230] text-white px-4 py-3.5 flex items-center justify-between shrink-0 border-b border-white/10">
-            <div className="flex items-center gap-2.5">
+          {/* A. HEADER PANEL (PALET HIJAU-PUTIH LEMBUT DENGAN ARUS GELOMBANG ANIMASI) */}
+          <div className="relative overflow-hidden bg-gradient-to-r from-[#1B4D3E] via-[#246843] to-[#2E7D51] text-white px-4 py-3.5 flex items-center justify-between shrink-0 border-b border-emerald-400/20">
+            {/* Arus Gelombang Halus Hijau di Background Header */}
+            <div className="absolute inset-0 pointer-events-none opacity-25 overflow-hidden">
+              <svg
+                className="absolute -top-3 -left-1/4 w-[200%] h-12 text-[#A7F3D0] animate-tetra-wave"
+                viewBox="0 0 1200 120"
+                preserveAspectRatio="none"
+              >
+                <path
+                  d="M0,0 C150,90 350,-40 500,45 C650,130 900,10 1200,60 L1200,0 L0,0 Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </div>
+
+            <div className="relative z-10 flex items-center gap-2.5">
               <TetraMark size="sm" isHovered={true} />
               <div>
                 <div className="flex items-center gap-1.5">
                   <span className="font-extrabold text-[15px] tracking-tight text-white leading-none">
                     Tetra
                   </span>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#34D399]/20 text-[#34D399] border border-[#34D399]/30">
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/20 text-[#A7F3D0] border border-white/25 backdrop-blur-xs">
                     {getRoleBadgeLabel()}
                   </span>
                 </div>
-                <span className="text-[11px] text-slate-300 block mt-0.5">
+                <span className="text-[11px] text-emerald-100 block mt-0.5">
                   Asisten Digital Rujukan Lytera
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="relative z-10 flex items-center gap-1">
               <button
                 type="button"
                 onClick={handleResetChat}
                 title="Mulai percakapan baru"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-emerald-100 hover:text-white hover:bg-white/15 transition-colors cursor-pointer"
                 aria-label="Bersihkan chat"
               >
                 <RefreshCw className="w-4 h-4" />
@@ -219,7 +290,7 @@ export const TetraWidget: React.FC<TetraWidgetProps> = ({
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-emerald-100 hover:text-white hover:bg-white/15 transition-colors cursor-pointer"
                 aria-label="Tutup panel Tetra"
               >
                 <X className="w-5 h-5" />
@@ -228,7 +299,7 @@ export const TetraWidget: React.FC<TetraWidgetProps> = ({
           </div>
 
           {/* B. MESSAGES BODY (SCROLLABLE) */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-[#F8FAF9] text-[13px]">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#F8FCFA] text-[13px]">
             {messages.map((msg) => (
               <div
                 key={msg.id}
@@ -241,11 +312,11 @@ export const TetraWidget: React.FC<TetraWidgetProps> = ({
                       ? "bg-[#2E7D51] text-white rounded-br-[4px] shadow-xs"
                       : msg.isError
                       ? "bg-[#FDECEA] text-[#B3261E] border border-[#B3261E]/20 rounded-bl-[4px]"
-                      : "bg-white text-[#0A2230] border border-[#E2E8F0] rounded-bl-[4px] shadow-2xs"
+                      : "bg-white text-[#1B4D3E] border border-[#D1E7DD] rounded-bl-[4px] shadow-2xs"
                   }`}
                 >
-                  <div className="whitespace-pre-line select-text">
-                    {msg.content}
+                  <div className="select-text">
+                    {renderFormattedContent(msg.content)}
                   </div>
                 </div>
 
@@ -333,7 +404,7 @@ export const TetraWidget: React.FC<TetraWidgetProps> = ({
           </div>
 
           {/* C. INPUT BAR */}
-          <div className="p-3 bg-white border-t border-[#E2E8F0] shrink-0">
+          <div className="p-3 bg-white border-t border-[#D1E7DD] shrink-0">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -348,7 +419,7 @@ export const TetraWidget: React.FC<TetraWidgetProps> = ({
                 onKeyDown={handleKeyDown}
                 placeholder="Tanya Tetra (misal: RS rujukan, alur rujukan)..."
                 disabled={isLoading}
-                className="flex-1 bg-[#F1F5F3] text-[#0A2230] text-[13px] px-3.5 py-2.5 rounded-[14px] border border-transparent focus:border-[#2E7D51] focus:bg-white focus:outline-none transition-colors placeholder:text-slate-400"
+                className="flex-1 bg-[#F4FAF6] text-[#1B4D3E] text-[13px] px-3.5 py-2.5 rounded-[14px] border border-transparent focus:border-[#2E7D51] focus:bg-white focus:outline-none transition-colors placeholder:text-slate-400"
               />
               <button
                 type="submit"
@@ -368,46 +439,47 @@ export const TetraWidget: React.FC<TetraWidgetProps> = ({
       )}
 
       {/* =========================================================================
-          2. FLOATING TRIGGER BUTTON (DENGAN CONTINUOUS BORDER ANIMATION SAAT HOVER)
+          2. FLOATING TRIGGER BUTTON (RINGKAS, PALET HIJAU-PUTIH, BORDER BERPUTAR DI SELURUH KELOMPOK BRANDING)
           ========================================================================= */}
       <div
         className="relative group inline-block"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Micro-label / Tooltip "Tetra" */}
-        <div
-          className={`absolute bottom-full right-1/2 translate-x-1/2 mb-2 px-2.5 py-1 rounded-md bg-[#0A2230] text-white text-[11px] font-bold tracking-wide shadow-md pointer-events-none transition-all duration-200 z-50 whitespace-nowrap ${
-            isHovered && !isOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"
-          }`}
-        >
-          Tetra
-          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-[#0A2230]" />
-        </div>
-
-        {/* Tombol Utama Tetra */}
+        {/* Tombol Utama Tetra: Seluruh kelompok branding (Mark + Teks Tetra + Badge Panduan Rujukan) */}
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
-          className={`flex items-center gap-2.5 p-1.5 pr-4 rounded-full bg-white shadow-xl border border-[#E2E8F0] hover:border-[#2E7D51]/40 transition-all duration-200 cursor-pointer active:scale-95 ${
-            variant === "portal" ? "pr-1.5" : "pr-4"
-          }`}
+          className="relative p-[2px] rounded-full overflow-hidden shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2E7D51]"
           aria-label={isOpen ? "Tutup asisten Tetra" : "Buka asisten Tetra"}
         >
-          {/* Mark Tetra dengan 4 Garis Diagonal & Continuous Rotating Border Gradient */}
-          <TetraMark size="md" isHovered={isHovered} />
+          {/* Continuous Moving Border Gradient di Sekeliling Seluruh Kelompok Branding */}
+          <div
+            className={`absolute inset-[-100%] transition-opacity duration-300 pointer-events-none ${
+              isHovered ? "opacity-100 animate-tetra-spin" : "opacity-35"
+            }`}
+            style={{
+              background:
+                "conic-gradient(from 0deg, #34D399 0%, #10B981 35%, #047857 70%, #022C22 90%, #34D399 100%)",
+            }}
+            aria-hidden="true"
+          />
 
-          {/* Label Teks "Tetra" (HANYA DITAMPILKAN DI LANDING PAGE) */}
-          {variant === "landing" && (
-            <div className="text-left flex flex-col justify-center pr-1">
-              <span className="font-extrabold text-[14px] text-[#0A2230] leading-none group-hover:text-[#2E7D51] transition-colors">
+          {/* Surface Pill Putih Solid Bersih */}
+          <div className="relative z-10 flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-white text-[#1B4D3E]">
+            {/* Mark Tetra Resmi dengan 4 Garis Diagonal */}
+            <TetraMark size="sm" isHovered={isHovered} />
+
+            {/* Nama Tetra & Badge Panduan Rujukan */}
+            <div className="flex items-center gap-1.5 pr-1">
+              <span className="font-extrabold text-[13.5px] text-[#1B4D3E] tracking-tight leading-none group-hover:text-[#2E7D51] transition-colors">
                 Tetra
               </span>
-              <span className="text-[10.5px] text-slate-500 leading-tight block mt-0.5">
-                Tanya Rujukan
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#E8F5EE] text-[#2E7D51] border border-[#2E7D51]/25 whitespace-nowrap leading-tight">
+                Panduan Rujukan
               </span>
             </div>
-          )}
+          </div>
         </button>
       </div>
     </div>

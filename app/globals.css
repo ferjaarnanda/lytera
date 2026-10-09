@@ -198,8 +198,9 @@ body:has([data-hero-wallpaper]),
 }
 
 /* ============================================================================
-   ANIMASI CONTINUOUS MOVING BORDER UNTUK TETRA AI ASSISTANT
-   - Garis gradient hijau terang -> hijau deep yang berputar mengelilingi tepi logo
+   ANIMASI CONTINUOUS MOVING BORDER & WAVE UNTUK TETRA AI ASSISTANT
+   - Garis gradient hijau terang -> hijau deep yang berputar mengelilingi tepi logo & kelompok branding
+   - Gelombang halus hijau di bagian atas header panel
    ============================================================================ */
 @keyframes tetra-border-spin {
   0% {
@@ -212,5 +213,28 @@ body:has([data-hero-wallpaper]),
 
 .animate-tetra-spin {
   animation: tetra-border-spin 2.5s linear infinite;
+}
+
+@keyframes tetra-wave-drift {
+  0% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-25%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.animate-tetra-wave {
+  animation: tetra-wave-drift 8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-tetra-spin,
+  .animate-tetra-wave {
+    animation: none !important;
+  }
 }
 

@@ -51,7 +51,7 @@ export const TetraMark: React.FC<TetraMarkProps> = ({
 
       {/* 2. INNER SURFACE CONTAINER */}
       <div
-        className={`relative rounded-full bg-[#0A2230] flex items-center justify-center text-white z-10 shadow-sm transition-transform duration-200 ${
+        className={`relative rounded-full bg-[#0F3024] flex items-center justify-center text-white z-10 shadow-sm transition-transform duration-200 ${
           isHovered ? "scale-[0.98]" : "scale-100"
         } ${sizeConfig.inner}`}
       >
