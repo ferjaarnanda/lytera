@@ -1992,35 +1992,70 @@ export default function PendaftaranPage({ params }: PageProps) {
 
                         {faskesNakesData.profesi === "Dokter Spesialis" && (
                           <div>
-                            <label htmlFor="spesialisasiNakes" className="block text-sm font-semibold text-[#0F3040] mb-1">
-                              Bidang Spesialisasi Medis *
-                            </label>
-                            <select
-                              id="spesialisasiNakes"
-                              value={faskesNakesData.spesialisasi}
-                              onChange={(e) =>
-                                setFaskesNakesData({ ...faskesNakesData, spesialisasi: e.target.value })
-                              }
-                              className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] bg-white focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm text-[#0F3040]"
-                            >
-                              <option value="">-- Pilih Bidang Spesialisasi --</option>
-                              <option value="Penyakit Dalam">Spesialis Penyakit Dalam (Sp.PD)</option>
-                              <option value="Anak">Spesialis Anak (Sp.A)</option>
-                              <option value="Bedah">Spesialis Bedah (Sp.B)</option>
-                              <option value="Obstetri dan Ginekologi (Kebidanan & Kandungan)">Spesialis Kebidanan & Kandungan (Sp.OG)</option>
-                              <option value="Jantung dan Pembuluh Darah">Spesialis Jantung & Pembuluh Darah (Sp.JP)</option>
-                              <option value="Saraf (Neurologi)">Spesialis Saraf / Neurologi (Sp.S / Sp.N)</option>
-                              <option value="Mata">Spesialis Mata (Sp.M)</option>
-                              <option value="THT-KL">Spesialis THT-KL (Sp.THT-KL)</option>
-                              <option value="Kulit dan Kelamin (Dermatologi)">Spesialis Kulit & Kelamin (Sp.DV / Sp.KK)</option>
-                              <option value="Kedokteran Jiwa (Psikiatri)">Spesialis Kedokteran Jiwa (Sp.KJ)</option>
-                              <option value="Paru (Pulmonologi)">Spesialis Paru / Pulmonologi (Sp.P)</option>
-                              <option value="Ortopedi dan Traumatologi">Spesialis Ortopedi & Traumatologi (Sp.OT)</option>
-                              <option value="Anestesiologi dan Terapi Intensif">Spesialis Anestesiologi (Sp.An)</option>
-                              <option value="Radiologi">Spesialis Radiologi (Sp.Rad)</option>
-                              <option value="Patologi Klinik">Spesialis Patologi Klinik (Sp.PK)</option>
-                              <option value="Rehabilitasi Medik">Spesialis Kedokteran Fisik & Rehabilitasi (Sp.KFR)</option>
-                            </select>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <label className="block text-sm font-semibold text-[#0F3040]">
+                                Bidang Spesialisasi Medis *
+                              </label>
+                              <span className="text-xs text-slate-500 font-normal">
+                                (Dapat memilih lebih dari satu)
+                              </span>
+                            </div>
+                            <div className="p-3 rounded-[14px] border border-[#E2E8F0] bg-white max-h-48 overflow-y-auto space-y-2">
+                              {[
+                                "Penyakit Dalam",
+                                "Anak",
+                                "Bedah",
+                                "Obstetri dan Ginekologi (Kebidanan & Kandungan)",
+                                "Jantung dan Pembuluh Darah",
+                                "Saraf (Neurologi)",
+                                "Mata",
+                                "THT-KL",
+                                "Kulit dan Kelamin (Dermatologi)",
+                                "Kedokteran Jiwa (Psikiatri)",
+                                "Paru (Pulmonologi)",
+                                "Ortopedi dan Traumatologi",
+                                "Anestesiologi dan Terapi Intensif",
+                                "Radiologi",
+                                "Patologi Klinik",
+                                "Rehabilitasi Medik",
+                              ].map((spec) => {
+                                const currentSpecs = faskesNakesData.spesialisasi
+                                  ? faskesNakesData.spesialisasi.split(",").map((s) => s.trim())
+                                  : [];
+                                const isChecked = currentSpecs.includes(spec);
+
+                                return (
+                                  <label
+                                    key={spec}
+                                    className="flex items-center gap-2.5 text-xs text-[#0F3040] hover:bg-slate-50 p-1.5 rounded-lg cursor-pointer transition-colors"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={(e) => {
+                                        let updated: string[];
+                                        if (e.target.checked) {
+                                          updated = [...currentSpecs, spec];
+                                        } else {
+                                          updated = currentSpecs.filter((s) => s !== spec);
+                                        }
+                                        setFaskesNakesData({
+                                          ...faskesNakesData,
+                                          spesialisasi: updated.join(", "),
+                                        });
+                                      }}
+                                      className="w-4 h-4 rounded text-[#8F5A4E] border-[#E2E8F0] focus:ring-[#8F5A4E]"
+                                    />
+                                    <span>{spec}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                            {faskesNakesData.spesialisasi && (
+                              <p className="text-xs text-[#8F5A4E] font-medium mt-1.5">
+                                Dipilih: <span className="font-normal text-slate-700">{faskesNakesData.spesialisasi}</span>
+                              </p>
+                            )}
                             {errors.spesialisasi && <p className="text-xs text-[#B3261E] mt-1">{errors.spesialisasi}</p>}
                           </div>
                         )}

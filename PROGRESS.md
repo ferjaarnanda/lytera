@@ -16,7 +16,7 @@
 | Tahap Tetra AI Assistant | SELESAI | c2056e3 | Arsitektur dasar Tera AI terintegrasi Groq LLM server-only dengan intelligent fallback mode, role-aware context builder untuk 9 peran/halaman, controlled data tools ke RPC list_active_facilities & list_active_doctors. |
 | Tahap Tetra AI Context-Aware & Rebranding | SELESAI | 6f06a5c | Rebranding Tera -> Tetra, mark logo tepat 4 garis diagonal, strict landing anonymity (tanpa bocor profil demo), intent routing deterministik presisi (hanya cari faskes bila diminta), quick action buttons terkalibrasi, lolos 7 uji skenario via HTTP, lint 0 error, build exit 0. |
 | Normalisasi Wilayah Fasilitas | SELESAI | d8dc457 | resolveRegionName() + formatFacilityLocation() reusable di lib/region-utils.ts. FacilityCombobox, Tetra tools.ts, engine.ts semua pakai nama manusiawi. Migrasi DB: 7 fasilitas diperbarui dari kode (33/3374/337401) ke nama (Jawa Tengah/Kota Semarang/Semarang Tengah). Lint 0 error, build exit 0. |
-| Sub-tahap A: Pendaftaran Nakes & Fondasi Spesialisasi | SELESAI | (lihat commit) | Skema staff_specializations (20 katalog), facility_staff_specializations (many-to-many), facility_invitations. RPC validate_invitation_code & get_active_facility_doctors. Validasi server-side penempatan & undangan, field profesi, STR, SIP, spesialisasi nakes. Lint 0 error, build exit 0. |
+| Sub-tahap A: Rekonsiliasi & Fondasi Pendaftaran Nakes | SELESAI | (commit ini) | Rekonsiliasi migration (20261009153924) tercatat di database. RPC consume_invitation_code atomik row lock FOR UPDATE & RPC validate_invitation_code (target role & target profession). Multi-spesialisasi nakes UI checkbox & backend loop insert fss (is_verified=false). Filter spesialisasi terverifikasi di get_active_facility_doctors. Lint 0 error, build exit 0, uji SQL impersonasi RLS lolos. |
 
 ---
 
@@ -333,5 +333,31 @@
     7. Medical emergency ("dada saya sesak sekali"): Peringatan bahaya IGD 119 + kartu IGD RS (PASS).
   - `npm run lint`: **0 error, 0 warning**.
   - `npm run build`: **Exit 0**, seluruh rute Next.js 16 berhasil dikompilasi tanpa galat.
+
+### 23. Sub-tahap A: Rekonsiliasi & Fondasi Pendaftaran Nakes (Selesai)
+- [x] **Rekonsiliasi Migration Supabase**:
+  - File migrasi diselaraskan menjadi `supabase/migrations/20261009153924_nakes_spesialisasi_undangan.sql`.
+  - Riwayat migrasi `supabase_migrations.schema_migrations` telah direkonsiliasi dan terverifikasi di database Supabase Lytera (`losqwizqvuikoueswxnc`).
+- [x] **Skema Database & Pengamanan RPC**:
+  - Tabel `staff_specializations`: Katalog 20 bidang spesialisasi terstruktur dengan RLS baca publik.
+  - Tabel `facility_staff_specializations`: Relasi n-ke-n staf nakes dengan spesialisasi yang diajukan, status default `is_verified = false`.
+  - Tabel `facility_invitations`: Kuota kode undangan faskes, kuota max/terpakai, expiry, dan target role/profession.
+  - RPC `validate_invitation_code(p_code, p_expected_role, p_expected_profession)`: Memvalidasi kode, target role, dan target profesi secara ketat tanpa mutasi kuota.
+  - RPC `consume_invitation_code(p_code, p_expected_role, p_expected_profession)`: Eksekusi atomik pemakaian kode undangan dengan row lock `FOR UPDATE` untuk mencegah race-condition/over-quota.
+  - RPC `get_active_facility_doctors(p_facility_id)`: Mengembalikan data dokter aktif hanya dengan spesialisasi yang telah diverifikasi (`is_verified = true`).
+- [x] **Formulir Pendaftaran & Server Actions**:
+  - `FasilitasNakesSchema`: Validasi Zod diperkuat untuk `sipNomor`, profesi terstruktur, dan `spesialisasi`.
+  - Formulir pendaftaran nakes (`app/daftar/[peran]/[subperan]/page.tsx`): Pilihan multi-spesialisasi interaktif berbasis checkbox untuk Dokter Spesialis.
+  - Server Action `submitPendaftaranAction` (`app/actions/pendaftaran.ts`):
+    - Validasi target role & profesi saat cek undangan faskes.
+    - Penyimpanan multi-spesialisasi ke tabel relasi `facility_staff_specializations`.
+    - Konsumsi kode undangan secara atomik via RPC `consume_invitation_code` setelah data staf berhasil disimpan.
+- [x] **Validasi & Pengujian**:
+  - Uji RPC & Kode Undangan: Kasus kode valid (PASS), kode salah (PASS), target profesi tidak cocok ditolak (PASS).
+  - Uji RLS Impersonasi: Dokter dan pasien dilarang membaca data undangan faskes lain (Permission Denied / RLS enforce) (PASS).
+  - Security Advisors: Bebas dari kerentanan baru yang tidak diinginkan.
+  - `npm run lint`: **0 error, 0 warning**.
+  - `npm run build`: **Exit 0**, kompilasi Next.js 16 (Turbopack) sukses tanpa galat tipe TypeScript.
+
 
 

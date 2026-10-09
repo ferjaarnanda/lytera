@@ -377,9 +377,22 @@ export async function submitPendaftaranAction(
         };
       }
 
-      // Panggil RPC validate_invitation_code di server
+      let expectedRole: "dokter" | "petugas" | "apoteker" = "petugas";
+      const profLower = fasilitasNakesData.profesi.toLowerCase();
+      const spLower = String(subperan).toLowerCase();
+      if (profLower.includes("apoteker") || spLower === "apotek") {
+        expectedRole = "apoteker";
+      } else if (profLower.includes("dokter")) {
+        expectedRole = "dokter";
+      } else {
+        expectedRole = "petugas";
+      }
+
+      // Panggil RPC validate_invitation_code di server dengan pengecekan role & profesi
       const { data: invResult, error: invRpcErr } = await supabase.rpc("validate_invitation_code", {
         p_code: fasilitasNakesData.kodeUndangan.trim(),
+        p_expected_role: expectedRole,
+        p_expected_profession: fasilitasNakesData.profesi,
       });
 
       if (invRpcErr || !invResult || !(invResult as { valid?: boolean }).valid) {
@@ -817,36 +830,45 @@ export async function submitPendaftaranAction(
 
       // 2. Jika ada spesialisasi yang diajukan, hubungkan ke katalog staff_specializations
       if (insertedStaff?.id && fasilitasNakesData.spesialisasi) {
-        const specName = fasilitasNakesData.spesialisasi.trim();
-        // Cari id di staff_specializations jika cocok
-        const { data: matchedSpec } = await supabase
-          .from("staff_specializations")
-          .select("id")
-          .ilike("name", specName)
-          .maybeSingle();
+        // Mendukung beberapa spesialisasi yang dipisahkan koma
+        const specList = fasilitasNakesData.spesialisasi
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
 
-        await supabase.from("facility_staff_specializations").insert({
-          facility_staff_id: insertedStaff.id,
-          specialization_id: matchedSpec?.id || null,
-          custom_specialization: matchedSpec?.id ? null : specName,
-          is_verified: false, // Menunggu persetujuan admin faskes
-        });
+        for (const specName of specList) {
+          const { data: matchedSpec } = await supabase
+            .from("staff_specializations")
+            .select("id")
+            .ilike("name", specName)
+            .maybeSingle();
+
+          const { error: fssErr } = await supabase
+            .from("facility_staff_specializations")
+            .insert({
+              facility_staff_id: insertedStaff.id,
+              specialization_id: matchedSpec?.id || null,
+              custom_specialization: matchedSpec?.id ? null : specName,
+              is_verified: false, // Menunggu persetujuan admin faskes
+            });
+
+          if (fssErr) {
+            console.error("Gagal menghubungkan spesialisasi staf:", fssErr.message);
+          }
+        }
       }
 
-      // 3. Jika menggunakan kode undangan, catat penambahan uses_count
+      // 3. Jika menggunakan kode undangan, konsumsi kuota secara atomik di server
       if (fasilitasNakesData.metodeFaskes === "undangan" && fasilitasNakesData.kodeUndangan) {
         const trimmedCode = fasilitasNakesData.kodeUndangan.trim();
-        const { data: invRow } = await supabase
-          .from("facility_invitations")
-          .select("id, uses_count")
-          .ilike("code", trimmedCode)
-          .maybeSingle();
+        const { error: consumeErr } = await supabase.rpc("consume_invitation_code", {
+          p_code: trimmedCode,
+          p_expected_role: sRole,
+          p_expected_profession: fasilitasNakesData.profesi,
+        });
 
-        if (invRow) {
-          await supabase
-            .from("facility_invitations")
-            .update({ uses_count: invRow.uses_count + 1 })
-            .eq("id", invRow.id);
+        if (consumeErr) {
+          console.error("Gagal mengonsumsi kuota kode undangan:", consumeErr.message);
         }
       }
     } else if (peran === "verifikator" && verifikatorData) {

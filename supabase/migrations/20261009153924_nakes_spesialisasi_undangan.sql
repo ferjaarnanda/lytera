@@ -125,8 +125,12 @@ CREATE POLICY "invitations_all_admin" ON public.facility_invitations
 -- Publik / calon pendaftar boleh membaca kode aktif untuk validasi via RPC security definer
 
 -- 7. RPC: validate_invitation_code (SECURITY DEFINER)
--- Dipanggil saat pendaftaran atau pengecekan kode undangan
-CREATE OR REPLACE FUNCTION public.validate_invitation_code(p_code text)
+-- Dipanggil saat pengecekan awal kode undangan di form frontend / server action
+CREATE OR REPLACE FUNCTION public.validate_invitation_code(
+  p_code text,
+  p_expected_role text DEFAULT NULL,
+  p_expected_profession text DEFAULT NULL
+)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -140,34 +144,26 @@ begin
     return jsonb_build_object('valid', false, 'message', 'Kode undangan tidak boleh kosong');
   end if;
 
-  select * into v_inv
-  from public.facility_invitations
-  where upper(trim(code)) = upper(trim(p_code))
-  limit 1;
+  select * into v_inv from public.facility_invitations where upper(trim(code)) = upper(trim(p_code)) limit 1;
+  if not found then return jsonb_build_object('valid', false, 'message', 'Kode undangan tidak ditemukan'); end if;
+  if not v_inv.is_active then return jsonb_build_object('valid', false, 'message', 'Kode undangan sudah dinonaktifkan'); end if;
+  if v_inv.expires_at is not null and v_inv.expires_at < now() then return jsonb_build_object('valid', false, 'message', 'Kode undangan telah kedaluwarsa'); end if;
+  if v_inv.uses_count >= v_inv.max_uses then return jsonb_build_object('valid', false, 'message', 'Batas kuota penggunaan kode undangan telah habis'); end if;
 
-  if not found then
-    return jsonb_build_object('valid', false, 'message', 'Kode undangan tidak ditemukan');
+  if v_inv.target_role is not null and p_expected_role is not null then
+    if lower(v_inv.target_role) <> lower(p_expected_role) then
+      return jsonb_build_object('valid', false, 'message', format('Kode undangan ini khusus untuk peran %s', v_inv.target_role));
+    end if;
   end if;
 
-  if not v_inv.is_active then
-    return jsonb_build_object('valid', false, 'message', 'Kode undangan sudah dinonaktifkan');
+  if v_inv.target_profession is not null and p_expected_profession is not null then
+    if lower(trim(v_inv.target_profession)) <> lower(trim(p_expected_profession)) then
+      return jsonb_build_object('valid', false, 'message', format('Kode undangan ini khusus untuk profesi %s', v_inv.target_profession));
+    end if;
   end if;
 
-  if v_inv.expires_at is not null and v_inv.expires_at < now() then
-    return jsonb_build_object('valid', false, 'message', 'Kode undangan telah kedaluwarsa');
-  end if;
-
-  if v_inv.uses_count >= v_inv.max_uses then
-    return jsonb_build_object('valid', false, 'message', 'Batas kuota penggunaan kode undangan telah habis');
-  end if;
-
-  select id, name, type, city, district into v_fac
-  from public.facilities
-  where id = v_inv.facility_id and status = 'aktif';
-
-  if not found then
-    return jsonb_build_object('valid', false, 'message', 'Fasilitas penerbit kode undangan tidak aktif atau tidak ditemukan');
-  end if;
+  select id, name, type, city, district into v_fac from public.facilities where id = v_inv.facility_id and status = 'aktif';
+  if not found then return jsonb_build_object('valid', false, 'message', 'Fasilitas penerbit kode undangan tidak aktif atau tidak ditemukan'); end if;
 
   return jsonb_build_object(
     'valid', true,
@@ -182,11 +178,90 @@ begin
 end;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.validate_invitation_code(text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.validate_invitation_code(text, text, text) TO anon, authenticated;
 
-DROP FUNCTION IF EXISTS public.list_active_doctors(uuid);
+-- 8. RPC: consume_invitation_code (SECURITY DEFINER, ATOMIK DENGAN ROW-LOCK)
+CREATE OR REPLACE FUNCTION public.consume_invitation_code(
+  p_code text,
+  p_expected_role text DEFAULT NULL,
+  p_expected_profession text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+declare
+  v_inv record;
+  v_fac record;
+begin
+  if p_code is null or trim(p_code) = '' then
+    return jsonb_build_object('success', false, 'message', 'Kode undangan tidak boleh kosong');
+  end if;
 
-CREATE OR REPLACE FUNCTION public.list_active_doctors(p_facility_id uuid)
+  select * into v_inv 
+  from public.facility_invitations 
+  where upper(trim(code)) = upper(trim(p_code)) 
+  for update;
+
+  if not found then 
+    return jsonb_build_object('success', false, 'message', 'Kode undangan tidak ditemukan'); 
+  end if;
+
+  if not v_inv.is_active then 
+    return jsonb_build_object('success', false, 'message', 'Kode undangan sudah dinonaktifkan'); 
+  end if;
+
+  if v_inv.expires_at is not null and v_inv.expires_at < now() then 
+    return jsonb_build_object('success', false, 'message', 'Kode undangan telah kedaluwarsa'); 
+  end if;
+
+  if v_inv.uses_count >= v_inv.max_uses then 
+    return jsonb_build_object('success', false, 'message', 'Batas kuota penggunaan kode undangan telah habis'); 
+  end if;
+
+  if v_inv.target_role is not null and p_expected_role is not null then
+    if lower(v_inv.target_role) <> lower(p_expected_role) then
+      return jsonb_build_object('success', false, 'message', format('Kode undangan ini khusus untuk peran %s', v_inv.target_role));
+    end if;
+  end if;
+
+  if v_inv.target_profession is not null and p_expected_profession is not null then
+    if lower(trim(v_inv.target_profession)) <> lower(trim(p_expected_profession)) then
+      return jsonb_build_object('success', false, 'message', format('Kode undangan ini khusus untuk profesi %s', v_inv.target_profession));
+    end if;
+  end if;
+
+  select id, name, type, city, district into v_fac 
+  from public.facilities 
+  where id = v_inv.facility_id and status = 'aktif';
+
+  if not found then 
+    return jsonb_build_object('success', false, 'message', 'Fasilitas penerbit kode undangan tidak aktif atau tidak ditemukan'); 
+  end if;
+
+  update public.facility_invitations
+  set uses_count = uses_count + 1
+  where id = v_inv.id;
+
+  return jsonb_build_object(
+    'success', true,
+    'facility_id', v_fac.id,
+    'facility_name', v_fac.name,
+    'facility_type', v_fac.type,
+    'facility_city', v_fac.city,
+    'facility_district', v_fac.district,
+    'target_role', v_inv.target_role,
+    'target_profession', v_inv.target_profession
+  );
+end;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.consume_invitation_code(text, text, text) TO anon, authenticated;
+
+-- 9. RPC: get_active_facility_doctors (SECURITY DEFINER)
+-- Menghasilkan data dokter faskes aktif dan memfilter hanya spesialisasi yang sudah terverifikasi
+CREATE OR REPLACE FUNCTION public.get_active_facility_doctors(p_facility_id uuid)
 RETURNS TABLE(
   staff_id uuid,
   full_name text,
@@ -209,7 +284,7 @@ AS $$
         select string_agg(coalesce(ss.name, fss.custom_specialization), ', ')
         from public.facility_staff_specializations fss
         left join public.staff_specializations ss on ss.id = fss.specialization_id
-        where fss.facility_staff_id = fs.id
+        where fss.facility_staff_id = fs.id and fss.is_verified = true
       ),
       fs.specialization
     ) as specialization,
@@ -228,4 +303,4 @@ AS $$
   order by pr.full_name;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.list_active_doctors(uuid) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_active_facility_doctors(uuid) TO anon, authenticated;
