@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { X, Send, Sparkles, MapPin, Building, ArrowRight, Loader2, RefreshCw } from "lucide-react";
+import { X, Send, MapPin, Building, ArrowRight, Loader2, RefreshCw } from "lucide-react";
 import { TetraMark } from "./TetraMark";
 import { TetraMessage, TetraUserContext } from "@/lib/tetra/types";
 import { sendTetraMessageAction } from "@/app/actions/tetra";
@@ -430,8 +430,7 @@ function renderFormattedContent(text: string): React.ReactNode {
                 <Send className="w-4 h-4" />
               </button>
             </form>
-            <div className="text-[10px] text-slate-400 text-center mt-1.5 flex items-center justify-center gap-1">
-              <Sparkles className="w-2.5 h-2.5 text-[#2E7D51]" />
+            <div className="text-[10px] text-slate-400 text-center mt-1.5 flex items-center justify-center">
               <span>Bukan alat diagnosis. Untuk kondisi gawat darurat, segera ke IGD terdekat.</span>
             </div>
           </div>
@@ -446,7 +445,7 @@ function renderFormattedContent(text: string): React.ReactNode {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Tombol Utama Tetra: Seluruh kelompok branding (Mark + Teks Tetra + Badge Panduan Rujukan) */}
+        {/* Tombol Utama Tetra: Seluruh kelompok branding (Mark + Teks Tetra) */}
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
@@ -470,13 +469,10 @@ function renderFormattedContent(text: string): React.ReactNode {
             {/* Mark Tetra Resmi dengan 4 Garis Diagonal */}
             <TetraMark size="sm" isHovered={isHovered} />
 
-            {/* Nama Tetra & Badge Panduan Rujukan */}
-            <div className="flex items-center gap-1.5 pr-1">
+            {/* Nama Tetra */}
+            <div className="flex items-center pr-1.5">
               <span className="font-extrabold text-[13.5px] text-[#1B4D3E] tracking-tight leading-none group-hover:text-[#2E7D51] transition-colors">
                 Tetra
-              </span>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#E8F5EE] text-[#2E7D51] border border-[#2E7D51]/25 whitespace-nowrap leading-tight">
-                Panduan Rujukan
               </span>
             </div>
           </div>
