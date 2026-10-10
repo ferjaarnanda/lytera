@@ -672,7 +672,7 @@ export default function PendaftaranPage({ params }: PageProps) {
     <div className="min-h-screen text-[#464858] pb-16" data-portal-wallpaper="true">
       {/* Top Bar: Logo kiri, BackButton kanan */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 flex items-center justify-between">
-        <Logo tone="dark" size="sm" />
+        <Logo tone="dark" size="sm" variant="pillCapsule" />
         <BackButton href="/" label="Kembali ke Beranda" />
       </div>
 

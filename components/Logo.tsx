@@ -15,6 +15,11 @@ export interface LogoProps {
   asLink?: boolean;
   href?: string;
   className?: string;
+  /**
+   * Varian tampilan kapsul putih, senada dengan tombol Kembali ke Beranda (BackButton)
+   * untuk halaman pendaftaran akun.
+   */
+  variant?: "default" | "pillCapsule";
 }
 
 export const Logo: React.FC<LogoProps> = ({
@@ -22,13 +27,26 @@ export const Logo: React.FC<LogoProps> = ({
   asLink = true,
   href = "/",
   className = "",
+  variant = "default",
 }) => {
   // Asset asli Lytera-logo.png sudah mencakup icon, tulisan "Lytera", dan tagline "Akses Kesehatan, Lebih Mudah"
   // Rasio aspek gambar: ~2.5 : 1
   const sizeMap = {
-    sm: { width: 85, height: 34, imgClass: "h-8 sm:h-[34px] w-auto" },
-    md: { width: 115, height: 46, imgClass: "h-10 sm:h-11 w-auto" },
-    lg: { width: 140, height: 56, imgClass: "h-12 sm:h-[52px] w-auto" },
+    sm: {
+      width: variant === "pillCapsule" ? 95 : 85,
+      height: variant === "pillCapsule" ? 38 : 34,
+      imgClass: variant === "pillCapsule" ? "h-9 sm:h-[38px] w-auto" : "h-8 sm:h-[34px] w-auto",
+    },
+    md: {
+      width: variant === "pillCapsule" ? 125 : 115,
+      height: variant === "pillCapsule" ? 50 : 46,
+      imgClass: variant === "pillCapsule" ? "h-11 sm:h-12 w-auto" : "h-10 sm:h-11 w-auto",
+    },
+    lg: {
+      width: variant === "pillCapsule" ? 150 : 140,
+      height: variant === "pillCapsule" ? 60 : 56,
+      imgClass: variant === "pillCapsule" ? "h-13 sm:h-[58px] w-auto" : "h-12 sm:h-[52px] w-auto",
+    },
   }[size];
 
   const content = (
@@ -48,6 +66,18 @@ export const Logo: React.FC<LogoProps> = ({
   );
 
   if (asLink && href) {
+    if (variant === "pillCapsule") {
+      return (
+        <Link
+          href={href}
+          className={`inline-flex items-center px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white border border-[#E2E8F0] shadow-sm hover:shadow-md hover:-translate-y-[1px] active:scale-[0.98] active:shadow-sm transition-[box-shadow,transform] duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2E7D51] ${className}`.trim()}
+          aria-label="Lytera - Beranda"
+        >
+          {content}
+        </Link>
+      );
+    }
+
     return (
       <Link
         href={href}
@@ -56,6 +86,16 @@ export const Logo: React.FC<LogoProps> = ({
       >
         {content}
       </Link>
+    );
+  }
+
+  if (variant === "pillCapsule") {
+    return (
+      <div
+        className={`inline-flex items-center px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white border border-[#E2E8F0] shadow-sm ${className}`.trim()}
+      >
+        {content}
+      </div>
     );
   }
 
