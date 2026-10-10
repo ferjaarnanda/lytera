@@ -7,6 +7,7 @@ import { ArrowRight, Clock, ShieldCheck, CheckCircle2, FileText } from "lucide-r
 import { BackButton } from "@/components/BackButton";
 import { Logo } from "@/components/Logo";
 import { StatusIcon } from "@/components/StatusIcon";
+import { PortalWallpaper } from "@/components/PortalWallpaper";
 
 function SelesaiContent() {
   const searchParams = useSearchParams();
@@ -174,27 +175,48 @@ function SelesaiContent() {
   );
 }
 
+function SelesaiWallpaperWrapper({ children }: { children: React.ReactNode }) {
+  const searchParams = useSearchParams();
+  const peran = searchParams.get("peran") || "pasien";
+  const isVerifikator = peran === "verifikator";
+
+  return (
+    <PortalWallpaper
+      src={
+        isVerifikator
+          ? "/images/wallpaper-verifikasi-dinkes.webp"
+          : "/images/wallpaper-hospital.webp"
+      }
+      brightness={isVerifikator ? 1.3 : 1.15}
+    >
+      {children}
+    </PortalWallpaper>
+  );
+}
+
 export default function PendaftaranSelesaiPage() {
   return (
-    <div className="min-h-screen bg-[#FAF5F2] text-[#464858] pb-16">
-      {/* Top Bar: Logo kiri, BackButton kanan */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 flex items-center justify-between">
-        <Logo tone="light" size="sm" variant="pillCapsule" />
-        <BackButton href="/" label="Kembali ke Beranda" />
-      </div>
+    <Suspense
+      fallback={
+        <div className="min-h-screen text-[#464858] flex items-center justify-center p-4">
+          <p className="text-sm text-slate-400">Memuat status pendaftaran...</p>
+        </div>
+      }
+    >
+      <SelesaiWallpaperWrapper>
+        <div className="min-h-screen text-[#464858] pb-16" data-portal-wallpaper="true">
+          {/* Top Bar: Logo kiri, BackButton kanan */}
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 flex items-center justify-between">
+            <Logo tone="light" size="sm" variant="pillCapsule" />
+            <BackButton href="/" label="Kembali ke Beranda" />
+          </div>
 
-      {/* Main Card Container */}
-      <main className="max-w-[640px] mx-auto px-4 sm:px-6 mt-8">
-        <Suspense
-          fallback={
-            <div className="bg-white rounded-[24px] p-12 text-center text-sm text-slate-400">
-              Memuat status pendaftaran...
-            </div>
-          }
-        >
-          <SelesaiContent />
-        </Suspense>
-      </main>
-    </div>
+          {/* Main Card Container */}
+          <main className="max-w-[640px] mx-auto px-4 sm:px-6 mt-8">
+            <SelesaiContent />
+          </main>
+        </div>
+      </SelesaiWallpaperWrapper>
+    </Suspense>
   );
 }
