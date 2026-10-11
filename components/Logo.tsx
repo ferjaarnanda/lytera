@@ -29,8 +29,8 @@ export const Logo: React.FC<LogoProps> = ({
   className = "",
   variant = "default",
 }) => {
-  // Asset asli Lytera-logo.png sudah mencakup icon, tulisan "Lytera", dan tagline "Akses Kesehatan, Lebih Mudah"
-  // Rasio aspek gambar: ~2.5 : 1
+  // Asset resmi Lytera-logo.svg sudah mencakup icon, tulisan "Lytera", dan tagline "Akses Kesehatan, Lebih Mudah"
+  // Rasio aspek gambar: ~2.5 : 1 (1983 x 793)
   const sizeMap = {
     sm: {
       width: variant === "pillCapsule" ? 95 : 85,
@@ -53,9 +53,9 @@ export const Logo: React.FC<LogoProps> = ({
     <div
       className={`inline-flex items-center select-none ${className}`.trim()}
     >
-      {/* SATU ASSET GAMBAR LENGKAP LYTERA */}
+      {/* SATU ASSET GAMBAR LENGKAP LYTERA (SVG VECTOR) */}
       <Image
-        src="/images/Lytera-logo.png"
+        src="/images/Lytera-logo.svg"
         alt="Lytera - Akses Kesehatan, Lebih Mudah"
         width={sizeMap.width}
         height={sizeMap.height}
