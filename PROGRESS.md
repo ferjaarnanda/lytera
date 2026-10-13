@@ -30,6 +30,7 @@
 | Penyelarasan Ketinggian & Pembesaran Panel Chat Tetra | SELESAI | 4fed735 | Panel chat dinaikkan ke bottom-[64px] dan diperbesar proporsional ke w-[370px] sm:w-[410px] h-[550px] dengan batas max-h-[calc(100vh-160px)], menyisakan jarak kecil yang nyaman ke navbar tanpa bertabrakan. Kapsul launcher pojok kanan bawah (bottom-3 right-5) dipertahankan utuh. Lint 0 error, build exit 0. |
 | Penambahan Tinggi & Penurunan Posisi Panel Chat Tetra | SELESAI | 0301846 | Panel chat diperbesar lebih tinggi ke h-[580px] dan diturunkan ke bottom-[54px] dengan max-h-[calc(100vh-155px)], menghasilkan ruang kecil yang nyaman dan aman dari navbar tanpa menabrak launcher/elemen lain. Lebar, responsivitas, dan kapsul launcher (bottom-3 right-5) dipertahankan utuh. Lint 0 error, build exit 0. |
 | Penyelarasan Jarak Bebas Launcher & Panel Chat Tetra | SELESAI | e7b818c | Posisi panel chat dinaikkan ke bottom-[68px] sehingga memiliki jarak bebas bersih 8px di atas kapsul launcher (bottom-3 = 12px s/d 60px) tanpa bertabrakan. Ukuran (w-[370px] sm:w-[410px] h-[580px]), max-h-[calc(100vh-170px)], dan launcher pojok kanan bawah dipertahankan utuh. Lint 0 error, build exit 0. |
+| Penambahan Tinggi Panel Chat ke 605px & Posisi Presisi | SELESAI | 9cb2c25 | Tinggi panel ditambah 25px menjadi h-[605px] agar lebih lega, posisi disesuaikan ke bottom-[70px] dengan max-h-[calc(100vh-168px)] untuk jarak aman dari navbar dan launcher. Ukuran/posisi kapsul launcher (bottom-3 right-5) dan lebar panel dipertahankan utuh. Lint 0 error, build exit 0. |
 
 
 
