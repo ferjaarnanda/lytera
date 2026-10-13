@@ -27,6 +27,7 @@
 | Migrasi Logo SVG di Seluruh Project | SELESAI | 562104b | Ganti penggunaan Lytera-logo.png menjadi Lytera-logo.svg di components/Logo.tsx untuk seluruh halaman. 0 referensi PNG tersisa di repo. Lint 0 error, build exit 0. |
 | Penyelarasan Preview Tetra & Posisi Launcher | SELESAI | ecb0164 | Logo Tetra resmi (TetraMark sm) diterapkan pada header preview chat landing page, simulasi tanya jawab RS rujukan nyata (Rumah Sakit Colombia di Semarang Tengah) selaras fitur Tetra aktif, launcher diturunkan ke bottom-3 agar tidak menutupi Status Integrasi Terkini/elemen lain, chat panel disesuaikan ke bottom-[68px] dengan max-w responsif. Lint 0 error, build exit 0. |
 | Penurunan Posisi Panel Chat Terbuka Tetra | SELESAI | 65a9f39 | Posisi panel chat terbuka diturunkan ke bottom-[58px] dan batas ketinggian diatur max-h-[calc(100vh-170px)] agar memiliki clearance aman 24px di bawah navbar di desktop maupun mobile. Kapsul tombol launcher di pojok kanan bawah (bottom-3 right-5), ukuran, desain, dan fungsi dipertahankan utuh. Lint 0 error, build exit 0. |
+| Penyelarasan Ketinggian & Pembesaran Panel Chat Tetra | SELESAI | 4fed735 | Panel chat dinaikkan ke bottom-[64px] dan diperbesar proporsional ke w-[370px] sm:w-[410px] h-[550px] dengan batas max-h-[calc(100vh-160px)], menyisakan jarak kecil yang nyaman ke navbar tanpa bertabrakan. Kapsul launcher pojok kanan bawah (bottom-3 right-5) dipertahankan utuh. Lint 0 error, build exit 0. |
 
 
 
