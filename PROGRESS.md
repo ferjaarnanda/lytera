@@ -31,6 +31,7 @@
 | Penambahan Tinggi & Penurunan Posisi Panel Chat Tetra | SELESAI | 0301846 | Panel chat diperbesar lebih tinggi ke h-[580px] dan diturunkan ke bottom-[54px] dengan max-h-[calc(100vh-155px)], menghasilkan ruang kecil yang nyaman dan aman dari navbar tanpa menabrak launcher/elemen lain. Lebar, responsivitas, dan kapsul launcher (bottom-3 right-5) dipertahankan utuh. Lint 0 error, build exit 0. |
 | Penyelarasan Jarak Bebas Launcher & Panel Chat Tetra | SELESAI | e7b818c | Posisi panel chat dinaikkan ke bottom-[68px] sehingga memiliki jarak bebas bersih 8px di atas kapsul launcher (bottom-3 = 12px s/d 60px) tanpa bertabrakan. Ukuran (w-[370px] sm:w-[410px] h-[580px]), max-h-[calc(100vh-170px)], dan launcher pojok kanan bawah dipertahankan utuh. Lint 0 error, build exit 0. |
 | Penambahan Tinggi Panel Chat ke 605px & Posisi Presisi | SELESAI | 9cb2c25 | Tinggi panel ditambah 25px menjadi h-[605px] agar lebih lega, posisi disesuaikan ke bottom-[70px] dengan max-h-[calc(100vh-168px)] untuk jarak aman dari navbar dan launcher. Ukuran/posisi kapsul launcher (bottom-3 right-5) dan lebar panel dipertahankan utuh. Lint 0 error, build exit 0. |
+| Perbaikan Pendaftaran Nakes (Faskes Aktif) | SELESAI | pending | Memperbaiki galat faskes tidak aktif pada pendaftaran nakes via RPC get_active_facility (SECURITY DEFINER) dan perbaikan record unassigned v_inv pada register_facility_staff. Uji impersonasi SQL lolos 100%, lint 0 error, build exit 0. |
 
 
 
@@ -490,6 +491,29 @@
 - [x] **Kualitas Kode, Linting & Build**:
   - `npm run lint`: **0 error, 0 warning**.
   - `npm run build`: **Exit 0**, seluruh 19 rute Next.js 16 berhasil dikompilasi tanpa galat.
+
+---
+
+### 34. Perbaikan Bug Pendaftaran Tenaga Kesehatan (Selesai)
+- [x] **Akar Masalah yang Teridentifikasi**:
+  1. *Akses RLS Anon ke Tabel Facilities*: Pada `app/actions/pendaftaran.ts:426-439`, validasi faskes langsung menjalankan `.from("facilities").select("id, name, status").eq("id", ...).eq("status", "aktif")` menggunakan client unauthenticated (`anon`). PostgreSQL RLS menolak akses (`ERROR 42501: permission denied for table facilities`), sehingga `targetFac` selalu null dan memicu pesan galat *"Fasilitas kesehatan yang dipilih tidak aktif atau tidak ditemukan"*.
+  2. *Bug Evaluasi Record Unassigned pada RPC `register_facility_staff`*: Pada RPC pendaftaran transaksional nakes, baris 165 mengevaluasi `if v_inv.id is not null then` padahal variabel `v_inv record;` belum pernah di-assign jika nakes mendaftar via pencarian langsung tanpa kode undangan (`p_invitation_code is null`), yang memicu Postgres `ERROR: 55000: record "v_inv" is not assigned yet`.
+- [x] **Solusi & Perubahan yang Diterapkan**:
+  1. *RPC `get_active_facility(p_facility_id uuid)` (`supabase/migrations/20261013203000_fix_nakes_registration_and_active_facility.sql`)*:
+     - Dibuat fungsi `STABLE SECURITY DEFINER` dengan hak akses `EXECUTE` untuk `anon, authenticated`.
+     - Hanya mengembalikan atribut publik aman (`id, name, type, city, district, status`) tanpa membuka dokumen lisensi rahasia faskes atau identitas internal admin faskes.
+  2. *Pembaruan Server Action (`app/actions/pendaftaran.ts`)*:
+     - Menggantikan pemanggilan langsung tabel `facilities` dengan `supabase.rpc("get_active_facility", { p_facility_id: ... }).maybeSingle()`.
+  3. *Perbaikan RPC Transaksional `register_facility_staff`*:
+     - Tipe variabel didefinisikan secara kuat: `v_inv public.facility_invitations%rowtype;`.
+     - Pembaruan kuota undangan dilindungi oleh pengecekan `if p_invitation_code is not null and trim(p_invitation_code) <> '' and v_inv.id is not null then`.
+- [x] **Pengujian Nyata & Verifikasi Keamanan**:
+  - *Uji Akses Anon ke RPC `get_active_facility`*: Teruji via SQL impersonasi `role anon` pada faskes aktif (Puskesmas Kedung Rejo `6e4d3ce8-9fd4-4ee0-928a-5deecb21685d`), data faskes aktif berhasil ditemukan. Pada faskes fiktif/tidak aktif mengembalikan 0 baris (PASS).
+  - *Uji Transaksional RPC `register_facility_staff`*: Teruji via SQL impersonasi `role authenticated` untuk profil dokter dengan `p_invitation_code: null`, transaksi berhasil sukses (`success: true`) tanpa galat record indeterminate (PASS).
+  - *Supabase Security Advisors*: `get_advisors(type: 'security')` dijalankan, fungsi menerapkan search_path yang aman (`public, pg_temp`) dan hak akses terkontrol.
+- [x] **Kualitas Kode, Linting & Build**:
+  - `npm run lint`: **0 error**, 2 warnings (test script unused vars).
+  - `npm run build`: **Exit 0**, seluruh rute Next.js 16 berhasil dikompilasi tanpa galat.
 
 ---
 

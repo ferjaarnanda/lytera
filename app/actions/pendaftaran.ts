@@ -422,12 +422,9 @@ export async function submitPendaftaranAction(
         };
       }
 
-      // Verifikasi faskes aktif di DB
+      // Verifikasi faskes aktif di DB via RPC get_active_facility
       const { data: targetFac, error: facErr } = await supabase
-        .from("facilities")
-        .select("id, name, status")
-        .eq("id", fasilitasNakesData.facilityId)
-        .eq("status", "aktif")
+        .rpc("get_active_facility", { p_facility_id: fasilitasNakesData.facilityId })
         .maybeSingle();
 
       if (facErr || !targetFac) {
