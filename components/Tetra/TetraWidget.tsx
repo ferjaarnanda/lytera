@@ -235,13 +235,13 @@ function renderFormattedContent(text: string): React.ReactNode {
 }
 
   return (
-    <div className={`fixed bottom-5 right-5 z-40 select-none ${className}`}>
+    <div className={`fixed bottom-3 right-5 z-40 select-none ${className}`}>
       {/* =========================================================================
           1. FLOATING CHAT PANEL (RINGKAS, NON-BLOCKING SCROLL, DI BAWAH NAVBAR)
           ========================================================================= */}
       {isOpen && (
         <div
-          className="fixed bottom-[76px] right-5 w-[360px] sm:w-[390px] h-[520px] max-h-[calc(100vh-160px)] bg-white rounded-[24px] shadow-2xl border border-[#D1E7DD] flex flex-col overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-3 duration-200"
+          className="fixed bottom-[68px] right-5 w-[360px] sm:w-[390px] max-w-[calc(100vw-40px)] h-[520px] max-h-[calc(100vh-140px)] bg-white rounded-[24px] shadow-2xl border border-[#D1E7DD] flex flex-col overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-3 duration-200"
           style={{ boxShadow: "0 18px 48px -12px rgba(27, 77, 62, 0.24), 0 0 0 1px rgba(46, 125, 81, 0.15)" }}
         >
           {/* A. HEADER PANEL (PALET HIJAU-PUTIH LEMBUT DENGAN ARUS GELOMBANG ANIMASI) */}

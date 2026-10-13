@@ -15,6 +15,8 @@ import {
   Sparkles,
   Eye,
   CheckCircle2,
+  Building,
+  MapPin,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Logo } from "@/components/Logo";
@@ -22,7 +24,7 @@ import { Reveal } from "@/components/Reveal";
 import { HeroSection } from "@/components/HeroSection";
 import { RolePickerDialog } from "@/components/RolePickerDialog";
 import { RoleId } from "@/lib/roles";
-import { TetraWidget } from "@/components/Tetra";
+import { TetraWidget, TetraMark } from "@/components/Tetra";
 
 const CARA_KERJA_STEPS = [
   {
@@ -766,9 +768,7 @@ export default function HomePage() {
                         {/* Mockup putih solid dipertahankan agar jelas terbaca */}
                         <div className="bg-white rounded-[24px] p-6 shadow-sm border border-[#E2E8F0]">
                           <div className="flex items-center gap-3 pb-2 mb-4 border-b border-[#E2E8F0]/60">
-                            <div className="w-8 h-8 rounded-full bg-[#2E7D51] text-white flex items-center justify-center">
-                              <Sparkles className="w-4 h-4 text-white" />
-                            </div>
+                            <TetraMark size="sm" isHovered={false} />
                             <div>
                               <span className="text-[15px] text-[#0A2230] block font-semibold">
                                 Asisten Panduan Lytera
@@ -781,21 +781,36 @@ export default function HomePage() {
                           <div className="space-y-3">
                             <div className="bg-[#F0FAF4] rounded-[16px] p-3 text-left">
                               <p className="text-[13px] text-[#0A2230]">
-                                &ldquo;Halo! Saya menerima rujukan ke Poli Jantung
-                                besok. Apa saja berkas yang wajib saya bawa?&rdquo;
+                                &ldquo;Halo Tetra, apa saja rumah sakit rujukan yang tersedia dan aktif di sistem Lytera?&rdquo;
                               </p>
                             </div>
-                            <div className="bg-[#E8F5EE] rounded-[16px] p-3 text-left">
+                            <div className="bg-[#E8F5EE] rounded-[16px] p-3.5 text-left space-y-2">
                               <p className="text-[13px] text-[#0A2230] leading-relaxed">
-                                Siapkan 3 hal berikut:
-                                <br />
-                                1. KTP fisik asli
-                                <br />
-                                2. Surat Rujukan Digital (buka di aplikasi Lytera)
-                                <br />
-                                3. Token Akses Medis aktif yang bisa kamu bagikan di
-                                meja administrasi rumah sakit.
+                                Berikut Rumah Sakit rujukan aktif yang terdaftar di sistem Lytera:
                               </p>
+                              <div className="bg-white rounded-[14px] p-3 border border-[#2E7D51]/20 shadow-2xs">
+                                <div className="flex items-start justify-between gap-1.5">
+                                  <div className="min-w-0">
+                                    <h4 className="font-bold text-[13px] text-[#0A2230] leading-tight truncate">
+                                      Rumah Sakit Colombia
+                                    </h4>
+                                    <span className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                                      <Building className="w-3 h-3 text-[#2E7D51] shrink-0" />
+                                      Rumah Sakit Rujukan
+                                    </span>
+                                  </div>
+                                  <span className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#E8F5EE] text-[#2E7D51] border border-[#2E7D51]/25 shrink-0">
+                                    Faskes Aktif
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-1.5 truncate">
+                                  <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                                  Semarang Tengah, Kota Semarang
+                                </p>
+                                <p className="text-[11px] text-slate-600 mt-1.5 bg-[#F4FAF6] p-2 rounded-[8px] border border-[#2E7D51]/10 leading-snug">
+                                  💡 Fasilitas rujukan lanjutan terhubung untuk pelayanan rujukan terpadu dan rekam medis digital.
+                                </p>
+                              </div>
                             </div>
                           </div>
                         </div>
