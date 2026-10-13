@@ -146,7 +146,7 @@ export default function KomponenPage() {
               </h1>
               <p className="text-sm text-slate-500 mt-1.5">
                 Pemeriksaan komponen antarmuka digital bersama untuk rujukan pasien & rekam medis.
-              </p>
+              </p>g
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="info">Next.js 16 + Tailwind v4</Badge>
