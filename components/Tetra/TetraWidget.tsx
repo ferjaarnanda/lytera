@@ -241,7 +241,7 @@ function renderFormattedContent(text: string): React.ReactNode {
           ========================================================================= */}
       {isOpen && (
         <div
-          className="fixed bottom-[68px] right-5 w-[370px] sm:w-[410px] max-w-[calc(100vw-36px)] h-[580px] max-h-[calc(100vh-170px)] bg-white rounded-[24px] shadow-2xl border border-[#D1E7DD] flex flex-col overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-3 duration-200"
+          className="fixed bottom-[70px] right-5 w-[370px] sm:w-[410px] max-w-[calc(100vw-36px)] h-[605px] max-h-[calc(100vh-168px)] bg-white rounded-[24px] shadow-2xl border border-[#D1E7DD] flex flex-col overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-3 duration-200"
           style={{ boxShadow: "0 18px 48px -12px rgba(27, 77, 62, 0.24), 0 0 0 1px rgba(46, 125, 81, 0.15)" }}
         >
           {/* A. HEADER PANEL (PALET HIJAU-PUTIH LEMBUT DENGAN ARUS GELOMBANG ANIMASI) */}
