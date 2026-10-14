@@ -32,7 +32,7 @@
 | Penyelarasan Jarak Bebas Launcher & Panel Chat Tetra | SELESAI | e7b818c | Posisi panel chat dinaikkan ke bottom-[68px] sehingga memiliki jarak bebas bersih 8px di atas kapsul launcher (bottom-3 = 12px s/d 60px) tanpa bertabrakan. Ukuran (w-[370px] sm:w-[410px] h-[580px]), max-h-[calc(100vh-170px)], dan launcher pojok kanan bawah dipertahankan utuh. Lint 0 error, build exit 0. |
 | Penambahan Tinggi Panel Chat ke 605px & Posisi Presisi | SELESAI | 9cb2c25 | Tinggi panel ditambah 25px menjadi h-[605px] agar lebih lega, posisi disesuaikan ke bottom-[70px] dengan max-h-[calc(100vh-168px)] untuk jarak aman dari navbar dan launcher. Ukuran/posisi kapsul launcher (bottom-3 right-5) dan lebar panel dipertahankan utuh. Lint 0 error, build exit 0. |
 | Perbaikan Pendaftaran Nakes (Faskes Aktif) | SELESAI | ee42642 | Memperbaiki galat faskes tidak aktif pada pendaftaran nakes via RPC get_active_facility (SECURITY DEFINER) dan perbaikan record unassigned v_inv pada register_facility_staff. Uji impersonasi SQL lolos 100%, lint 0 error, build exit 0. |
-| Perbaikan Pendaftaran Verifikator (Kecamatan & Dinas Sosial) | SELESAI | TBD | Memperbaiki validasi kondisional VerifikatorSchema di pendaftaran.ts, normalisasi subperan di validateStep & render RegionCombobox, serta penyesuaian pemetaan error di form-helpers.ts. Uji validasi 8 skenario lolos 100%, lint 0 error, build exit 0. |
+| Perbaikan Pendaftaran Verifikator (Kecamatan & Dinas Sosial) | SELESAI | bfd1748 | Memperbaiki validasi kondisional VerifikatorSchema di pendaftaran.ts, normalisasi subperan di validateStep & render RegionCombobox, serta penyesuaian pemetaan error di form-helpers.ts. Uji validasi 8 skenario lolos 100%, lint 0 error, build exit 0. |
 
 
 
