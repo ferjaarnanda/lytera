@@ -116,9 +116,10 @@ export function isValidRole(role: string): role is RoleId {
   return role in ROLES;
 }
 
-export function isValidSubRole(role: string, subRole: string): boolean {
+export function isValidSubRole(role: RoleId, subRole: string): boolean {
   if (!isValidRole(role)) return false;
-  return ROLES[role].subRoles.some((s) => s.id === subRole);
+  const norm = subRole.toLowerCase().replace(/_/g, "-");
+  return ROLES[role].subRoles.some((s) => s.id === subRole || s.id === norm);
 }
 
 export function getRoleMeta(role: string): RoleMeta | undefined {
@@ -128,5 +129,6 @@ export function getRoleMeta(role: string): RoleMeta | undefined {
 
 export function getSubRoleMeta(role: string, subRole: string): SubRoleMeta | undefined {
   if (!isValidRole(role)) return undefined;
-  return ROLES[role].subRoles.find((s) => s.id === subRole);
+  const norm = subRole.toLowerCase().replace(/_/g, "-");
+  return ROLES[role].subRoles.find((s) => s.id === subRole || s.id === norm);
 }

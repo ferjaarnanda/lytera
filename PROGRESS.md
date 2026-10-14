@@ -32,6 +32,7 @@
 | Penyelarasan Jarak Bebas Launcher & Panel Chat Tetra | SELESAI | e7b818c | Posisi panel chat dinaikkan ke bottom-[68px] sehingga memiliki jarak bebas bersih 8px di atas kapsul launcher (bottom-3 = 12px s/d 60px) tanpa bertabrakan. Ukuran (w-[370px] sm:w-[410px] h-[580px]), max-h-[calc(100vh-170px)], dan launcher pojok kanan bawah dipertahankan utuh. Lint 0 error, build exit 0. |
 | Penambahan Tinggi Panel Chat ke 605px & Posisi Presisi | SELESAI | 9cb2c25 | Tinggi panel ditambah 25px menjadi h-[605px] agar lebih lega, posisi disesuaikan ke bottom-[70px] dengan max-h-[calc(100vh-168px)] untuk jarak aman dari navbar dan launcher. Ukuran/posisi kapsul launcher (bottom-3 right-5) dan lebar panel dipertahankan utuh. Lint 0 error, build exit 0. |
 | Perbaikan Pendaftaran Nakes (Faskes Aktif) | SELESAI | ee42642 | Memperbaiki galat faskes tidak aktif pada pendaftaran nakes via RPC get_active_facility (SECURITY DEFINER) dan perbaikan record unassigned v_inv pada register_facility_staff. Uji impersonasi SQL lolos 100%, lint 0 error, build exit 0. |
+| Perbaikan Pendaftaran Verifikator (Kecamatan & Dinas Sosial) | SELESAI | TBD | Memperbaiki validasi kondisional VerifikatorSchema di pendaftaran.ts, normalisasi subperan di validateStep & render RegionCombobox, serta penyesuaian pemetaan error di form-helpers.ts. Uji validasi 8 skenario lolos 100%, lint 0 error, build exit 0. |
 
 
 
@@ -514,6 +515,52 @@
 - [x] **Kualitas Kode, Linting & Build**:
   - `npm run lint`: **0 error**, 2 warnings (test script unused vars).
   - `npm run build`: **Exit 0**, seluruh rute Next.js 16 berhasil dikompilasi tanpa galat.
+
+---
+
+### 35. Perbaikan Bug Pendaftaran Verifikator (Kecamatan & Dinas Sosial) (Selesai)
+- [x] **Akar Masalah yang Teridentifikasi**:
+  1. *Validasi Zod Tidak Kondisional pada Server (`app/actions/pendaftaran.ts`)*:
+     - `VerifikatorSchema` sebelumnya mewajibkan `kecamatan: z.string().min(1)` dan `kelurahan: z.string().min(1)` secara mutlak untuk seluruh subperan verifikator.
+     - Padahal formulir frontend pada subperan `kecamatan` tidak menyediakan/meminta pilihan kelurahan (`kelurahan` bernilai `""`).
+     - Pada subperan `dinas-sosial`, formulir tingkat kota/kabupaten tidak menyediakan/meminta pilihan kecamatan maupun kelurahan (`kecamatan` dan `kelurahan` bernilai `""`).
+     - Akibatnya, saat pengguna menyelesaikan langkah ke-2 (Langkah terakhir), `VerifikatorSchema.safeParse()` di server selalu gagal dengan pesan galat isian kelurahan/kecamatan wajib dipilih.
+  2. *Pemetaan Redirect Form Error Menendang Kembali ke Langkah Awal*:
+     - Ketika server mengembalikan galat field `kecamatan` atau `kelurahan`, fungsi `findFirstErrorStepAndField` di `lib/form-helpers.ts` memetakan kedua field ini ke Langkah 0 (Wilayah Instansi Penugasan).
+     - Frontend mereset tampilan ke Langkah 0 dengan banner merah *"Ada isian yang belum sesuai, periksa kembali"*, padahal input yang dipermasalahkan tidak ada di UI (tersembunyi karena memang bukan lingkup kewenangannya).
+  3. *Konsistensi Penamaan Subperan (Slug URL Hyphen vs Database Underscore)*:
+     - Slug URL dan `ROLES.verifikator` menggunakan `dinas-sosial`, sedangkan database PostgreSQL `verifier_profiles` menggunakan `dinas_sosial`. Pengecekan subperan perlu dinormalisasi agar kedua format saling kompatibel tanpa salah routing.
+- [x] **Solusi & Perubahan yang Diterapkan**:
+  1. *Pembaruan `VerifikatorSchema` (`app/actions/pendaftaran.ts`)*:
+     - Field `kecamatan` dan `kelurahan` dibuat opsional/nullable di skema dasar, kemudian divalidasi secara dinamis menggunakan `.superRefine()`:
+       - Subperan selain `dinas-sosial` (yaitu `kelurahan` dan `kecamatan`) wajib memilih `kecamatan`.
+       - Subperan `kelurahan` wajib memilih `kelurahan`.
+       - Subperan `dinas-sosial` tidak diwajibkan mengisi `kecamatan` maupun `kelurahan` (kewenangan tingkat kabupaten/kota).
+     - Pemetaan galat server ke `fieldErrors` diperluas dengan key `provinsiVerif`, `kotaVerif`, `kecamatanVerif`, `kelurahanVerif`.
+     - Normalisasi payload: nilai kosong `kecamatan` dan `kelurahan` diubah menjadi `null` saat disimpan ke `userMetadata` dan tabel `verifier_profiles`.
+  2. *Normalisasi Validasi Langkah & Render Frontend (`app/daftar/[peran]/[subperan]/page.tsx`)*:
+     - Normalisasi slug `subperan?.toLowerCase().replace(/_/g, "-")` diterapkan pada `validateStep` dan render kondisional komponen `RegionCombobox` agar aman terhadap variasi penamaan hyphen maupun underscore.
+  3. *Penyempurnaan Form Helpers (`lib/form-helpers.ts`)*:
+     - `getFieldStep` dan `getFieldElementId` diperbarui untuk mengenali seluruh variasi field wilayah dan kredensial verifikator (`provinsiVerif`, `kotaVerif`, `kecamatanVerif`, `kelurahanVerif`, `emailDinas`, `passwordVerif`, `konfirmasiPasswordVerif`, `setujuIntegritas`).
+  4. *Penyempurnaan Metadata Peran (`lib/roles.ts`)*:
+     - `isValidSubRole` dan `getSubRoleMeta` mendukung normalisasi slug hyphen dan underscore secara transparan.
+- [x] **Pengujian Nyata & Bukti Uji**:
+  - *Uji Validasi Unit (8 Skenario)*:
+    1. Kecamatan Valid (tanpa kelurahan): **PASS**
+    2. Kecamatan Tanpa Kecamatan: **PASS (Gagal terkendali dengan path: kecamatan)**
+    3. Dinas Sosial Valid (tanpa kecamatan & kelurahan): **PASS**
+    4. Dinas Sosial Tanpa Kota: **PASS (Gagal terkendali dengan path: kota)**
+    5. Kelurahan Valid (lengkap): **PASS**
+    6. Kelurahan Tanpa Kelurahan: **PASS (Gagal terkendali dengan path: kelurahan)**
+    7. Format NIP Kurang dari 18 Digit: **PASS (Gagal terkendali)**
+    8. Pakta Integritas Belum Dicentang: **PASS (Gagal terkendali)**
+    - Seluruh 8/8 skenario pengujian lolos 100%.
+  - *Kesesuaian Schema & RLS Database*:
+    - Constraint `verifier_profiles_level_check` (`kelurahan`, `kecamatan`, `dinas_sosial`) dan kolom `district`/`village` yang nullable telah divalidasi.
+    - RPC `list_verification_queue` dan `review_verification` di database sudah mendukung pemilahan wilayah berdasarkan level: kelurahan mencocokkan kelurahan+kecamatan+kota, kecamatan mencocokkan kecamatan+kota, dan dinas sosial mencocokkan seluruh kota.
+- [x] **Kualitas Kode, Linting & Build**:
+  - `npm run lint`: **0 error**, 2 warnings (test script unused vars).
+  - `npm run build`: **Exit 0**, seluruh 19 rute Next.js 16 berhasil dikompilasi tanpa galat.
 
 ---
 

@@ -439,6 +439,10 @@ export default function PendaftaranPage({ params }: PageProps) {
         }
       }
     } else if (peran === "verifikator") {
+      const normSub = subperan?.toLowerCase().replace(/_/g, "-");
+      const isDinasSosial = normSub === "dinas-sosial";
+      const isKelurahan = normSub === "kelurahan";
+
       if (currentStep === 0) {
         if (!verifikatorData.provinsi) {
           newErrors.provinsiVerif = "Provinsi penugasan wajib dipilih";
@@ -446,10 +450,10 @@ export default function PendaftaranPage({ params }: PageProps) {
         if (!verifikatorData.kota) {
           newErrors.kotaVerif = "Kota / Kabupaten penugasan wajib dipilih";
         }
-        if (subperan !== "dinas-sosial" && !verifikatorData.kecamatan) {
+        if (!isDinasSosial && !verifikatorData.kecamatan) {
           newErrors.kecamatanVerif = "Kecamatan penugasan wajib dipilih";
         }
-        if (subperan === "kelurahan" && !verifikatorData.kelurahan) {
+        if (isKelurahan && !verifikatorData.kelurahan) {
           newErrors.kelurahanVerif = "Kelurahan / Desa penugasan wajib dipilih";
         }
       } else if (currentStep === 1) {
@@ -2436,7 +2440,7 @@ export default function PendaftaranPage({ params }: PageProps) {
                       />
                     </div>
 
-                    {subperan !== "dinas-sosial" && (
+                    {subperan?.toLowerCase().replace(/_/g, "-") !== "dinas-sosial" && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <RegionCombobox
                           id="kecamatanVerif"
@@ -2453,7 +2457,7 @@ export default function PendaftaranPage({ params }: PageProps) {
                           error={errors.kecamatanVerif}
                         />
 
-                        {subperan === "kelurahan" && (
+                        {subperan?.toLowerCase().replace(/_/g, "-") === "kelurahan" && (
                           <RegionCombobox
                             id="kelurahanVerif"
                             label="Kelurahan / Desa"

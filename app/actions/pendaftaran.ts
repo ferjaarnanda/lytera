@@ -108,23 +108,52 @@ const FasilitasNakesSchema = z.object({
   }),
 });
 
-const VerifikatorSchema = z.object({
-  peran: z.literal("verifikator"),
-  subperan: z.string(),
-  namaLengkap: z.string().min(2, "Nama lengkap petugas verifikator wajib diisi"),
-  nip: z.string().regex(/^\d{18}$/, "NIP harus 18 digit angka"),
-  jabatan: z.string().min(2, "Jabatan atau seksi penugasan wajib diisi"),
-  provinsi: z.string().min(1, "Provinsi wajib dipilih"),
-  kota: z.string().min(1, "Kota/Kabupaten wajib dipilih"),
-  kecamatan: z.string().min(1, "Kecamatan wajib dipilih"),
-  kelurahan: z.string().min(1, "Kelurahan wajib dipilih"),
-  emailDinas: z.string().email("Format email tidak valid, gunakan format seperti nama@contoh.com"),
-  noHp: z.string().regex(/^(08|62|\+62)\d{8,12}$/, "Nomor kontak tidak valid, gunakan format 08xx atau 62xx").optional().or(z.literal("")),
-  password: z.string().min(6, "Kata sandi minimal 6 karakter"),
-  setujuIntegritas: z.boolean().refine((val) => val === true, {
-    message: "Anda wajib menyetujui pakta integritas verifikasi data untuk melanjutkan",
-  }),
-});
+const VerifikatorSchema = z
+  .object({
+    peran: z.literal("verifikator"),
+    subperan: z.string(),
+    namaLengkap: z.string().min(2, "Nama lengkap petugas verifikator wajib diisi"),
+    nip: z.string().regex(/^\d{18}$/, "NIP harus 18 digit angka"),
+    jabatan: z.string().min(2, "Jabatan atau seksi penugasan wajib diisi"),
+    provinsi: z.string().min(1, "Provinsi penugasan wajib dipilih"),
+    kota: z.string().min(1, "Kota / Kabupaten penugasan wajib dipilih"),
+    kecamatan: z.string().optional().nullable().or(z.literal("")),
+    kelurahan: z.string().optional().nullable().or(z.literal("")),
+    emailDinas: z.string().email("Format email tidak valid, gunakan format seperti nama@contoh.com"),
+    noHp: z
+      .string()
+      .regex(/^(08|62|\+62)\d{8,12}$/, "Nomor kontak tidak valid, gunakan format 08xx atau 62xx")
+      .optional()
+      .nullable()
+      .or(z.literal("")),
+    password: z.string().min(6, "Kata sandi minimal 6 karakter"),
+    setujuIntegritas: z.boolean().refine((val) => val === true, {
+      message: "Anda wajib menyetujui pakta integritas verifikasi data untuk melanjutkan",
+    }),
+  })
+  .superRefine((data, ctx) => {
+    const sp = data.subperan.toLowerCase().replace(/_/g, "-");
+    // Kecamatan wajib dipilih untuk kelurahan dan kecamatan
+    if (sp !== "dinas-sosial") {
+      if (!data.kecamatan || data.kecamatan.trim() === "") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Kecamatan penugasan wajib dipilih",
+          path: ["kecamatan"],
+        });
+      }
+    }
+    // Kelurahan wajib dipilih hanya untuk kelurahan
+    if (sp === "kelurahan") {
+      if (!data.kelurahan || data.kelurahan.trim() === "") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Kelurahan / Desa penugasan wajib dipilih",
+          path: ["kelurahan"],
+        });
+      }
+    }
+  });
 
 export type PendaftaranPayload =
   | z.infer<typeof PasienPribadiSchema>
@@ -466,6 +495,11 @@ export async function submitPendaftaranAction(
           if (key === "namaLengkap") fieldErrors.namaPetugas = issue.message;
           if (key === "nip") fieldErrors.nipPetugas = issue.message;
           if (key === "jabatan") fieldErrors.jabatanPetugas = issue.message;
+          if (key === "provinsi") fieldErrors.provinsiVerif = issue.message;
+          if (key === "kota") fieldErrors.kotaVerif = issue.message;
+          if (key === "kecamatan") fieldErrors.kecamatanVerif = issue.message;
+          if (key === "kelurahan") fieldErrors.kelurahanVerif = issue.message;
+          if (key === "emailDinas") fieldErrors.email = issue.message;
         }
       });
       return {
@@ -487,9 +521,9 @@ export async function submitPendaftaranAction(
       jabatan: verifikatorData.jabatan,
       provinsi: verifikatorData.provinsi,
       kota: verifikatorData.kota,
-      kecamatan: verifikatorData.kecamatan,
-      kelurahan: verifikatorData.kelurahan,
-      noHp: verifikatorData.noHp,
+      kecamatan: verifikatorData.kecamatan?.trim() || null,
+      kelurahan: verifikatorData.kelurahan?.trim() || null,
+      noHp: verifikatorData.noHp?.trim() || null,
     };
   } else {
     return { success: false, error: "Peran pendaftaran tidak dikenali" };
@@ -858,8 +892,8 @@ export async function submitPendaftaranAction(
           level: vLevel,
           province: verifikatorData.provinsi,
           city: verifikatorData.kota,
-          district: verifikatorData.kecamatan,
-          village: verifikatorData.kelurahan,
+          district: verifikatorData.kecamatan?.trim() || null,
+          village: verifikatorData.kelurahan?.trim() || null,
           unit: null,
           nip: verifikatorData.nip,
           jabatan: verifikatorData.jabatan,

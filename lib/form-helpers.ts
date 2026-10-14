@@ -132,7 +132,18 @@ export function getFieldStep(
 
   // 4. VERIFIKATOR (3 Langkah: 0=Wilayah, 1=Data Pegawai, 2=Legalitas & Sandi)
   if (peran === "verifikator") {
-    if (["provinsi", "kota", "kecamatan", "kelurahan"].includes(f)) {
+    if (
+      [
+        "provinsi",
+        "kota",
+        "kecamatan",
+        "kelurahan",
+        "provinsiverif",
+        "kotaverif",
+        "kecamatanverif",
+        "kelurahanverif",
+      ].includes(f)
+    ) {
       return 0;
     }
     if (
@@ -234,16 +245,18 @@ export function getFieldElementId(
   }
 
   if (peran === "verifikator") {
-    if (f === "provinsi") return "provinsiVerif";
-    if (f === "kota") return "kotaVerif";
-    if (f === "kecamatan") return "kecamatanVerif";
-    if (f === "kelurahan") return "kelurahanVerif";
+    if (f === "provinsi" || f === "provinsiverif") return "provinsiVerif";
+    if (f === "kota" || f === "kotaverif") return "kotaVerif";
+    if (f === "kecamatan" || f === "kecamatanverif") return "kecamatanVerif";
+    if (f === "kelurahan" || f === "kelurahanverif") return "kelurahanVerif";
     if (f === "namalengkap" || f === "namapetugas") return "namaPetugas";
     if (f === "nip" || f === "nippetugas") return "nipPetugas";
     if (f === "jabatan" || f === "jabatanpetugas") return "jabatanPetugas";
+    if (f === "emaildinas" || f === "email") return "emailDinas";
     if (f === "file" || f === "berkassk") return "sk-verifikator-dropzone";
-    if (f === "password") return "passwordVerif";
-    if (f === "konfirmasipassword") return "konfirmasiPasswordVerif";
+    if (f === "password" || f === "passwordverif") return "passwordVerif";
+    if (f === "konfirmasipassword" || f === "konfirmasipasswordverif") return "konfirmasiPasswordVerif";
+    if (f === "setujuintegritas") return "setujuIntegritas";
     return fieldName;
   }
 
