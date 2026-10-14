@@ -131,8 +131,16 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
   const openApproveModal = (staff: StaffItem) => {
     setApproveModalStaff(staff);
     setSelectedRole(staff.staff_role);
-    // Default: pilih semua spesialisasi yang diajukan
-    setSelectedSpecIds((staff.specializations || []).map((s) => s.id));
+    // Jika staf sudah berstatus 'aktif', defaultkan pilihan ke spesialisasi yang sudah terverifikasi sebelumnya.
+    // Jika permohonan baru (menunggu), defaultkan semua spesialisasi yang diajukan tercentang untuk memudahkan pengesahan.
+    if (staff.status === "aktif") {
+      const verifiedIds = (staff.specializations || [])
+        .filter((s) => s.is_verified)
+        .map((s) => s.id);
+      setSelectedSpecIds(verifiedIds);
+    } else {
+      setSelectedSpecIds((staff.specializations || []).map((s) => s.id));
+    }
   };
 
   // Buka modal penolakan
@@ -153,7 +161,7 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
         staffId: approveModalStaff.id,
         decision: "aktif",
         staffRole: selectedRole,
-        verifiedSpecIds: selectedSpecIds,
+        verifiedSpecIds: selectedRole === "dokter" ? selectedSpecIds : [],
       });
 
       if (!res.success) {
