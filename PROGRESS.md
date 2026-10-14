@@ -33,10 +33,8 @@
 | Penambahan Tinggi Panel Chat ke 605px & Posisi Presisi | SELESAI | 9cb2c25 | Tinggi panel ditambah 25px menjadi h-[605px] agar lebih lega, posisi disesuaikan ke bottom-[70px] dengan max-h-[calc(100vh-168px)] untuk jarak aman dari navbar dan launcher. Ukuran/posisi kapsul launcher (bottom-3 right-5) dan lebar panel dipertahankan utuh. Lint 0 error, build exit 0. |
 | Perbaikan Pendaftaran Nakes (Faskes Aktif) | SELESAI | ee42642 | Memperbaiki galat faskes tidak aktif pada pendaftaran nakes via RPC get_active_facility (SECURITY DEFINER) dan perbaikan record unassigned v_inv pada register_facility_staff. Uji impersonasi SQL lolos 100%, lint 0 error, build exit 0. |
 | Perbaikan Pendaftaran Verifikator (Kecamatan & Dinas Sosial) | SELESAI | bfd1748 | Memperbaiki validasi kondisional VerifikatorSchema di pendaftaran.ts, normalisasi subperan di validateStep & render RegionCombobox, serta penyesuaian pemetaan error di form-helpers.ts. Uji validasi 8 skenario lolos 100%, lint 0 error, build exit 0. |
-| Perbaikan Portal Faskes, Identitas Akun & Otorisasi | SELESAI | a10171d | Eliminasi banner simulasi & identitas demo palsu pada portal faskes, integrasi autentikasi nyata Supabase di app/portal/[peran]/[subperan]/page.tsx, penegakan peran Admin Fasilitas vs Dokter Spesialis vs Staf, isolasi tombol Buat Rujukan hanya untuk dokter aktif, penyelarasan Navbar dengan LogoutButton resmi desktop/mobile dan customMenuItems ber-href nyata, penguncian rekam medis hanya bagi dokter DPJP, uji impersonasi SQL dokter & admin lolos 100%. Lint 0 error/0 warning, build Next.js 16 exit 0. |
-
-
-
+| Pengetatan Guard DPJP Rujukan | SELESAI | 82af17d | Pengetatan trigger guard_referrals pada UPDATE untuk memverifikasi dokter spesialis DPJP (destination_doctor_id) wajib terdaftar sebagai dokter aktif di RS tujuan. Mencegah penugasan dokter lintas fasilitas. Uji SQL impersonasi lolos 100%. |
+| Verifikasi SKTM & E2E Token Rekam Medis | SELESAI | [pending] | Audit & pengujian lengkap alur verifikasi penjaminan daerah / SKTM (pengajuan pasien -> antrean verifikator berwilayah -> validasi penolakan berakar alasan -> persetujuan -> tercermin di rujukan masuk RS), penjadwalan DPJP spesialis RS (pembersihan penugasan saat tanpa dokter tertentu), penonaktifan overload legacy 5-param add_medical_record tanpa token, dan verifikasi interoperabilitas token rekam medis PDP 6-digit end-to-end (dinkes diblokir, salah token dicatat & dikunci, buka/tulis sukses, pencabutan token seketika). Uji impersonasi SQL 100% lolos. |
 
 ---
 

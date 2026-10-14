@@ -267,7 +267,7 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
       action: actionType,
       catatan: actionNotes.trim() || undefined,
       jadwalPemeriksaan: actionSchedule ? new Date(actionSchedule).toISOString() : undefined,
-      destinationDoctorId: selectedDoctorStaffId ? selectedDoctorStaffId : undefined,
+      destinationDoctorId: selectedDoctorStaffId ? selectedDoctorStaffId : null,
     });
 
     setProcessingAction(false);
