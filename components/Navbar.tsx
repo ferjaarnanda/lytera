@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { RolePickerDialog } from "@/components/RolePickerDialog";
+import { LogoutButton } from "@/components/LogoutButton";
 
 export type NavbarVariant =
   | "landing"
@@ -26,6 +27,7 @@ export interface NavbarProps {
   onItemClick?: (item: string) => void;
   className?: string;
   forceGlass?: boolean;
+  customMenuItems?: { label: string; href?: string }[];
 }
 
 // Konfigurasi item menu per varian peran
@@ -66,17 +68,6 @@ const VARIANT_MENUS: Record<NavbarVariant, { label: string; href?: string }[]> =
   ],
 };
 
-const DEFAULT_FACILITIES: Record<NavbarVariant, string | undefined> = {
-  landing: undefined,
-  pasien: undefined,
-  "dokter-puskesmas": "Puskesmas Sukamaju",
-  "rumah-sakit": "RSUD Kartika Husada",
-  apoteker: "Instalasi Farmasi RSUD",
-  "admin-faskes": "Klinik Pratama Sehat",
-  verifikator: "Kelurahan Sukamaju • Verifikator",
-  dinkes: "Dinas Kesehatan Kab/Kota",
-};
-
 export const Navbar: React.FC<NavbarProps> = ({
   variant = "landing",
   activeItem,
@@ -88,6 +79,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onItemClick,
   className = "",
   forceGlass = false,
+  customMenuItems,
 }) => {
   const headerRef = useRef<HTMLElement>(null);
   const isLanding = variant === "landing";
@@ -183,13 +175,14 @@ export const Navbar: React.FC<NavbarProps> = ({
     };
   }, [forceGlass, isLanding]);
 
-  const menuItems = VARIANT_MENUS[variant] || VARIANT_MENUS.landing;
+  const menuItems = customMenuItems || VARIANT_MENUS[variant] || VARIANT_MENUS.landing;
   const currentActive = activeItem || menuItems[0]?.label;
-  const currentFacility = facilityName ?? DEFAULT_FACILITIES[variant];
+  const currentFacility = facilityName;
 
   // Inisial avatar
-  const avatarInitials = userName
-    .split(" ")
+  const avatarInitials = (userName || "U")
+    .trim()
+    .split(/\s+/)
     .map((w) => w[0])
     .join("")
     .slice(0, 2)
@@ -378,9 +371,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                         {userName}
                       </span>
                       <span className="text-[11px] text-slate-400">
-                        {userRole || (variant === "pasien" ? "Pasien Mandiri" : "Tenaga Medis")}
+                        {userRole || (variant === "pasien" ? "Pasien" : "Petugas")}
                       </span>
                     </div>
+                  </div>
+
+                  {/* Tombol Keluar resmi di navigasi akun */}
+                  <div className="hidden sm:block pl-2 border-l border-slate-200">
+                    <LogoutButton className="px-3 py-1.5 rounded-full border border-[#E2E8F0] bg-white/80 text-[11px] font-semibold text-[#0F3040] hover:bg-[#FDECEA] hover:text-[#B3261E] hover:border-[#B3261E]/30 transition-colors shadow-2xs inline-flex items-center gap-1" />
                   </div>
                 </div>
               )}
@@ -437,7 +435,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
 
-            {variant === "landing" && (
+            {variant === "landing" ? (
               <div className="flex flex-col gap-2.5 pt-4 border-t border-[#E2E8F0]">
                 <button
                   onClick={() => {
@@ -457,6 +455,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   Daftar
                 </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2.5 pt-4 border-t border-[#E2E8F0]">
+                {currentFacility && (
+                  <div className="px-3 py-2 rounded-xl bg-slate-50 text-xs font-medium text-slate-600">
+                    <span className="font-semibold block text-[#0F3040]">{currentFacility}</span>
+                    <span>{userName} &bull; {userRole || "Staf"}</span>
+                  </div>
+                )}
+                <LogoutButton className="w-full py-2.5 rounded-[12px] border border-[#B3261E]/30 text-[#B3261E] text-sm font-semibold hover:bg-[#FDECEA] transition-colors inline-flex items-center justify-center gap-2" />
               </div>
             )}
           </div>

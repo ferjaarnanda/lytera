@@ -21,8 +21,9 @@ import {
   ShieldCheck,
   AlertTriangle,
 } from "lucide-react";
-import { Navbar, NavbarVariant } from "@/components/Navbar";
+import { Navbar } from "@/components/Navbar";
 import { Reveal } from "@/components/Reveal";
+import { createClient } from "@/lib/supabase/client";
 import {
   getAdminFacilityStaffAction,
   reviewFacilityStaffAction,
@@ -77,6 +78,7 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
   // State data
   const [loading, setLoading] = useState(true);
   const [facility, setFacility] = useState<FacilityAdminInfo | null>(null);
+  const [adminName, setAdminName] = useState<string>("");
   const [staffList, setStaffList] = useState<StaffItem[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -101,6 +103,19 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
     setLoading(true);
     setErrorMessage(null);
     try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (prof?.full_name) {
+          setAdminName(prof.full_name);
+        }
+      }
+
       const res = await getAdminFacilityStaffAction();
       if (!res.success) {
         setErrorMessage(res.error || "Gagal memuat data staf fasilitas.");
@@ -264,21 +279,22 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
   const countMenunggu = staffList.filter((s) => s.status === "menunggu").length;
   const countAktif = staffList.filter((s) => s.status === "aktif").length;
 
-  let navVariant: NavbarVariant = "landing";
-  if (peran === "fasilitas") {
-    if (subperan === "rumah-sakit") navVariant = "rumah-sakit";
-    else if (subperan === "apotek") navVariant = "apoteker";
-    else navVariant = "dokter-puskesmas";
-  }
+  const customNavItems = [
+    { label: "Ringkasan", href: `/portal/${peran}/${subperan}` },
+    { label: "Dokter & Petugas", href: `/portal/${peran}/${subperan}/staf` },
+    { label: "Profil Faskes", href: `/portal/${peran}/${subperan}#profil-fasilitas` },
+  ];
 
   return (
     <div className="min-h-screen text-[#464858]" data-navbar-tone="light" data-portal-wallpaper="true">
       <Navbar
-        variant={navVariant}
+        variant="admin-faskes"
         facilityName={facility?.name || `Fasilitas (${subRoleMeta?.name || ""})`}
-        userName="Admin Fasilitas"
-        userRole="Administrator"
+        userName={adminName || "Admin Fasilitas"}
+        userRole="Admin Fasilitas"
         forceGlass={true}
+        customMenuItems={customNavItems}
+        activeItem="Dokter & Petugas"
       />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-16">

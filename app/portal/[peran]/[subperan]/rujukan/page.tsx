@@ -100,6 +100,7 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
     facilityName: string;
     staffName: string;
     staffRole: string;
+    isAdmin: boolean;
   } | null>(null);
 
   const [referrals, setReferrals] = useState<ReferralRow[]>([]);
@@ -152,16 +153,18 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
         let facId = staff?.facility_id;
         let facName = (staff?.facilities as unknown as { id: string; name: string } | null)?.name;
         let staffRole = staff?.staff_role || "Petugas";
+        let isAdmin = false;
 
-        if (!facId) {
-          // Fallback: periksa apakah pengguna adalah admin terdaftar dari fasilitas
-          const { data: adminFac } = await supabase
-            .from("facilities")
-            .select("id, name")
-            .eq("admin_id", user.id)
-            .maybeSingle();
+        // Cek apakah user adalah admin faskes
+        const { data: adminFac } = await supabase
+          .from("facilities")
+          .select("id, name")
+          .eq("admin_id", user.id)
+          .maybeSingle();
 
-          if (adminFac) {
+        if (adminFac) {
+          isAdmin = true;
+          if (!facId) {
             facId = adminFac.id;
             facName = adminFac.name;
             staffRole = "Admin Faskes";
@@ -177,8 +180,9 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
         setFacilityInfo({
           facilityId: facId,
           facilityName: facName || "Fasilitas Kesehatan",
-          staffName: profile?.full_name || "Tenaga Medis",
+          staffName: profile?.full_name || (staffRole === "Admin Faskes" ? "Admin Fasilitas" : "Tenaga Medis"),
           staffRole: staffRole,
+          isAdmin,
         });
 
         // Ambil data rujukan via RPC list_facility_referrals
@@ -329,14 +333,51 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
     return <Badge variant="netral">Elektif</Badge>;
   };
 
+  const isDoctor = facilityInfo?.staffRole === "dokter";
+  const isAdmin = facilityInfo?.staffRole === "Admin Faskes" || (facilityInfo?.isAdmin && !isDoctor);
+
+  const navVariant = isAdmin
+    ? "admin-faskes"
+    : isHospital
+    ? "rumah-sakit"
+    : "dokter-puskesmas";
+
+  const userRoleLabel = isAdmin
+    ? "Admin Fasilitas"
+    : isDoctor
+    ? "Dokter"
+    : facilityInfo?.staffRole === "apoteker"
+    ? "Apoteker"
+    : "Petugas Administrasi";
+
+  const customNavItems = isAdmin
+    ? [
+        { label: "Ringkasan", href: `/portal/${peran}/${subperan}` },
+        { label: "Dokter & Petugas", href: `/portal/${peran}/${subperan}/staf` },
+        { label: isHospital ? "Rujukan Masuk" : "Daftar Rujukan", href: `/portal/${peran}/${subperan}/rujukan` },
+      ]
+    : isHospital
+    ? [
+        { label: "Beranda", href: `/portal/${peran}/${subperan}` },
+        { label: "Rujukan Masuk", href: `/portal/${peran}/${subperan}/rujukan` },
+        { label: "Jadwal Saya", href: `/portal/${peran}/${subperan}/rujukan?tab=jadwal_saya` },
+      ]
+    : [
+        { label: "Beranda", href: `/portal/${peran}/${subperan}` },
+        ...(isDoctor ? [{ label: "Buat Rujukan", href: `/portal/${peran}/${subperan}/rujukan/baru` }] : []),
+        { label: "Riwayat Rujukan", href: `/portal/${peran}/${subperan}/rujukan` },
+      ];
+
   return (
     <div className="min-h-screen text-[#464858]" data-navbar-tone="light" data-portal-wallpaper="true">
       <Navbar
-        variant="dokter-puskesmas"
+        variant={navVariant}
         facilityName={facilityInfo?.facilityName}
-        userName={facilityInfo?.staffName || "Tenaga Medis"}
-        userRole={isHospital ? "Rumah Sakit" : "Fasilitas Tingkat 1"}
+        userName={facilityInfo?.staffName || "Pengguna"}
+        userRole={userRoleLabel}
         forceGlass={true}
+        customMenuItems={customNavItems}
+        activeItem={isHospital ? "Rujukan Masuk" : "Riwayat Rujukan"}
       />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-20">
@@ -360,7 +401,7 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
               <RotateCw className="w-4 h-4" />
             </button>
 
-            {!isHospital && (
+            {!isHospital && isDoctor && (
               <Link
                 href={`/portal/${peran}/${subperan}/rujukan/baru`}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold bg-[#8F5A4E] text-white hover:bg-[#A56F63] transition-colors shadow-sm"
