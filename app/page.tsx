@@ -328,7 +328,7 @@ export default function HomePage() {
                           Dinkes Kota/Kab
                         </span>
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5EE] text-slate-700">
-                          Provinsi
+                          Dinkes Provinsi
                         </span>
                       </div>
                     </div>
