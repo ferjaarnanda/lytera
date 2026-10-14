@@ -35,6 +35,7 @@
 | Perbaikan Pendaftaran Verifikator (Kecamatan & Dinas Sosial) | SELESAI | bfd1748 | Memperbaiki validasi kondisional VerifikatorSchema di pendaftaran.ts, normalisasi subperan di validateStep & render RegionCombobox, serta penyesuaian pemetaan error di form-helpers.ts. Uji validasi 8 skenario lolos 100%, lint 0 error, build exit 0. |
 | Pengetatan Guard DPJP Rujukan | SELESAI | 82af17d | Pengetatan trigger guard_referrals pada UPDATE untuk memverifikasi dokter spesialis DPJP (destination_doctor_id) wajib terdaftar sebagai dokter aktif di RS tujuan. Mencegah penugasan dokter lintas fasilitas. Uji SQL impersonasi lolos 100%. |
 | Verifikasi SKTM & E2E Token Rekam Medis | SELESAI | f20e811 | Audit & pengujian lengkap alur verifikasi penjaminan daerah / SKTM (pengajuan pasien -> antrean verifikator berwilayah -> validasi penolakan berakar alasan -> persetujuan -> tercermin di rujukan masuk RS), penjadwalan DPJP spesialis RS (pembersihan penugasan saat tanpa dokter tertentu), penonaktifan overload legacy 5-param add_medical_record tanpa token, dan verifikasi interoperabilitas token rekam medis PDP 6-digit end-to-end (dinkes diblokir, salah token dicatat & dikunci, buka/tulis sukses, pencabutan token seketika). Uji impersonasi SQL 100% lolos. |
+| Navbar Admin Faskes & Identitas Akun | SELESAI | [commit-hash] | Penyelarasan urutan navbar admin faskes ke Ringkasan -> Dokter & Petugas -> Daftar Rujukan di semua halaman (page, staf, rujukan). Identitas admin: "Admin" di baris atas dan nama fasilitas di baris bawah. Identitas dokter: nama dokter di baris atas dan nama fasilitas di baris bawah. Penghapusan tombol cokelat "Kembali ke Portal Puskesmas" di halaman staf. Lint 0 error, build exit 0. |
 
 ---
 
@@ -560,6 +561,40 @@
 - [x] **Kualitas Kode, Linting & Build**:
   - `npm run lint`: **0 error**, 2 warnings (test script unused vars).
   - `npm run build`: **Exit 0**, seluruh 19 rute Next.js 16 berhasil dikompilasi tanpa galat.
+
+---
+
+### 36. Perbaikan Navbar Admin Faskes, Urutan Navigasi & Identitas Akun (Selesai)
+- [x] **Akar Masalah yang Teridentifikasi**:
+  1. *Ketidakkonsistenan Menu pada Halaman Staf*:
+     - Pada `app/portal/[peran]/[subperan]/staf/page.tsx`, `customNavItems` mendefinisikan menu ketiga sebagai `Profil Faskes` (`#profil-fasilitas`), berbeda dari dashboard utama yang mengarahkan ke rujukan. Default `VARIANT_MENUS["admin-faskes"]` di `components/Navbar.tsx` juga masih menggunakan item lama (`Dokter & Petugas`, `Kuota & Jadwal`, `Profil Faskes`).
+  2. *Penanda Aktif (activeItem) Tidak Sinkron*:
+     - Di `app/portal/[peran]/[subperan]/page.tsx`, `activeItem` di-hardcode `"Ringkasan"`, dan di `rujukan/page.tsx` diisi `"Riwayat Rujukan"` / `"Rujukan Masuk"` sehingga saat admin membuka rujukan, menu `"Daftar Rujukan"` tidak menyala aktif.
+  3. *Tampilan Identitas Akun*:
+     - Sebelumnya admin fasilitas menampilkan nama pribadi dari tabel `profiles` (misal `"ajudan"`), bukan label peran `"Admin"`, dan nama fasilitas berada di pill terpisah yang terduplikasi.
+  4. *Tombol Navigasi Cokelat*:
+     - Terdapat link tombol cokelat `Kembali ke Portal {subRoleMeta?.name}` di `staf/page.tsx` yang membingungkan dan redundant dengan navbar.
+- [x] **Solusi & Perubahan yang Diterapkan**:
+  1. *Standarisasi Menu Admin Faskes*:
+     - Urutan menu untuk admin fasilitas di semua halaman dan subhalaman (Klinik, Puskesmas, Rumah Sakit) distandarisasi menjadi:
+       1. **Ringkasan** (`/portal/[peran]/[subperan]`)
+       2. **Dokter & Petugas** (`/portal/[peran]/[subperan]/staf`)
+       3. **Daftar Rujukan** (`/portal/[peran]/[subperan]/rujukan`)
+     - `VARIANT_MENUS["admin-faskes"]` di `components/Navbar.tsx` diperbarui sesuai urutan ini.
+  2. *Penanda Menu Aktif (activeItem)*:
+     - Dashboard (`page.tsx`): `activeItem={isAdmin ? "Ringkasan" : "Beranda"}`.
+     - Dokter & Petugas (`staf/page.tsx`): `activeItem="Dokter & Petugas"`.
+     - Daftar Rujukan (`rujukan/page.tsx`): `activeItem={isAdmin ? "Daftar Rujukan" : (isHospital ? "Rujukan Masuk" : "Riwayat Rujukan")}`.
+  3. *Identitas Akun Terstandarisasi*:
+     - Admin fasilitas: Baris atas menampilkan **"Admin"** (bukan nama pribadi), baris bawah menampilkan **nama fasilitas yang terhubung** (dari Supabase `facilities`).
+     - Dokter: Baris atas menampilkan **nama dokter** (dari Supabase `profiles.full_name`), baris bawah menampilkan **nama fasilitas** (dari Supabase `facilities`).
+     - Menghindari duplikasi pill fasilitas di samping avatar jika nama fasilitas sudah tampil di baris bawah.
+  4. *Pembersihan Tombol Tambahan*:
+     - Tombol cokelat *"Kembali ke Portal Puskesmas"* di `staf/page.tsx` dihapus total; navigasi dilakukan sepenuhnya melalui Navbar dengan tombol Keluar fungsional.
+- [x] **Pengujian & Validasi**:
+  - `npm run lint`: **0 error**, 2 warnings (test script non-produksi).
+  - `npm run build`: **Exit 0**, seluruh 19 rute Next.js 16 berhasil dikompilasi tanpa galat.
+  - Verifikasi file berubah: Tepat 4 file (`Navbar.tsx`, `page.tsx`, `staf/page.tsx`, `rujukan/page.tsx`).
 
 ---
 

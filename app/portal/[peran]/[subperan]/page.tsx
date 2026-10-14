@@ -311,7 +311,7 @@ export default function PortalSimulasiPage({ params }: PageProps) {
         { label: "Ringkasan", href: `/portal/${peran}/${subperan}` },
         { label: "Dokter & Petugas", href: `/portal/${peran}/${subperan}/staf` },
         {
-          label: isHospital ? "Rujukan Masuk" : "Daftar Rujukan",
+          label: "Daftar Rujukan",
           href: `/portal/${peran}/${subperan}/rujukan`,
         },
       ]
@@ -397,11 +397,11 @@ export default function PortalSimulasiPage({ params }: PageProps) {
       <Navbar
         variant={navVariant}
         facilityName={facility?.name || "Fasilitas Kesehatan"}
-        userName={profileName}
-        userRole={userRoleLabel}
+        userName={isAdmin ? "Admin" : profileName}
+        userRole={facility?.name || userRoleLabel}
         forceGlass={true}
         customMenuItems={customNavItems}
-        activeItem="Ringkasan"
+        activeItem={isAdmin ? "Ringkasan" : "Beranda"}
       />
 
       {/* Main Container */}

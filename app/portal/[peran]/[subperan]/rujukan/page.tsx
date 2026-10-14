@@ -354,7 +354,7 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
     ? [
         { label: "Ringkasan", href: `/portal/${peran}/${subperan}` },
         { label: "Dokter & Petugas", href: `/portal/${peran}/${subperan}/staf` },
-        { label: isHospital ? "Rujukan Masuk" : "Daftar Rujukan", href: `/portal/${peran}/${subperan}/rujukan` },
+        { label: "Daftar Rujukan", href: `/portal/${peran}/${subperan}/rujukan` },
       ]
     : isHospital
     ? [
@@ -373,22 +373,24 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
       <Navbar
         variant={navVariant}
         facilityName={facilityInfo?.facilityName}
-        userName={facilityInfo?.staffName || "Pengguna"}
-        userRole={userRoleLabel}
+        userName={isAdmin ? "Admin" : (facilityInfo?.staffName || "Pengguna")}
+        userRole={facilityInfo?.facilityName || userRoleLabel}
         forceGlass={true}
         customMenuItems={customNavItems}
-        activeItem={isHospital ? "Rujukan Masuk" : "Riwayat Rujukan"}
+        activeItem={isAdmin ? "Daftar Rujukan" : (isHospital ? "Rujukan Masuk" : "Riwayat Rujukan")}
       />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-20">
         {/* Navigasi Atas & Aksi */}
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <Link
-            href={`/portal/${peran}/${subperan}`}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-white/90 hover:text-white transition-colors"
-          >
-            ← Kembali ke Portal {facilityInfo?.facilityName}
-          </Link>
+          {!isAdmin ? (
+            <Link
+              href={`/portal/${peran}/${subperan}`}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-white/90 hover:text-white transition-colors"
+            >
+              ← Kembali ke Portal {facilityInfo?.facilityName}
+            </Link>
+          ) : <div />}
 
           <div className="flex items-center gap-3">
             <button

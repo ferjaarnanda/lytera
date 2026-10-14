@@ -56,9 +56,9 @@ const VARIANT_MENUS: Record<NavbarVariant, { label: string; href?: string }[]> =
   ],
   apoteker: [{ label: "E-Resep" }, { label: "Riwayat" }],
   "admin-faskes": [
+    { label: "Ringkasan" },
     { label: "Dokter & Petugas" },
-    { label: "Kuota & Jadwal" },
-    { label: "Profil Faskes" },
+    { label: "Daftar Rujukan" },
   ],
   verifikator: [{ label: "Verifikasi" }, { label: "Riwayat" }],
   dinkes: [
@@ -179,8 +179,21 @@ export const Navbar: React.FC<NavbarProps> = ({
   const currentActive = activeItem || menuItems[0]?.label;
   const currentFacility = facilityName;
 
+  // Identitas akun khusus faskes (Admin & Dokter)
+  const isAdminFaskes = variant === "admin-faskes";
+  const isDoctorRole = variant === "dokter-puskesmas" || variant === "rumah-sakit";
+  const isFaskesPortal = isAdminFaskes || isDoctorRole;
+
+  // Baris atas: Admin fasilitas menampilkan "Admin" (bukan nama pribadi), Dokter menampilkan nama dokter
+  const displayTopName = isAdminFaskes ? "Admin" : (userName || "Pengguna");
+
+  // Baris bawah: Admin & Dokter menampilkan nama fasilitas yang terhubung
+  const displayBottomRole = isFaskesPortal
+    ? (facilityName || userRole || "Fasilitas Kesehatan")
+    : (userRole || (variant === "pasien" ? "Pasien" : "Petugas"));
+
   // Inisial avatar
-  const avatarInitials = (userName || "U")
+  const avatarInitials = (displayTopName || "U")
     .trim()
     .split(/\s+/)
     .map((w) => w[0])
@@ -345,7 +358,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               ) : (
                 /* Profil Pengguna untuk varian portal */
                 <div className="flex items-center gap-3">
-                  {currentFacility && (
+                  {currentFacility && !isFaskesPortal && (
                     <div
                       className={`hidden xl:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-300 ${
                         isDarkTone
@@ -368,10 +381,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                           isDarkTone ? "text-white" : "text-[#0A2230]"
                         }`}
                       >
-                        {userName}
+                        {displayTopName}
                       </span>
                       <span className="text-[11px] text-slate-400">
-                        {userRole || (variant === "pasien" ? "Pasien" : "Petugas")}
+                        {displayBottomRole}
                       </span>
                     </div>
                   </div>
@@ -458,12 +471,17 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             ) : (
               <div className="flex flex-col gap-2.5 pt-4 border-t border-[#E2E8F0]">
-                {currentFacility && (
+                {isFaskesPortal ? (
+                  <div className="px-3 py-2 rounded-xl bg-slate-50 text-xs font-medium text-slate-600">
+                    <span className="font-semibold block text-[#0F3040]">{displayTopName}</span>
+                    <span>{displayBottomRole}</span>
+                  </div>
+                ) : currentFacility ? (
                   <div className="px-3 py-2 rounded-xl bg-slate-50 text-xs font-medium text-slate-600">
                     <span className="font-semibold block text-[#0F3040]">{currentFacility}</span>
                     <span>{userName} &bull; {userRole || "Staf"}</span>
                   </div>
-                )}
+                ) : null}
                 <LogoutButton className="w-full py-2.5 rounded-[12px] border border-[#B3261E]/30 text-[#B3261E] text-sm font-semibold hover:bg-[#FDECEA] transition-colors inline-flex items-center justify-center gap-2" />
               </div>
             )}

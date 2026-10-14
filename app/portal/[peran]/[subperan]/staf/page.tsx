@@ -4,7 +4,6 @@ import React, { use, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   Users,
   CheckCircle2,
   XCircle,
@@ -23,7 +22,6 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Reveal } from "@/components/Reveal";
-import { createClient } from "@/lib/supabase/client";
 import {
   getAdminFacilityStaffAction,
   reviewFacilityStaffAction,
@@ -78,7 +76,6 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
   // State data
   const [loading, setLoading] = useState(true);
   const [facility, setFacility] = useState<FacilityAdminInfo | null>(null);
-  const [adminName, setAdminName] = useState<string>("");
   const [staffList, setStaffList] = useState<StaffItem[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -103,19 +100,6 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
     setLoading(true);
     setErrorMessage(null);
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: prof } = await supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("id", user.id)
-          .maybeSingle();
-        if (prof?.full_name) {
-          setAdminName(prof.full_name);
-        }
-      }
-
       const res = await getAdminFacilityStaffAction();
       if (!res.success) {
         setErrorMessage(res.error || "Gagal memuat data staf fasilitas.");
@@ -282,7 +266,7 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
   const customNavItems = [
     { label: "Ringkasan", href: `/portal/${peran}/${subperan}` },
     { label: "Dokter & Petugas", href: `/portal/${peran}/${subperan}/staf` },
-    { label: "Profil Faskes", href: `/portal/${peran}/${subperan}#profil-fasilitas` },
+    { label: "Daftar Rujukan", href: `/portal/${peran}/${subperan}/rujukan` },
   ];
 
   return (
@@ -290,33 +274,25 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
       <Navbar
         variant="admin-faskes"
         facilityName={facility?.name || `Fasilitas (${subRoleMeta?.name || ""})`}
-        userName={adminName || "Admin Fasilitas"}
-        userRole="Admin Fasilitas"
+        userName="Admin"
+        userRole={facility?.name || "Fasilitas Kesehatan"}
         forceGlass={true}
         customMenuItems={customNavItems}
         activeItem="Dokter & Petugas"
       />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-16">
-        {/* Navigation Breadcrumb / Back */}
-        <Reveal>
-          <div className="mb-6 flex items-center justify-between">
-            <Link
-              href={`/portal/${peran}/${subperan}`}
-              className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-[#8F5A4E] hover:text-[#A56F63] transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Kembali ke Portal {subRoleMeta?.name}</span>
-            </Link>
-
-            {facility && (
+        {/* Indikator Fasilitas */}
+        {facility && (
+          <Reveal>
+            <div className="mb-6 flex items-center justify-end">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#EDF7F2] text-[#1B6B4D]">
                 <span className="w-2 h-2 rounded-full bg-[#1B6B4D]" />
                 {facility.name} ({facility.type})
               </span>
-            )}
-          </div>
-        </Reveal>
+            </div>
+          </Reveal>
+        )}
 
         {/* Page Header */}
         <Reveal delayMs={50}>
