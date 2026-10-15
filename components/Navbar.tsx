@@ -185,10 +185,15 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isDoctorRole = variant === "dokter-puskesmas" || variant === "rumah-sakit";
   const isFaskesPortal = isAdminFaskes || isDoctorRole;
 
-  // Baris atas: Admin fasilitas menampilkan "Admin" (bukan nama pribadi), Dokter menampilkan nama dokter
-  const displayTopName = isAdminFaskes ? "Admin" : (userName || "Pengguna");
+  // Baris atas: Tampilkan nama pengguna nyata jika tersedia, fallback sesuai peran jika kosong
+  const displayTopName =
+    userName && userName.trim() && userName !== "Pengguna"
+      ? userName
+      : isAdminFaskes
+      ? "Admin Fasilitas"
+      : "Pengguna";
 
-  // Baris bawah: Admin & Dokter menampilkan nama fasilitas yang terhubung
+  // Baris bawah: Admin & Dokter menampilkan nama fasilitas yang terhubung atau label peran
   const displayBottomRole = isFaskesPortal
     ? (facilityName || userRole || "Fasilitas Kesehatan")
     : (userRole || (variant === "pasien" ? "Pasien" : "Petugas"));

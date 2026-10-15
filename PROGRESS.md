@@ -678,6 +678,40 @@
   - `npm run build`: **Exit 0**, seluruh 21 rute Next.js 16 berhasil dikompilasi tanpa galat.
   - Verifikasi batas sesi: Tepat 2 file kode berubah (`app/actions/rujukan.ts`, `app/portal/[peran]/[subperan]/rujukan/page.tsx`).
 
+### 43. Perbaikan Kritis: Sinkronisasi Verifikasi Faskes Dinkes, Rekonsiliasi Profil Admin, dan Identitas Navbar (Selesai)
+- [x] **Akar Masalah**:
+  - Fasilitas kesehatan (seperti *Rumah Sakit Kucing Garong*) telah disetujui di portal Dinkes (`facilities.status = 'aktif'`, dengan histori di `registration_reviews`), namun halaman Rujukan Masuk tetap menampilkan akun menunggu verifikasi dan navbar menampilkan identitas generik *"Pengguna — Petugas Administrasi"*.
+  - **Penyebab Forensik**:
+    1. Server Action `verifikasiFasilitasAction` sebelumnya hanya memperbarui tabel `facilities` dan mencatat review ke `registration_reviews`, tanpa menyinkronkan status profil akun admin terkait (`profiles.status` pada `facilities.admin_id`).
+    2. RLS tabel `profiles` (`profiles_update_own`) melarang pembaruan data pengguna lain secara langsung oleh akun Dinkes, sehingga sinkronisasi lintas tabel memerlukan fungsi RPC transaksional berotorisasi `SECURITY DEFINER`.
+    3. Halaman rujukan memblokir pemuatan jika `profiles.status !== 'aktif'`. Akibatnya, `facilityInfo` tetap `null`, sehingga Navbar jatuh ke fallback default (`userName = "Pengguna"` dan `userRole = "Petugas Administrasi"`).
+    4. Komponen `Navbar.tsx` dan pemanggilnya sebelumnya memaksakan `userName = "Admin"` untuk peran admin faskes alih-alih menampilkan nama profil asli admin fasilitas.
+- [x] **Perubahan Terapan**:
+  1. *Migrasi Database & RPC Transaksional (`supabase/migrations/20261015193000_sync_facility_verification_and_admin_profiles.sql`)*:
+     - Membuat RPC `verify_facility_registration(p_facility_id, p_decision, p_notes)` dengan `SECURITY DEFINER` dan `search_path = public, pg_temp`.
+     - Memvalidasi wewenang akun Dinkes aktif (`role = 'dinkes'` dan `status = 'aktif'`).
+     - Memperbarui `facilities.status` menjadi `'aktif'` atau `'ditolak'`, menyinkronkan `profiles.status` milik admin fasilitas secara otomatis dan aman (hanya akun yang ber-role `'fasilitas'`), serta mencatat riwayat keputusan ke `registration_reviews` dalam satu transaksi ACID.
+     - Melakukan rekonsiliasi data historis secara hati-hati: 10 profil admin fasilitas yang memiliki bukti keputusan sah `'disetujui'` diaktifkan, dan 1 profil admin fasilitas yang ditolak disinkronkan menjadi `'ditolak'`. Fasilitas yang belum diverifikasi tetap berstatus `'menunggu'`.
+  2. *Penyelarasan Server Action Dinkes (`app/actions/dinkes.ts`)*:
+     - `verifikasiFasilitasAction` kini mendelegasikan pembaruan status ke RPC `verify_facility_registration` sehingga persetujuan dan penolakan di masa mendatang selalu sinkron 100%.
+  3. *Perbaikan Kontrak Identitas Navbar (`components/Navbar.tsx`)*:
+     - Menghapus pemaksaan teks statis `"Admin"` pada `displayTopName`. Navbar kini memprioritaskan nama asli pengguna (`userName`), dan hanya menggunakan fallback `"Admin Fasilitas"` jika nama kosong.
+     - Menyajikan nama fasilitas atau label peran pada `displayBottomRole` secara presisi.
+  4. *Penyelarasan Pemanggil Navbar Portal & Rujukan (`app/portal/[peran]/[subperan]/rujukan/page.tsx` & `page.tsx`)*:
+     - Menyimpan state profil lokal dari sesi autentikasi awal agar identitas pengguna tidak jatuh ke nilai generik saat pemuatan atau saat faskes masih diproses.
+     - Mengoper nama profil nyata pengguna (`profileName` / `facilityInfo?.staffName`) dan label peran yang tepat (`"Admin Rumah Sakit"` atau `"Admin Fasilitas"`).
+- [x] **Pengujian & Validasi**:
+  - **Uji Impersonasi SQL Supabase (RLS & Triggers)**:
+    - *Test 1 (Admin RS Kucing Garong `0900ec3d`)*: `prof_status = 'aktif'`, `fac_status = 'aktif'`, `list_facility_referrals('masuk')` berhasil membaca 1 berkas rujukan masuk (`TEST_1_SUKSES`).
+    - *Test 2 (Fasilitas Menunggu `3c2f8304`)*: `prof_status = 'menunggu'`, `fac_status = 'menunggu'`, `ref_count = 0` (`TEST_2_SUKSES`).
+    - *Test 3 (Fasilitas Ditolak `171fb145`)*: `prof_status = 'ditolak'`, `fac_status = 'ditolak'`, `ref_count = 0` (`TEST_3_SUKSES`).
+    - *Test 4 & 5 (Proteksi Lintas Faskes)*: Admin RS Colombia (`4b81bda8`) ditolak memperbarui rujukan milik RS Kucing Garong (`updated_cross_hospital_count = 0`).
+    - *Test 6 (Hak Akses Akun Non-Admin)*: Akun dokter dan pasien terbukti tidak memiliki relasi kepemilikan admin fasilitas (`admin_count = 0`).
+    - *Test 7 (RPC Dinkes Transaksional)*: Eksekusi RPC `verify_facility_registration` oleh Dinkes berhasil mengaktifkan faskes, profil admin, dan mencatat review secara atomik. Pemanggilan oleh non-Dinkes ditolak seketika oleh database.
+  - **Security Advisor Supabase**: `get_advisors(security)` bersih tanpa kerentanan baru.
+  - `npm run lint`: **0 error**, **0 warning**.
+  - `npm run build`: **Exit 0**, seluruh 21 rute Next.js 16 berhasil dikompilasi secara optimal tanpa galat.
+
 ---
 
 ### Berikutnya

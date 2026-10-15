@@ -102,6 +102,7 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
     staffRole: string;
     isAdmin: boolean;
   } | null>(null);
+  const [currentProfileName, setCurrentProfileName] = useState<string | null>(null);
 
   const [referrals, setReferrals] = useState<ReferralRow[]>([]);
   const [reloadKey, setReloadKey] = useState(0);
@@ -146,6 +147,10 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
           .maybeSingle();
 
         if (isCancelled) return;
+
+        if (profile?.full_name) {
+          setCurrentProfileName(profile.full_name);
+        }
 
         if (!profile) {
           setErrorMsg("Data profil pengguna tidak ditemukan.");
@@ -455,7 +460,9 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
     : "dokter-puskesmas";
 
   const userRoleLabel = isAdmin
-    ? "Admin Fasilitas"
+    ? isHospital
+      ? "Admin Rumah Sakit"
+      : "Admin Fasilitas"
     : isDoctor
     ? "Dokter"
     : facilityInfo?.staffRole === "apoteker"
@@ -485,7 +492,7 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
       <Navbar
         variant={navVariant}
         facilityName={facilityInfo?.facilityName}
-        userName={isAdmin ? "Admin" : (facilityInfo?.staffName || "Pengguna")}
+        userName={facilityInfo?.staffName || currentProfileName || (isAdmin ? "Admin Fasilitas" : "Pengguna")}
         userRole={facilityInfo?.facilityName || userRoleLabel}
         forceGlass={true}
         customMenuItems={customNavItems}

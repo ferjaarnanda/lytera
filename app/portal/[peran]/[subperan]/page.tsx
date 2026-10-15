@@ -290,11 +290,11 @@ export default function PortalSimulasiPage({ params }: PageProps) {
 
   // Tentukan varian dan menu Navbar berdasarkan peran riil
   let navVariant: NavbarVariant = "admin-faskes";
-  let userRoleLabel = "Admin Fasilitas";
+  let userRoleLabel = isHospital ? "Admin Rumah Sakit" : "Admin Fasilitas";
 
   if (isAdmin) {
     navVariant = "admin-faskes";
-    userRoleLabel = "Admin Fasilitas";
+    userRoleLabel = isHospital ? "Admin Rumah Sakit" : "Admin Fasilitas";
   } else if (isDoctor) {
     navVariant = isHospital ? "rumah-sakit" : "dokter-puskesmas";
     userRoleLabel = faskesAccount.profession || "Dokter";
@@ -397,7 +397,7 @@ export default function PortalSimulasiPage({ params }: PageProps) {
       <Navbar
         variant={navVariant}
         facilityName={facility?.name || "Fasilitas Kesehatan"}
-        userName={isAdmin ? "Admin" : profileName}
+        userName={profileName || (isAdmin ? "Admin Fasilitas" : "Pengguna")}
         userRole={facility?.name || userRoleLabel}
         forceGlass={true}
         customMenuItems={customNavItems}

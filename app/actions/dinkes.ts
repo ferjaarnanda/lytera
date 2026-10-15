@@ -101,40 +101,25 @@ export async function verifikasiFasilitasAction(
       };
     }
 
-    // 4. Update status fasilitas kesehatan
-    const nextStatus = decision === "disetujui" ? "aktif" : "ditolak";
-    const { error: updateError } = await supabase
-      .from("facilities")
-      .update({ status: nextStatus })
-      .eq("id", facilityId);
-
-    if (updateError) {
-      return {
-        success: false,
-        error: "Gagal memperbarui status fasilitas: " + updateError.message,
-      };
-    }
-
-    // 5. Insert riwayat keputusan ke tabel registration_reviews
+    // 4. Eksekusi RPC transaksional: verifikasi faskes, sinkronisasi profil admin, dan catat registration_reviews
     const reviewNotes =
       decision === "ditolak"
         ? notes!.trim()
         : notes?.trim() || "Pendaftaran fasilitas kesehatan disetujui oleh Dinas Kesehatan";
 
-    const { error: reviewError } = await supabase
-      .from("registration_reviews")
-      .insert({
-        target_table: "facilities",
-        target_id: facilityId,
-        decision,
-        notes: reviewNotes,
-        reviewed_by: user.id,
-      });
+    const { error: rpcError } = await supabase.rpc(
+      "verify_facility_registration",
+      {
+        p_facility_id: facilityId,
+        p_decision: decision,
+        p_notes: reviewNotes,
+      }
+    );
 
-    if (reviewError) {
+    if (rpcError) {
       return {
         success: false,
-        error: "Status fasilitas diperbarui namun gagal mencatat riwayat verifikasi: " + reviewError.message,
+        error: "Gagal memproses verifikasi fasilitas kesehatan: " + rpcError.message,
       };
     }
 
