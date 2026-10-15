@@ -208,6 +208,24 @@ function isRujukanAktif(status: string): boolean {
   return ["diajukan", "diterima", "dijadwalkan"].includes(status);
 }
 
+function sortRujukanAktif(items: MyReferralItem[]): MyReferralItem[] {
+  return [...items].sort((a, b) => {
+    // 1. Rujukan dijadwalkan diprioritaskan di paling atas
+    if (a.status === "dijadwalkan" && b.status !== "dijadwalkan") return -1;
+    if (b.status === "dijadwalkan" && a.status !== "dijadwalkan") return 1;
+
+    // 2. Jika keduanya dijadwalkan, urutkan berdasarkan jadwal_pemeriksaan terdekat
+    if (a.status === "dijadwalkan" && b.status === "dijadwalkan") {
+      const timeA = a.jadwal_pemeriksaan ? new Date(a.jadwal_pemeriksaan).getTime() : Infinity;
+      const timeB = b.jadwal_pemeriksaan ? new Date(b.jadwal_pemeriksaan).getTime() : Infinity;
+      return timeA - timeB;
+    }
+
+    // 3. Rujukan aktif lainnya berdasarkan tanggal pembuatan terbaru
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Sub-Komponen: Kartu Satu Rujukan
 // ──────────────────────────────────────────────────────────────────────────────
@@ -270,6 +288,12 @@ function RujukanCard({ item, defaultOpen = false }: { item: MyReferralItem; defa
               {item.is_family && (
                 <Badge variant="info">Untuk: {item.subject_name}</Badge>
               )}
+              {item.status === "dijadwalkan" && item.jadwal_pemeriksaan && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#16A34A] bg-[#EDF7F2] px-2 py-0.5 rounded-full border border-[#A8D5BD]">
+                  <CalendarCheck className="w-3 h-3 shrink-0" />
+                  Jadwal: {formatDateTimeIndo(item.jadwal_pemeriksaan)} WIB
+                </span>
+              )}
             </div>
             <span className="text-sm font-bold text-[#0F3040] block truncate">
               {item.destination_name}
@@ -291,6 +315,25 @@ function RujukanCard({ item, defaultOpen = false }: { item: MyReferralItem; defa
       {/* Detail expandable */}
       {open && (
         <div className="px-5 pb-5 border-t border-[#E2E8F0]/70 pt-4 space-y-4">
+          {item.status === "dijadwalkan" && item.jadwal_pemeriksaan && (
+            <div className="p-3.5 rounded-[14px] bg-[#EDF7F2] border border-[#A8D5BD] flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-[#1B6B4D] text-white flex items-center justify-center shrink-0 shadow-xs">
+                <CalendarCheck className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[11px] text-[#1B6B4D] font-bold uppercase tracking-wider block">
+                  Jadwal Pemeriksaan Terkonfirmasi
+                </span>
+                <span className="text-sm font-extrabold text-[#0F3040] block">
+                  {formatDateTimeIndo(item.jadwal_pemeriksaan)} WIB
+                </span>
+                <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                  Harap hadir di {item.destination_name} ({item.poli || "Poli Tujuan"}) 15 menit sebelum jadwal pemeriksaan.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div>
               <span className="text-[11px] text-slate-500 uppercase tracking-wide block">
@@ -302,10 +345,10 @@ function RujukanCard({ item, defaultOpen = false }: { item: MyReferralItem; defa
             </div>
             <div>
               <span className="text-[11px] text-slate-500 uppercase tracking-wide block">
-                Dokter Tujuan
+                Dokter Tujuan (DPJP)
               </span>
               <span className="font-semibold text-[#0F3040]">
-                {item.destination_doctor || "Tanpa dokter tertentu"}
+                {item.destination_doctor || "Ditentukan oleh rumah sakit"}
               </span>
             </div>
             <div>
@@ -316,17 +359,14 @@ function RujukanCard({ item, defaultOpen = false }: { item: MyReferralItem; defa
                 {item.diagnosis_icd10 || "-"}
               </span>
             </div>
-            {item.jadwal_pemeriksaan && (
-              <div>
-                <span className="text-[11px] text-slate-500 uppercase tracking-wide block">
-                  Jadwal Pemeriksaan
-                </span>
-                <span className="font-semibold text-[#16A34A] flex items-center gap-1.5">
-                  <CalendarCheck className="w-3.5 h-3.5" />
-                  {formatDateTimeIndo(item.jadwal_pemeriksaan)}
-                </span>
-              </div>
-            )}
+            <div>
+              <span className="text-[11px] text-slate-500 uppercase tracking-wide block">
+                Fasilitas Pengirim
+              </span>
+              <span className="font-semibold text-[#0F3040]">
+                {item.origin_name}
+              </span>
+            </div>
           </div>
 
           {/* Linimasa / Timeline Rujukan */}
@@ -1072,7 +1112,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
           }
         }
 
-        // 6. Muat rujukan saya via server action (RPC list_my_referrals)
+        // 6. Muat rujukan saya via server action dan fallback browser client (RPC list_my_referrals)
         const [refResult, logsResult] = await Promise.all([
           listMyReferralsAction(),
           listMyLookupLogsAction(),
@@ -1080,12 +1120,32 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
 
         if (isCancelled) return;
 
-        if (refResult.success) {
-          setReferrals(refResult.referrals ?? []);
+        let finalReferrals: MyReferralItem[] = [];
+        if (refResult.success && Array.isArray(refResult.referrals) && refResult.referrals.length > 0) {
+          finalReferrals = refResult.referrals;
+        } else {
+          // Fallback langsung via browser client untuk menjamin keandalan data jika server cookie tertunda
+          const { data: directRefs, error: directRefsErr } = await supabase.rpc("list_my_referrals");
+          if (!directRefsErr && directRefs && Array.isArray(directRefs)) {
+            finalReferrals = directRefs as MyReferralItem[];
+          } else if (refResult.success && refResult.referrals) {
+            finalReferrals = refResult.referrals;
+          }
         }
-        if (logsResult.success) {
-          setLookupLogs(logsResult.logs ?? []);
+        setReferrals(finalReferrals);
+
+        let finalLogs: LookupLogItem[] = [];
+        if (logsResult.success && Array.isArray(logsResult.logs) && logsResult.logs.length > 0) {
+          finalLogs = logsResult.logs;
+        } else {
+          const { data: directLogs, error: directLogsErr } = await supabase.rpc("list_my_lookup_logs");
+          if (!directLogsErr && directLogs && Array.isArray(directLogs)) {
+            finalLogs = directLogs as LookupLogItem[];
+          } else if (logsResult.success && logsResult.logs) {
+            finalLogs = logsResult.logs;
+          }
         }
+        setLookupLogs(finalLogs);
       } catch (err: unknown) {
         if (!isCancelled) {
           const msg = err instanceof Error ? err.message : String(err);
