@@ -144,42 +144,42 @@ export default function HomePage() {
           <section
             id="masuk-peran"
             data-navbar-tone="dark"
-            className="w-full bg-transparent py-[96px] text-left scroll-mt-20"
+            className="w-full bg-transparent pt-8 sm:pt-10 md:pt-12 pb-16 sm:pb-20 md:pb-24 text-left scroll-mt-[92px] sm:scroll-mt-[100px]"
           >
             <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
               {/* Kotak Kaca Panjang untuk Judul & Sub-judul */}
               <Reveal>
-                <div className="glass-panel p-6 sm:p-8 md:py-8 md:px-10 mb-12">
-                  <h2 className="text-3xl sm:text-[32px] font-bold text-white tracking-tight">
+                <div className="glass-panel py-5 px-6 sm:py-6 sm:px-8 md:px-10 mb-6 sm:mb-8">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
                     Masuk sesuai peran
                   </h2>
-                  <p className="text-base text-white/88 mt-2">
+                  <p className="text-sm sm:text-base text-white/88 mt-1.5 sm:mt-2">
                     Pilih peranmu untuk masuk ke ruang kerja yang dirancang khusus
                     sesuai kebutuhan.
                   </p>
                 </div>
               </Reveal>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
                 {/* Kartu 1: Pasien (Solid Putih) */}
                 <Reveal delay={0}>
-                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#2E7D51]/30 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
+                  <div className="group bg-white rounded-[24px] p-5 sm:p-5.5 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#2E7D51]/30 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
                     <div>
-                      <div className="w-12 h-12 rounded-full bg-[#E8F5EE] text-[#0A2230] flex items-center justify-center mb-4 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
-                        <UserRound className="w-6 h-6 text-[#0A2230]" strokeWidth={1.75} />
+                      <div className="w-11 h-11 rounded-full bg-[#E8F5EE] text-[#0A2230] flex items-center justify-center mb-3 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
+                        <UserRound className="w-5.5 h-5.5 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
-                      <h3 className="text-lg font-bold text-[#0A2230] mb-1 text-center">
+                      <h3 className="text-base sm:text-lg font-bold text-[#0A2230] mb-1 text-center">
                         Pasien
                       </h3>
-                      <p className="text-[13px] text-slate-600 mb-4 min-h-[40px] text-center">
+                      <p className="text-[13px] text-slate-600 mb-3 min-h-[38px] text-center leading-relaxed">
                         Pantau rujukan dan atur siapa yang boleh membuka rekam
                         medismu.
                       </p>
-                      <div className="flex flex-wrap justify-center gap-1.5 mb-6">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-medium bg-[#E8F5EE] text-slate-700">
+                      <div className="flex flex-wrap justify-center gap-1.5 mb-4">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5EE] text-slate-700">
                           Pribadi
                         </span>
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-medium bg-[#E8F5EE] text-slate-700">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5EE] text-slate-700">
                           Keluarga
                         </span>
                       </div>
@@ -188,11 +188,11 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => openPicker("pasien", "daftar")}
-                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#2E7D51] hover:bg-[#3D9162] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
+                        className="w-full inline-flex items-center justify-center py-2.5 sm:py-3 px-4 rounded-[12px] bg-[#2E7D51] hover:bg-[#3D9162] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
                       >
                         Daftar sebagai Pasien
                       </button>
-                      <div className="text-center mt-3">
+                      <div className="text-center mt-2.5">
                         <button
                           type="button"
                           onClick={() => openPicker("pasien", "masuk")}
@@ -210,18 +210,18 @@ export default function HomePage() {
 
                 {/* Kartu 2: Fasilitas Kesehatan (Solid Putih) */}
                 <Reveal delay={80}>
-                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#2E7D51]/30 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
+                  <div className="group bg-white rounded-[24px] p-5 sm:p-5.5 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#2E7D51]/30 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
                     <div>
-                      <div className="w-12 h-12 rounded-full bg-[#E8F5EE] text-[#0A2230] flex items-center justify-center mb-4 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
-                        <Hospital className="w-6 h-6 text-[#0A2230]" strokeWidth={1.75} />
+                      <div className="w-11 h-11 rounded-full bg-[#E8F5EE] text-[#0A2230] flex items-center justify-center mb-3 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
+                        <Hospital className="w-5.5 h-5.5 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
-                      <h3 className="text-lg font-bold text-[#0A2230] mb-1 text-center">
+                      <h3 className="text-base sm:text-lg font-bold text-[#0A2230] mb-1 text-center">
                         Fasilitas Kesehatan
                       </h3>
-                      <p className="text-[13px] text-slate-600 mb-4 min-h-[40px] text-center">
+                      <p className="text-[13px] text-slate-600 mb-3 min-h-[38px] text-center leading-relaxed">
                         Dokter, petugas, dan apoteker bekerja dari satu tempat.
                       </p>
-                      <div className="flex flex-wrap justify-center gap-1.5 mb-6">
+                      <div className="flex flex-wrap justify-center gap-1.5 mb-4">
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5EE] text-slate-700">
                           Puskesmas
                         </span>
@@ -240,11 +240,11 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => openPicker("fasilitas", "daftar")}
-                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#2E7D51] hover:bg-[#3D9162] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
+                        className="w-full inline-flex items-center justify-center py-2.5 sm:py-3 px-4 rounded-[12px] bg-[#2E7D51] hover:bg-[#3D9162] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
                       >
                         Daftar Fasilitas
                       </button>
-                      <div className="text-center mt-3">
+                      <div className="text-center mt-2.5">
                         <button
                           type="button"
                           onClick={() => openPicker("fasilitas", "masuk")}
@@ -262,18 +262,18 @@ export default function HomePage() {
 
                 {/* Kartu 3: Verifikasi Administrasi (Solid Putih) */}
                 <Reveal delay={160}>
-                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#2E7D51]/30 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
+                  <div className="group bg-white rounded-[24px] p-5 sm:p-5.5 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#2E7D51]/30 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
                     <div>
-                      <div className="w-12 h-12 rounded-full bg-[#E8F5EE] text-[#0A2230] flex items-center justify-center mb-4 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
-                        <ShieldCheck className="w-6 h-6 text-[#0A2230]" strokeWidth={1.75} />
+                      <div className="w-11 h-11 rounded-full bg-[#E8F5EE] text-[#0A2230] flex items-center justify-center mb-3 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
+                        <ShieldCheck className="w-5.5 h-5.5 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
-                      <h3 className="text-lg font-bold text-[#0A2230] mb-1 text-center">
+                      <h3 className="text-base sm:text-lg font-bold text-[#0A2230] mb-1 text-center">
                         Verifikasi Administrasi
                       </h3>
-                      <p className="text-[13px] text-slate-600 mb-4 min-h-[40px] text-center leading-relaxed">
-                        Opsional. Memverifikasi domisili dan keterangan kurang mampu untuk jaminan biaya. Tidak diperlukan untuk rujukan medis.
+                      <p className="text-[13px] text-slate-600 mb-3 min-h-[38px] text-center leading-relaxed">
+                        Opsional. Verifikasi domisili dan SKTM untuk jaminan biaya rujukan.
                       </p>
-                      <div className="flex flex-wrap justify-center gap-1.5 mb-6">
+                      <div className="flex flex-wrap justify-center gap-1.5 mb-4">
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5EE] text-slate-700">
                           Kelurahan
                         </span>
@@ -281,7 +281,7 @@ export default function HomePage() {
                           Kecamatan
                         </span>
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5EE] text-slate-700">
-                          Dinas Sosial
+                          Dinsos
                         </span>
                       </div>
                     </div>
@@ -289,11 +289,11 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => openPicker("verifikator", "daftar")}
-                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#2E7D51] hover:bg-[#3D9162] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
+                        className="w-full inline-flex items-center justify-center py-2.5 sm:py-3 px-4 rounded-[12px] bg-[#2E7D51] hover:bg-[#3D9162] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
                       >
                         Daftar Verifikator
                       </button>
-                      <div className="text-center mt-3">
+                      <div className="text-center mt-2.5">
                         <button
                           type="button"
                           onClick={() => openPicker("verifikator", "masuk")}
@@ -311,19 +311,19 @@ export default function HomePage() {
 
                 {/* Kartu 4: Dinas Kesehatan (Solid Putih) */}
                 <Reveal delay={240}>
-                  <div className="group bg-white rounded-[24px] p-6 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#2E7D51]/30 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
+                  <div className="group bg-white rounded-[24px] p-5 sm:p-5.5 flex flex-col justify-between h-full text-center border border-[#E2E8F0] hover:border-[#2E7D51]/30 shadow-sm hover:shadow-md transition-[border-color,box-shadow,transform] duration-[220ms] ease-out hover:-translate-y-1">
                     <div>
-                      <div className="w-12 h-12 rounded-full bg-[#E8F5EE] text-[#0A2230] flex items-center justify-center mb-4 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
-                        <Landmark className="w-6 h-6 text-[#0A2230]" strokeWidth={1.75} />
+                      <div className="w-11 h-11 rounded-full bg-[#E8F5EE] text-[#0A2230] flex items-center justify-center mb-3 mx-auto transition-transform duration-[220ms] group-hover:scale-[1.06]">
+                        <Landmark className="w-5.5 h-5.5 text-[#0A2230]" strokeWidth={1.75} />
                       </div>
-                      <h3 className="text-lg font-bold text-[#0A2230] mb-1 text-center">
+                      <h3 className="text-base sm:text-lg font-bold text-[#0A2230] mb-1 text-center">
                         Dinas Kesehatan
                       </h3>
-                      <p className="text-[13px] text-slate-600 mb-4 min-h-[40px] text-center">
+                      <p className="text-[13px] text-slate-600 mb-3 min-h-[38px] text-center leading-relaxed">
                         Verifikasi fasilitas, atur aturan daerah, dan pantau
                         rujukan.
                       </p>
-                      <div className="flex flex-wrap justify-center gap-1.5 mb-6">
+                      <div className="flex flex-wrap justify-center gap-1.5 mb-4">
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5EE] text-slate-700">
                           Dinkes Kota/Kab
                         </span>
@@ -335,11 +335,11 @@ export default function HomePage() {
                     <div>
                       <Link
                         href="/masuk/dinkes"
-                        className="w-full inline-flex items-center justify-center py-3 px-4 rounded-[14px] bg-[#2E7D51] hover:bg-[#3D9162] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
+                        className="w-full inline-flex items-center justify-center py-2.5 sm:py-3 px-4 rounded-[12px] bg-[#2E7D51] hover:bg-[#3D9162] text-white text-sm font-semibold transition-[background-color,transform] duration-200 hover:-translate-y-[1px] active:scale-[0.98] text-center"
                       >
                         Masuk
                       </Link>
-                      <div className="text-center mt-3">
+                      <div className="text-center mt-2.5">
                         <span className="text-[12px] text-slate-400 block truncate text-center">
                           Akun diterbitkan admin sistem.
                         </span>
@@ -863,6 +863,13 @@ export default function HomePage() {
               <div className="flex flex-wrap items-center justify-center gap-6">
                 <a
                   className="text-xs text-[#0F3040] font-semibold hover:underline transition-colors"
+                  href="#masuk-peran"
+                  onClick={handleMulaiSekarang}
+                >
+                  Masuk Sesuai Peran
+                </a>
+                <a
+                  className="text-xs text-[#0F3040] font-semibold hover:underline transition-colors"
                   href="#fitur"
                 >
                   Fitur Layanan
@@ -878,6 +885,15 @@ export default function HomePage() {
                   href="#kenapa-lytera"
                 >
                   Kenapa Lytera?
+                </a>
+              </div>
+              <div className="flex items-center">
+                <a
+                  href="#masuk-peran"
+                  onClick={handleMulaiSekarang}
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-[12px] bg-[#2E7D51] hover:bg-[#246843] text-white text-xs font-bold transition-all shadow-sm cursor-pointer hover:-translate-y-[1px] active:scale-[0.98]"
+                >
+                  Mulai Sekarang
                 </a>
               </div>
             </div>

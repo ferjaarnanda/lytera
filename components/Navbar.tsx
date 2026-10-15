@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { RolePickerDialog } from "@/components/RolePickerDialog";
@@ -201,11 +202,18 @@ export const Navbar: React.FC<NavbarProps> = ({
     .slice(0, 2)
     .toUpperCase();
 
-  const handleDaftarClick = useCallback(() => {
+  const router = useRouter();
+
+  const handleDaftarClick = useCallback((e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
     const el = document.getElementById("masuk-peran");
     if (el) {
       el.scrollIntoView({ behavior: "smooth" });
+      window.history.pushState(null, "", "#masuk-peran");
+    } else {
+      router.push("/#masuk-peran");
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -350,7 +358,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <button
                     type="button"
                     onClick={handleDaftarClick}
-                    className="px-4 py-2 rounded-[12px] text-[13.5px] font-extrabold transition-colors duration-200 shadow-sm bg-[#2E7D51] text-white hover:bg-[#246843]"
+                    className="px-4 py-2 rounded-[12px] text-[13.5px] font-extrabold transition-colors duration-200 shadow-sm bg-[#2E7D51] text-white hover:bg-[#246843] cursor-pointer"
                   >
                     Daftar
                   </button>
@@ -460,6 +468,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   Masuk
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setMobileMenuOpen(false);
                     handleDaftarClick();
