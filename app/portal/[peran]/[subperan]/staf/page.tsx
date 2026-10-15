@@ -16,7 +16,6 @@ import {
   Search,
   Check,
   X,
-  FileCheck2,
   ShieldCheck,
   AlertTriangle,
 } from "lucide-react";
@@ -127,10 +126,17 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
     };
   }, [loadData]);
 
-  // Buka modal persetujuan
+  // Buka modal persetujuan / kelola spesialisasi
   const openApproveModal = (staff: StaffItem) => {
     setApproveModalStaff(staff);
-    setSelectedRole(staff.staff_role);
+    const profLower = (staff.profession || "").toLowerCase();
+    let initialRole: "dokter" | "petugas" | "apoteker" = staff.staff_role;
+    if (profLower.includes("dokter") || profLower.includes("dr.") || profLower.includes("sp.")) {
+      initialRole = "dokter";
+    } else if (profLower.includes("apotek")) {
+      initialRole = "apoteker";
+    }
+    setSelectedRole(initialRole);
     // Jika staf sudah berstatus 'aktif', defaultkan pilihan ke spesialisasi yang sudah terverifikasi sebelumnya.
     // Jika permohonan baru (menunggu), defaultkan semua spesialisasi yang diajukan tercentang untuk memudahkan pengesahan.
     if (staff.status === "aktif") {
@@ -486,13 +492,23 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
                           text: "text-slate-700",
                         };
 
-                        const fullName = staff.profiles?.full_name || "Nama tidak terdata";
+                        const hasValidName = !!(staff.profiles?.full_name && staff.profiles.full_name.trim());
+                        const fullName = hasValidName ? staff.profiles!.full_name : null;
 
                         return (
                           <tr key={staff.id} className="hover:bg-slate-50/60 transition-colors">
                             {/* Nama & Kontak */}
                             <td className="py-4 px-4 sm:px-6">
-                              <div className="font-bold text-[#0F3040]">{fullName}</div>
+                              <div className="font-bold text-[#0F3040]">
+                                {fullName ? (
+                                  <span>{fullName}</span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#7A5200] bg-[#FFF4D6] px-2.5 py-0.5 rounded-full border border-[#7A5200]/20">
+                                    <AlertTriangle className="w-3 h-3 text-[#7A5200]" />
+                                    <span>Identitas Belum Lengkap</span>
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-[11px] text-slate-400 mt-0.5">
                                 {staff.profiles?.email || "-"}
                               </div>
@@ -612,14 +628,21 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
                                   </button>
                                 </div>
                               ) : staff.status === "aktif" ? (
-                                <button
-                                  type="button"
-                                  onClick={() => openApproveModal(staff)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
-                                >
-                                  <FileCheck2 className="w-3.5 h-3.5 text-[#1B6B4D]" />
-                                  <span>Ubah Otorisasi</span>
-                                </button>
+                                staff.staff_role === "dokter" ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => openApproveModal(staff)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-xs font-semibold bg-[#EDF7F2] text-[#1B6B4D] hover:bg-[#DCF0E7] transition-colors border border-[#1B6B4D]/20 shadow-xs"
+                                  >
+                                    <Stethoscope className="w-3.5 h-3.5" />
+                                    <span>Kelola Spesialisasi</span>
+                                  </button>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-xs font-medium text-slate-500 bg-slate-100 border border-slate-200 select-none">
+                                    <ShieldCheck className="w-3.5 h-3.5 text-[#1B6B4D]" />
+                                    <span>Otorisasi Terverifikasi</span>
+                                  </span>
+                                )
                               ) : (
                                 <span className="text-xs text-slate-400 select-none">Telah Ditolak</span>
                               )}
@@ -644,11 +667,23 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
             <div className="p-6 border-b border-[#E2E8F0] flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-full bg-[#EDF7F2] flex items-center justify-center text-[#1B6B4D]">
-                  <ShieldCheck className="w-5 h-5" />
+                  {approveModalStaff.status === "aktif" ? (
+                    <Stethoscope className="w-5 h-5" />
+                  ) : (
+                    <ShieldCheck className="w-5 h-5" />
+                  )}
                 </div>
                 <div>
-                  <h3 className="font-bold text-[#0F3040] text-base">Persetujuan & Pengesahan Staf</h3>
-                  <p className="text-xs text-slate-500">Tetapkan role dan verifikasi spesialisasi</p>
+                  <h3 className="font-bold text-[#0F3040] text-base">
+                    {approveModalStaff.status === "aktif"
+                      ? "Kelola Spesialisasi Klinis Dokter"
+                      : "Persetujuan Staf & Pengesahan Kredensial"}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {approveModalStaff.status === "aktif"
+                      ? "Perbarui pengesahan spesialisasi dokter yang aktif di fasilitas"
+                      : "Verifikasi kualifikasi profesi dan pengesahan wewenang klinis"}
+                  </p>
                 </div>
               </div>
               <button
@@ -664,11 +699,18 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
             <div className="p-6 space-y-5 text-xs sm:text-sm">
               {/* Ringkasan Profil */}
               <div className="p-3.5 rounded-[14px] bg-slate-50 border border-slate-200/80 space-y-1.5">
-                <div className="font-bold text-[#0F3040] text-sm">
-                  {approveModalStaff.profiles?.full_name || "Nama Nakes"}
+                <div className="font-bold text-[#0F3040] text-sm flex items-center gap-2">
+                  {approveModalStaff.profiles?.full_name ? (
+                    <span>{approveModalStaff.profiles.full_name}</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#7A5200] bg-[#FFF4D6] px-2 py-0.5 rounded-md">
+                      <AlertTriangle className="w-3 h-3 text-[#7A5200]" />
+                      <span>Identitas Belum Lengkap</span>
+                    </span>
+                  )}
                 </div>
                 <div className="text-xs text-slate-600 flex flex-wrap gap-x-4 gap-y-1">
-                  <span>Profesi: <strong>{approveModalStaff.profession || "-"}</strong></span>
+                  <span>Profesi Terdaftar: <strong>{approveModalStaff.profession || "Tenaga Kesehatan"}</strong></span>
                   <span>STR: <strong>{approveModalStaff.str_number || "-"}</strong></span>
                   {approveModalStaff.sip_number && (
                     <span>SIP: <strong>{approveModalStaff.sip_number}</strong></span>
@@ -676,66 +718,87 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
                 </div>
               </div>
 
-              {/* Penetapan Role Akses Final */}
-              <div>
-                <label className="block text-xs font-bold text-[#0F3040] mb-1.5">
-                  Peran Akses Sistem (Role Final)
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(["dokter", "petugas", "apoteker"] as const).map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => setSelectedRole(r)}
-                      className={`p-2.5 rounded-[12px] border text-xs font-semibold capitalize flex flex-col items-center gap-1 transition-all ${
-                        selectedRole === r
-                          ? "border-[#1B6B4D] bg-[#EDF7F2] text-[#1B6B4D] shadow-xs"
-                          : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      <span>{r}</span>
-                    </button>
-                  ))}
+              {/* Status Peran Akses Sistem */}
+              {approveModalStaff.status === "aktif" ? (
+                <div className="p-3.5 rounded-[14px] bg-[#EDF7F2]/60 border border-[#1B6B4D]/20">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold text-[#0F3040]">Peran Akses Sistem</span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#EDF7F2] text-[#1B6B4D]">
+                      <ShieldCheck className="w-3 h-3 text-[#1B6B4D]" />
+                      <span>Terverifikasi Aktif &bull; Dokter</span>
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    Peran akses sistem telah terkunci sesuai kualifikasi profesi medis. Hanya pengesahan spesialisasi klinis di bawah ini yang dapat diperbarui.
+                  </p>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Peran &quot;dokter&quot; memiliki wewenang membuat rujukan dan membuka rekam medis berizin.
-                </p>
-              </div>
-
-              {/* Pengesahan Bidang Spesialisasi */}
-              {approveModalStaff.specializations && approveModalStaff.specializations.length > 0 ? (
+              ) : (
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-xs font-bold text-[#0F3040]">
-                      Pengesahan Bidang Spesialisasi
+                      Peran Akses Sistem (Role Terverifikasi)
                     </label>
-                    <span className="text-[11px] text-slate-400">
-                      Pilih yang disahkan (hanya spesialisasi terpilih yang akan tampil di Tetra)
+                    <span className="text-[11px] text-[#8F5A4E] font-medium">
+                      Otomatis selaras dengan profesi terdaftar
                     </span>
                   </div>
-                  <div className="space-y-1.5 max-h-40 overflow-y-auto border border-slate-200 rounded-[12px] p-2 bg-slate-50/50">
-                    {approveModalStaff.specializations.map((spec) => {
-                      const isChecked = selectedSpecIds.includes(spec.id);
-                      return (
-                        <label
-                          key={spec.id}
-                          className="flex items-center gap-2.5 p-2 rounded-[8px] hover:bg-white transition-colors cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleToggleSpec(spec.id)}
-                            className="w-4 h-4 rounded text-[#1B6B4D] focus:ring-[#1B6B4D]"
-                          />
-                          <span className="text-xs font-medium text-[#0F3040]">{spec.name}</span>
-                        </label>
-                      );
-                    })}
+                  <div className="p-3 rounded-[12px] bg-slate-50 border border-slate-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {selectedRole === "dokter" && <Stethoscope className="w-4 h-4 text-[#1B6B4D]" />}
+                      {selectedRole === "petugas" && <Users className="w-4 h-4 text-[#0F3040]" />}
+                      {selectedRole === "apoteker" && <Pill className="w-4 h-4 text-[#7A5200]" />}
+                      <span className="text-xs font-bold text-[#0F3040] capitalize">
+                        {selectedRole}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-slate-400">
+                      {selectedRole === "dokter"
+                        ? "Wewenang rujukan klinis & buka rekam medis berizin"
+                        : selectedRole === "apoteker"
+                        ? "Wewenang farmasi dan penyerahan obat"
+                        : "Wewenang administrasi & pendaftaran faskes"}
+                    </span>
                   </div>
                 </div>
-              ) : (
-                <div className="p-3 rounded-[12px] bg-slate-50 text-xs text-slate-500">
-                  Staf ini tidak mendaftarkan spesialisasi klinis tambahan (akan berpraktik sebagai dokter umum / tenaga umum).
+              )}
+
+              {/* Pengesahan Bidang Spesialisasi */}
+              {selectedRole === "dokter" && (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-[#0F3040]">
+                      Pengesahan Bidang Spesialisasi Klinis
+                    </label>
+                    <span className="text-[11px] text-slate-400">
+                      Hanya spesialisasi disahkan yang tampil di rekomendasi Tetra
+                    </span>
+                  </div>
+
+                  {approveModalStaff.specializations && approveModalStaff.specializations.length > 0 ? (
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto border border-slate-200 rounded-[12px] p-2 bg-slate-50/50">
+                      {approveModalStaff.specializations.map((spec) => {
+                        const isChecked = selectedSpecIds.includes(spec.id);
+                        return (
+                          <label
+                            key={spec.id}
+                            className="flex items-center gap-2.5 p-2 rounded-[8px] hover:bg-white transition-colors cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleSpec(spec.id)}
+                              className="w-4 h-4 rounded text-[#1B6B4D] focus:ring-[#1B6B4D]"
+                            />
+                            <span className="text-xs font-medium text-[#0F3040]">{spec.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-[12px] bg-slate-50 text-xs text-slate-500 border border-slate-200/80">
+                      Staf ini tidak mendaftarkan spesialisasi klinis tambahan (akan berpraktik sebagai dokter umum).
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -757,7 +820,11 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[10px] text-xs font-semibold bg-[#1B6B4D] text-white hover:bg-[#14533C] transition-colors shadow-xs disabled:opacity-50"
               >
                 {actionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <span>Setujui & Sahkan</span>
+                <span>
+                  {approveModalStaff.status === "aktif"
+                    ? "Simpan Spesialisasi"
+                    : "Setujui & Sahkan"}
+                </span>
               </button>
             </div>
           </div>
@@ -792,7 +859,7 @@ export default function KelolaStafFaskesPage({ params }: PageProps) {
             <div className="p-6 space-y-4 text-xs sm:text-sm">
               <p className="text-xs text-slate-600">
                 Anda akan menolak permohonan penempatan dari{" "}
-                <strong>{rejectModalStaff.profiles?.full_name}</strong> ({rejectModalStaff.profession || "Tenaga Medis"}).
+                <strong>{rejectModalStaff.profiles?.full_name || "Tenaga Kesehatan"}</strong> ({rejectModalStaff.profession || "Tenaga Medis"}).
               </p>
 
               <div>

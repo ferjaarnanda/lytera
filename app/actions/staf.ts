@@ -114,35 +114,93 @@ export async function getAdminFacilityStaffAction(): Promise<GetStaffResult> {
       };
     }
 
-    // 4. Ambil staf milik fasilitas ini dengan join profiles
-    const { data: staffList, error: staffError } = await supabase
-      .from("facility_staff")
-      .select(`
-        id,
-        profile_id,
-        facility_id,
-        staff_role,
-        profession,
-        str_number,
-        sip_number,
-        specialization,
-        rejection_reason,
-        status,
-        created_at,
-        profiles(id, full_name, email)
-      `)
-      .eq("facility_id", facility.id)
-      .order("created_at", { ascending: false });
+    // 4. Ambil staf milik fasilitas ini via RPC list_facility_staff atau fallback ke direct join profiles
+    let staffData: Array<{
+      id: string;
+      profile_id: string;
+      facility_id: string;
+      staff_role: "dokter" | "petugas" | "apoteker";
+      profession: string | null;
+      str_number: string | null;
+      sip_number: string | null;
+      specialization: string | null;
+      rejection_reason: string | null;
+      status: "menunggu" | "aktif" | "ditolak";
+      created_at: string;
+      full_name: string | null;
+      email: string | null;
+    }> = [];
 
-    if (staffError) {
-      return {
-        success: false,
-        facility,
-        error: "Gagal memuat daftar staf: " + staffError.message,
-      };
+    const { data: rpcStaff, error: rpcErr } = await supabase.rpc("list_facility_staff", {
+      p_facility_id: facility.id,
+    });
+
+    if (!rpcErr && Array.isArray(rpcStaff)) {
+      staffData = rpcStaff.map((row) => ({
+        id: row.id,
+        profile_id: row.profile_id,
+        facility_id: row.facility_id,
+        staff_role: row.staff_role as "dokter" | "petugas" | "apoteker",
+        profession: row.profession,
+        str_number: row.str_number,
+        sip_number: row.sip_number,
+        specialization: row.specialization,
+        rejection_reason: row.rejection_reason,
+        status: row.status as "menunggu" | "aktif" | "ditolak",
+        created_at: row.created_at,
+        full_name: row.full_name,
+        email: row.email,
+      }));
+    } else {
+      const { data: fallbackStaff, error: staffError } = await supabase
+        .from("facility_staff")
+        .select(`
+          id,
+          profile_id,
+          facility_id,
+          staff_role,
+          profession,
+          str_number,
+          sip_number,
+          specialization,
+          rejection_reason,
+          status,
+          created_at,
+          profiles(id, full_name, email)
+        `)
+        .eq("facility_id", facility.id)
+        .order("created_at", { ascending: false });
+
+      if (staffError) {
+        return {
+          success: false,
+          facility,
+          error: "Gagal memuat daftar staf: " + staffError.message,
+        };
+      }
+
+      staffData = (fallbackStaff || []).map((item) => {
+        const rawProfile = item.profiles;
+        const prof = Array.isArray(rawProfile) ? rawProfile[0] : rawProfile;
+        return {
+          id: item.id,
+          profile_id: item.profile_id,
+          facility_id: item.facility_id,
+          staff_role: item.staff_role as "dokter" | "petugas" | "apoteker",
+          profession: item.profession,
+          str_number: item.str_number,
+          sip_number: item.sip_number,
+          specialization: item.specialization,
+          rejection_reason: item.rejection_reason,
+          status: item.status as "menunggu" | "aktif" | "ditolak",
+          created_at: item.created_at,
+          full_name: prof?.full_name || null,
+          email: prof?.email || null,
+        };
+      });
     }
 
-    const staffIds = (staffList || []).map((s) => s.id);
+    const staffIds = staffData.map((s) => s.id);
 
     // 5. Ambil data spesialisasi dari facility_staff_specializations untuk seluruh staf ini
     const specMap: Record<string, StaffSpecializationDetail[]> = {};
@@ -188,9 +246,7 @@ export async function getAdminFacilityStaffAction(): Promise<GetStaffResult> {
     }
 
     // Normalisasi staf list
-    const normalizedStaff: StaffItem[] = (staffList || []).map((item) => {
-      const rawProfile = item.profiles;
-      const prof = Array.isArray(rawProfile) ? rawProfile[0] : rawProfile;
+    const normalizedStaff: StaffItem[] = staffData.map((item) => {
       return {
         id: item.id,
         profile_id: item.profile_id,
@@ -204,13 +260,11 @@ export async function getAdminFacilityStaffAction(): Promise<GetStaffResult> {
         status: item.status,
         created_at: item.created_at,
         specializations: specMap[item.id] || [],
-        profiles: prof
-          ? {
-              id: prof.id,
-              full_name: prof.full_name || null,
-              email: prof.email || null,
-            }
-          : null,
+        profiles: {
+          id: item.profile_id,
+          full_name: item.full_name || null,
+          email: item.email || null,
+        },
       };
     });
 
