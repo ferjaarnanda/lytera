@@ -38,6 +38,7 @@
 | Navbar Admin Faskes & Identitas Akun | SELESAI | 3984a5d | Penyelarasan urutan navbar admin faskes ke Ringkasan -> Dokter & Petugas -> Daftar Rujukan di semua halaman (page, staf, rujukan). Identitas admin: "Admin" di baris atas dan nama fasilitas di baris bawah. Identitas dokter: nama dokter di baris atas dan nama fasilitas di baris bawah. Penghapusan tombol cokelat "Kembali ke Portal Puskesmas" di halaman staf. Lint 0 error, build exit 0. |
 | Perbaikan Persetujuan Spesialisasi Dokter | SELESAI | 6ba1086 | Perbaikan fungsi RPC `review_facility_staff` dengan dual-match ID (fss.id DAN specialization_id katalog), sinkronisasi otomatis teks `facility_staff.specialization` dari join is_verified=true, validasi fasilitas aktif, dan reset spesialisasi non-dokter. Perbaikan logika modal persetujuan di UI (default checkbox berdasarkan status staf; verifiedSpecIds hanya dikirim jika peran dokter). 5 skenario uji SQL impersonasi lolos 100%. Lint 0 error, build exit 0. |
 | Perapihan Format Rekomendasi Faskes Tetra | SELESAI | 2c58223 | Format informasi rekomendasi fasilitas kesehatan pada asisten Tetra (`lib/tetra/tools.ts`, `TetraWidget.tsx`) dan preview landing page (`app/page.tsx`) distandarkan untuk semua jenis faskes (Puskesmas, Apotek, Klinik, Rumah Sakit). Penghapusan emoticon 💡 dan kalimat teknis ranking, diganti keterangan singkat '[Jenis] berlokasi di [Kecamatan, Kota].' yang konsisten dan akurat. Lint 0 error, build exit 0. |
+| Navigasi & Dashboard Regulator (Dinkes) | SELESAI | TBD | Perbaikan navigasi navbar Dinkes (`VARIANT_MENUS.dinkes` dengan href nyata ke Pemantauan, Verifikasi Faskes, dan Aturan Daerah). Pembuatan halaman Pemantauan (`/portal/dinkes/pemantauan`) dengan data riil kesiapan faskes/nakes/verifikator & banner UU PDP, pembuatan halaman Aturan Daerah (`/portal/dinkes/aturan-daerah`) dengan dokumentasi regulasi penjaminan daerah non-blocking dan protokol token PDP, serta pengalihan `/portal/dinkes` ke Pemantauan. Lint 0 error, build exit 0. |
 
 ---
 
@@ -616,6 +617,34 @@
   - `npm run lint`: **0 error**, 2 warnings (test script non-produksi).
   - `npm run build`: **Exit 0**, seluruh 19 rute Next.js 16 berhasil dikompilasi tanpa galat.
   - File berubah: 3 file (`lib/tetra/tools.ts`, `components/Tetra/TetraWidget.tsx`, `app/page.tsx`).
+
+### 41. Perbaikan Navigasi & Dashboard Regulator / Dinas Kesehatan (Selesai)
+- [x] **Akar Masalah**:
+  - Menu `Pemantauan` dan `Aturan Daerah` pada navbar `VARIANT_MENUS.dinkes` tidak memiliki properti `href` (hanya objek label tanpa tautan), dan pemanggil `<Navbar>` tidak menyediakan `onItemClick`, sehingga klik pada kedua menu tersebut tidak melakukan aksi apa pun.
+  - Halaman `/portal/dinkes/pemantauan` dan `/portal/dinkes/aturan-daerah` belum diimplementasikan di direktori aplikasi, sementara rute root `/portal/dinkes` hanya mengalihkan langsung ke `/portal/dinkes/verifikasi-faskes`.
+- [x] **Perubahan Terapan**:
+  1. *Navigasi Navbar Dinkes (`components/Navbar.tsx`)*:
+     - Ditetapkan `href` eksplisit pada seluruh item menu regulator: `Pemantauan` (`/portal/dinkes/pemantauan`), `Verifikasi Faskes` (`/portal/dinkes/verifikasi-faskes`), dan `Aturan Daerah` (`/portal/dinkes/aturan-daerah`).
+     - Tautan bekerja otomatis dan konsisten baik pada tampilan desktop maupun drawer mobile.
+  2. *Halaman Pemantauan Kesiapan Jaringan Faskes (`app/portal/dinkes/pemantauan/page.tsx`)*:
+     - Dilengkapi autentikasi proteksi peran `role === 'dinkes'` dengan tampilan loading dan access denied yang elegan.
+     - Menyajikan metrik operasional nyata dari Supabase: total faskes terdaftar, faskes aktif vs menunggu verifikasi, sebaran RS Rujukan, Puskesmas, Klinik, dan Apotek, ketersediaan tenaga medis & dokter spesialis, serta petugas verifikator wilayah.
+     - Tabel interaktif kesiapan faskes dengan filter jenis, filter status, pencarian dinamis, dan tautan langsung untuk verifikasi berkas izin operasional faskes yang menunggu persetujuan.
+     - Banner kepatuhan UU Pelindungan Data Pribadi (UU No. 27/2022) yang menegaskan batasan privasi data medis pasien.
+  3. *Halaman Aturan & Regulasi Daerah (`app/portal/dinkes/aturan-daerah/page.tsx`)*:
+     - Dilengkapi autentikasi proteksi peran `role === 'dinkes'`.
+     - Dokumentasi faktual 3 regulasi utama sistem Lytera:
+       1. Alur verifikasi penjaminan daerah bertingkat (Kelurahan, Kecamatan, Dinas Sosial) dengan prinsip *non-blocking* agar rujukan darurat medis tidak pernah terhambat.
+       2. Kebijakan izin akses token 6-digit pasien zero-trust (60 menit, batas 5x salah, pencabutan instan).
+       3. Penjenjangan rujukan FKTP ke FKTL serta validasi penjadwalan dokter DPJP spesialis aktif di RS tujuan.
+     - Menyajikan catatan arsitektur faktual mengenai penegakan aturan melalui trigger/guard database tanpa membuat tombol kontrol palsu.
+  4. *Penyelarasan Pengalihan Root Dinkes (`app/portal/dinkes/page.tsx`)*:
+     - Rute root `/portal/dinkes` dialihkan ke `/portal/dinkes/pemantauan` sebagai dashboard utama pengawasan wilayah.
+- [x] **Pengujian & Validasi**:
+  - Uji akses langsung melalui URL, refresh, state aktif navbar pada ketiga menu berhasil 100%.
+  - `npm run lint`: **0 error**, 2 warnings (test script non-produksi).
+  - `npm run build`: **Exit 0**, seluruh 21 rute Next.js 16 berhasil dikompilasi tanpa galat.
+  - Verifikasi batasan sesi: Tepat 4 file berubah (`Navbar.tsx`, `dinkes/page.tsx`, `pemantauan/page.tsx`, `aturan-daerah/page.tsx`).
 
 ---
 

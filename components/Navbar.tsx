@@ -62,9 +62,9 @@ const VARIANT_MENUS: Record<NavbarVariant, { label: string; href?: string }[]> =
   ],
   verifikator: [{ label: "Verifikasi" }, { label: "Riwayat" }],
   dinkes: [
-    { label: "Pemantauan" },
-    { label: "Verifikasi Faskes" },
-    { label: "Aturan Daerah" },
+    { label: "Pemantauan", href: "/portal/dinkes/pemantauan" },
+    { label: "Verifikasi Faskes", href: "/portal/dinkes/verifikasi-faskes" },
+    { label: "Aturan Daerah", href: "/portal/dinkes/aturan-daerah" },
   ],
 };
 
