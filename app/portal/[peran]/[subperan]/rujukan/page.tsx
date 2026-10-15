@@ -140,49 +140,161 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
         if (!user) { router.replace("/"); return; }
 
         const { data: profile } = await supabase
-          .from("profiles").select("full_name").eq("id", user.id).maybeSingle();
-
-        const { data: staff } = await supabase
-          .from("facility_staff")
-          .select("id, staff_role, status, facility_id, facilities(id, name)")
-          .eq("profile_id", user.id)
+          .from("profiles")
+          .select("full_name, role, status")
+          .eq("id", user.id)
           .maybeSingle();
 
         if (isCancelled) return;
 
-        let facId = staff?.facility_id;
-        let facName = (staff?.facilities as unknown as { id: string; name: string } | null)?.name;
-        let staffRole = staff?.staff_role || "Petugas";
-        let isAdmin = false;
+        if (!profile) {
+          setErrorMsg("Data profil pengguna tidak ditemukan.");
+          setLoading(false);
+          return;
+        }
 
-        // Cek apakah user adalah admin faskes
-        const { data: adminFac } = await supabase
+        if (profile.role !== "fasilitas") {
+          const roleLabel =
+            profile.role === "pasien"
+              ? "Pasien"
+              : profile.role === "dinkes"
+              ? "Dinas Kesehatan"
+              : profile.role === "verifikator"
+              ? "Verifikator"
+              : profile.role;
+          setErrorMsg(
+            `Sesi masuk Anda terdaftar sebagai akun ${roleLabel}. Halaman rujukan fasilitas hanya dapat diakses oleh akun Fasilitas Kesehatan.`
+          );
+          setLoading(false);
+          return;
+        }
+
+        if (profile.status !== "aktif") {
+          setErrorMsg(
+            `Akun fasilitas kesehatan Anda saat ini berstatus ${profile.status}. Mohon menunggu persetujuan verifikasi dari Dinas Kesehatan.`
+          );
+          setLoading(false);
+          return;
+        }
+
+        // Ambil data fasilitas yang dikelola sebagai admin
+        const { data: adminFacs } = await supabase
           .from("facilities")
-          .select("id, name")
-          .eq("admin_id", user.id)
-          .maybeSingle();
+          .select("id, name, type, status")
+          .eq("admin_id", user.id);
 
-        if (adminFac) {
-          isAdmin = true;
-          if (!facId) {
-            facId = adminFac.id;
-            facName = adminFac.name;
-            staffRole = "Admin Faskes";
+        // Ambil penugasan staf medis / petugas
+        const { data: staffList } = await supabase
+          .from("facility_staff")
+          .select("id, staff_role, status, facility_id, facilities(id, name, type, status)")
+          .eq("profile_id", user.id);
+
+        if (isCancelled) return;
+
+        type FacRel = { id: string; name: string; type: string; status: string };
+
+        // Cari faskes yang relevan sesuai konteks halaman (isHospital = Rumah Sakit, sebaliknya faskes primer)
+        let chosenFacId: string | undefined;
+        let chosenFacName: string | undefined;
+        let chosenStaffRole = "Petugas";
+        let chosenIsAdmin = false;
+        let chosenFacStatus: string | undefined;
+        let chosenStaffStatus: string | undefined;
+
+        if (isHospital) {
+          // Prioritaskan Rumah Sakit di mana pengguna adalah admin
+          const rsAdmin = adminFacs?.find((f) => f.type === "rumah_sakit" || f.type === "rumah-sakit");
+          // Prioritaskan Rumah Sakit di mana pengguna adalah staf aktif
+          const rsStaff = staffList?.find((s) => {
+            const fac = s.facilities as unknown as FacRel | null;
+            return fac?.type === "rumah_sakit" || fac?.type === "rumah-sakit";
+          });
+
+          if (rsAdmin) {
+            chosenFacId = rsAdmin.id;
+            chosenFacName = rsAdmin.name;
+            chosenStaffRole = "Admin Rumah Sakit";
+            chosenIsAdmin = true;
+            chosenFacStatus = rsAdmin.status;
+          } else if (rsStaff) {
+            const fac = rsStaff.facilities as unknown as FacRel | null;
+            chosenFacId = rsStaff.facility_id;
+            chosenFacName = fac?.name;
+            chosenStaffRole = rsStaff.staff_role;
+            chosenIsAdmin = false;
+            chosenFacStatus = fac?.status;
+            chosenStaffStatus = rsStaff.status;
+          }
+        } else {
+          // Portal Faskes Primer (Puskesmas / Klinik)
+          const primerStaff = staffList?.find((s) => {
+            const fac = s.facilities as unknown as FacRel | null;
+            return fac?.type !== "rumah_sakit" && fac?.type !== "rumah-sakit";
+          });
+          const primerAdmin = adminFacs?.find((f) => f.type !== "rumah_sakit" && f.type !== "rumah-sakit");
+
+          if (primerStaff) {
+            const fac = primerStaff.facilities as unknown as FacRel | null;
+            chosenFacId = primerStaff.facility_id;
+            chosenFacName = fac?.name;
+            chosenStaffRole = primerStaff.staff_role;
+            chosenIsAdmin = false;
+            chosenFacStatus = fac?.status;
+            chosenStaffStatus = primerStaff.status;
+          } else if (primerAdmin) {
+            chosenFacId = primerAdmin.id;
+            chosenFacName = primerAdmin.name;
+            chosenStaffRole = "Admin Faskes";
+            chosenIsAdmin = true;
+            chosenFacStatus = primerAdmin.status;
           }
         }
 
-        if (!facId) {
-          setErrorMsg("Akun belum terhubung ke fasilitas kesehatan.");
+        // Fallback jika belum match dengan tipe rute, gunakan faskes pertama yang ada
+        if (!chosenFacId) {
+          if (adminFacs && adminFacs.length > 0) {
+            const f = adminFacs[0];
+            chosenFacId = f.id;
+            chosenFacName = f.name;
+            chosenStaffRole = "Admin Faskes";
+            chosenIsAdmin = true;
+            chosenFacStatus = f.status;
+          } else if (staffList && staffList.length > 0) {
+            const s = staffList[0];
+            const fac = s.facilities as unknown as FacRel | null;
+            chosenFacId = s.facility_id;
+            chosenFacName = fac?.name;
+            chosenStaffRole = s.staff_role;
+            chosenIsAdmin = false;
+            chosenFacStatus = fac?.status;
+            chosenStaffStatus = s.status;
+          }
+        }
+
+        if (!chosenFacId) {
+          setErrorMsg("Akun Anda belum terhubung ke fasilitas kesehatan mana pun. Silakan hubungi admin fasilitas kesehatan Anda.");
+          setLoading(false);
+          return;
+        }
+
+        if (chosenFacStatus && chosenFacStatus !== "aktif") {
+          setErrorMsg(`Fasilitas kesehatan "${chosenFacName}" saat ini berstatus ${chosenFacStatus}. Akses rujukan hanya untuk fasilitas aktif.`);
+          setLoading(false);
+          return;
+        }
+
+        if (chosenStaffStatus && chosenStaffStatus !== "aktif") {
+          setErrorMsg(`Status penugasan Anda pada "${chosenFacName}" saat ini berstatus ${chosenStaffStatus}.`);
           setLoading(false);
           return;
         }
 
         setFacilityInfo({
-          facilityId: facId,
-          facilityName: facName || "Fasilitas Kesehatan",
-          staffName: profile?.full_name || (staffRole === "Admin Faskes" ? "Admin Fasilitas" : "Tenaga Medis"),
-          staffRole: staffRole,
-          isAdmin,
+          facilityId: chosenFacId,
+          facilityName: chosenFacName || "Fasilitas Kesehatan",
+          staffName: profile.full_name || (chosenIsAdmin ? "Admin Fasilitas" : "Tenaga Medis"),
+          staffRole: chosenStaffRole,
+          isAdmin: chosenIsAdmin,
         });
 
         // Ambil data rujukan via RPC list_facility_referrals
@@ -206,7 +318,7 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
 
     load();
     return () => { isCancelled = true; };
-  }, [router, reloadKey, direction]);
+  }, [router, reloadKey, direction, isHospital]);
 
   // 2. Buka Detail & Ambil Timeline Events
   const openDetail = async (refItem: ReferralRow) => {

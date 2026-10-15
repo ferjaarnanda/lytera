@@ -651,6 +651,33 @@
   - `npm run build`: **Exit 0**, seluruh 21 rute Next.js 16 berhasil dikompilasi tanpa galat.
   - Verifikasi batasan sesi: Tepat 4 file berubah (`Navbar.tsx`, `dinkes/page.tsx`, `pemantauan/page.tsx`, `aturan-daerah/page.tsx`).
 
+### 42. Perbaikan Otorisasi & Resolusi Fasilitas pada Penjadwalan Rujukan Rumah Sakit (Selesai)
+- [x] **Akar Masalah**:
+  - Saat akun rumah sakit mengisi modal *Konfirmasi: Jadwalkan Pemeriksaan* lalu menekan *Simpan Keputusan*, halaman sebelumnya menampilkan galat: *"Gagal Memuat Rujukan — Akun belum terhubung ke fasilitas kesehatan."*
+  - **Penyebab Forensik**:
+    1. Pada `app/actions/rujukan.ts`, mutasi `referrals.update()` sebelumnya tidak menggunakan `.select().single()`. Ketika request dijalankan oleh pengguna tanpa hak faskes tujuan (misal sesi browser yang tertinggal akun pasien), RLS PostgreSQL menolak mutasi (0 baris diubah) namun PostgREST mengembalikan HTTP status 204 tanpa error, dan kegagalan pencatatan `referral_events` diabaikan, sehingga server action mengembalikan `{ success: true }` palsu.
+    2. Akibatnya, frontend menganggap mutasi berhasil dan memicu reload via `setReloadKey((k) => k + 1)`. Pada saat fungsi `load()` berjalan, pengecekan akun tidak memvalidasi peran profil pengguna dan gagal mengidentifikasi fasilitas rumah sakit yang cocok, sehingga melempar pesan generic *"Akun belum terhubung ke fasilitas kesehatan."*
+- [x] **Perubahan Terapan**:
+  1. *Otorisasi Ketat Sisi Server (`app/actions/rujukan.ts`)*:
+     - Menambahkan validasi peran dan hak akses faskes tujuan di `prosesRujukanAction`: pemanggil wajib terverifikasi sebagai administrator aktif (`facilities.admin_id` dengan status `'aktif'`) ATAU staf aktif (`facility_staff` dengan status `'aktif'`) pada rumah sakit penerima rujukan (`destination_facility_id`).
+     - Menambahkan validasi transisi status rujukan (`diajukan` $\to$ `diterima` | `ditolak`, `diterima` $\to$ `dijadwalkan` | `ditolak`, `dijadwalkan` $\to$ `selesai`).
+     - Menambahkan validasi kelayakan tanggal/waktu jadwal pemeriksaan (wajib ada dan tidak boleh berada di masa lalu).
+     - Menambahkan validasi dokter spesialis DPJP penugasan (jika dipilih, wajib berstatus `'aktif'` dan peran `'dokter'` di RS tujuan).
+     - Menambahkan `.select("id, status, jadwal_pemeriksaan, destination_doctor_id").single()` pada update rujukan sehingga penolakan RLS (0 baris) langsung terdeteksi sebagai galat dan dicegah mengembalikan sukses palsu.
+     - Memastikan kegagalan pencatatan linimasa (`referral_events`) dilaporkan secara transparan.
+  2. *Resolusi Identitas & Fasilitas Frontend (`app/portal/[peran]/[subperan]/rujukan/page.tsx`)*:
+     - Menambahkan verifikasi peran profil (`profile.role === 'fasilitas'`) dan status akun (`profile.status === 'aktif'`) dengan pesan deskriptif jika sesi login bukan akun fasilitas kesehatan atau masih menunggu persetujuan verifikasi.
+     - Memperbaiki resolusi fasilitas aktif sesuai konteks halaman (`isHospital` memprioritaskan RS di mana pengguna adalah admin atau staf aktif; rute primer memprioritaskan Puskesmas/Klinik).
+     - Menangani kasus status fasilitas atau status staf medis yang belum disetujui dengan pesan spesifik.
+     - Memastikan galat aksi pada modal penjadwalan ditampilkan langsung di dalam form modal tanpa menutup jendela atau memicu reload halaman ketika mutasi ditolak.
+- [x] **Pengujian & Validasi**:
+  - **Uji Impersonasi SQL (RLS & Triggers Supabase)**:
+    - *Admin RS Kucing Garong (`0900ec3d`)*: Berhasil membaca rujukan masuk (`ref_count = 1`), sukses memperbarui rujukan ke status `dijadwalkan`, mengisi `jadwal_pemeriksaan`, menugaskan dokter spesialis DPJP (`fe5b7565`), serta mencatat entri riwayat `referral_events` (`BUKTI_SUKSES: status=dijadwalkan, total_events=3`).
+    - *Akun Pasien (`22937be6`)*: RLS menolak mutasi rujukan secara mutlak (`BUKTI_DITOLAK_PASIEN: updated_count=0`).
+  - `npm run lint`: **0 error**, **0 warning**.
+  - `npm run build`: **Exit 0**, seluruh 21 rute Next.js 16 berhasil dikompilasi tanpa galat.
+  - Verifikasi batas sesi: Tepat 2 file kode berubah (`app/actions/rujukan.ts`, `app/portal/[peran]/[subperan]/rujukan/page.tsx`).
+
 ---
 
 ### Berikutnya

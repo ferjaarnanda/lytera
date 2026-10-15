@@ -459,24 +459,123 @@ export async function prosesRujukanAction(payload: unknown): Promise<ProsesRujuk
       return { success: false, error: "Sesi login kedaluwarsa. Silakan masuk kembali." };
     }
 
+    // 1. Ambil data rujukan yang akan diproses
+    const { data: referral, error: refError } = await supabase
+      .from("referrals")
+      .select("id, status, destination_facility_id, origin_facility_id, destination_doctor_id, poli")
+      .eq("id", referralId)
+      .maybeSingle();
+
+    if (refError || !referral) {
+      return {
+        success: false,
+        error: "Berkas rujukan tidak ditemukan atau sesi Anda tidak berwenang mengaksesnya.",
+      };
+    }
+
+    // 2. Verifikasi otorisasi: pengguna harus admin aktif atau staf aktif pada faskes tujuan
+    const { data: adminCheck } = await supabase
+      .from("facilities")
+      .select("id, status, name")
+      .eq("id", referral.destination_facility_id)
+      .eq("admin_id", user.id)
+      .eq("status", "aktif")
+      .maybeSingle();
+
+    const { data: staffCheck } = await supabase
+      .from("facility_staff")
+      .select("id, staff_role, status")
+      .eq("facility_id", referral.destination_facility_id)
+      .eq("profile_id", user.id)
+      .eq("status", "aktif")
+      .maybeSingle();
+
+    if (!adminCheck && !staffCheck) {
+      return {
+        success: false,
+        error: "Akses ditolak: Anda tidak memiliki wewenang administrator atau staf aktif pada rumah sakit tujuan rujukan ini.",
+      };
+    }
+
+    // 3. Validasi transisi status rujukan
     let targetStatus: "diterima" | "ditolak" | "dijadwalkan" | "selesai";
     let defaultCatatan = "";
 
     if (action === "terima") {
+      if (referral.status !== "diajukan") {
+        return {
+          success: false,
+          error: `Penerimaan rujukan hanya dapat dilakukan untuk berkas berstatus 'diajukan' (status saat ini: '${referral.status}').`,
+        };
+      }
       targetStatus = "diterima";
       defaultCatatan = catatan?.trim() || "Rujukan diterima oleh rumah sakit";
     } else if (action === "tolak") {
+      if (referral.status !== "diajukan" && referral.status !== "diterima") {
+        return {
+          success: false,
+          error: `Penolakan rujukan hanya dapat dilakukan untuk berkas berstatus 'diajukan' atau 'diterima' (status saat ini: '${referral.status}').`,
+        };
+      }
       targetStatus = "ditolak";
       defaultCatatan = catatan!.trim();
     } else if (action === "jadwalkan") {
+      if (referral.status === "diajukan") {
+        return {
+          success: false,
+          error: "Rujukan harus diterima terlebih dahulu oleh rumah sakit sebelum dapat dijadwalkan.",
+        };
+      }
+      if (referral.status !== "diterima") {
+        return {
+          success: false,
+          error: `Penjadwalan pemeriksaan hanya dapat dilakukan untuk rujukan berstatus 'diterima' (status saat ini: '${referral.status}').`,
+        };
+      }
+
+      // Validasi tanggal dan jam jadwal
+      if (!jadwalPemeriksaan) {
+        return { success: false, error: "Jadwal tanggal dan jam pemeriksaan wajib diisi." };
+      }
+      const scheduleDate = new Date(jadwalPemeriksaan);
+      if (isNaN(scheduleDate.getTime())) {
+        return { success: false, error: "Format tanggal jadwal pemeriksaan tidak valid." };
+      }
+      if (scheduleDate.getTime() < Date.now() - 60000) {
+        return { success: false, error: "Jadwal tanggal dan jam pemeriksaan tidak boleh berada di masa lalu." };
+      }
+
+      // Validasi dokter DPJP jika dipilih
+      if (destinationDoctorId) {
+        const { data: doctorStaff, error: docErr } = await supabase
+          .from("facility_staff")
+          .select("id, staff_role, status, specialization")
+          .eq("id", destinationDoctorId)
+          .eq("facility_id", referral.destination_facility_id)
+          .maybeSingle();
+
+        if (docErr || !doctorStaff || doctorStaff.staff_role !== "dokter" || doctorStaff.status !== "aktif") {
+          return {
+            success: false,
+            error: "Dokter penugasan spesialis (DPJP) yang dipilih tidak terdaftar sebagai dokter aktif pada rumah sakit tujuan ini.",
+          };
+        }
+      }
+
       targetStatus = "dijadwalkan";
       defaultCatatan = catatan?.trim() || `Pemeriksaan dijadwalkan pada ${jadwalPemeriksaan}`;
     } else {
+      if (referral.status !== "dijadwalkan") {
+        return {
+          success: false,
+          error: `Penyelesaian rujukan hanya dapat dilakukan untuk berkas berstatus 'dijadwalkan' (status saat ini: '${referral.status}').`,
+        };
+      }
       targetStatus = "selesai";
       defaultCatatan = catatan?.trim() || "Pemeriksaan dan tindakan spesialis selesai";
     }
 
-    // Siapkan update rujukan
+    // 4. Siapkan update rujukan
     const updatePayload: Record<string, unknown> = { status: targetStatus };
     if (action === "jadwalkan") {
       updatePayload.jadwal_pemeriksaan = jadwalPemeriksaan;
@@ -485,19 +584,21 @@ export async function prosesRujukanAction(payload: unknown): Promise<ProsesRujuk
       }
     }
 
-    const { error: updateError } = await supabase
+    const { data: updatedRef, error: updateError } = await supabase
       .from("referrals")
       .update(updatePayload)
-      .eq("id", referralId);
+      .eq("id", referralId)
+      .select("id, status, jadwal_pemeriksaan, destination_doctor_id")
+      .single();
 
-    if (updateError) {
+    if (updateError || !updatedRef) {
       return {
         success: false,
-        error: "Gagal memperbarui status rujukan: " + updateError.message,
+        error: "Gagal memperbarui status rujukan: " + (updateError?.message || "Perubahan tidak diizinkan oleh kebijakan basis data"),
       };
     }
 
-    // Catat riwayat event
+    // 5. Catat riwayat event
     const { error: eventError } = await supabase.from("referral_events").insert({
       referral_id: referralId,
       status: targetStatus,
@@ -506,7 +607,10 @@ export async function prosesRujukanAction(payload: unknown): Promise<ProsesRujuk
     });
 
     if (eventError) {
-      console.error("Gagal mencatat referral_event:", eventError.message);
+      return {
+        success: false,
+        error: "Status rujukan berhasil diperbarui namun gagal mencatat linimasa rujukan: " + eventError.message,
+      };
     }
 
     return { success: true };
