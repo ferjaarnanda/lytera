@@ -603,7 +603,7 @@ export default function DinkesPemantauanPage() {
               <Info className="w-4 h-4 text-[#2E7D51] shrink-0 mt-0.5" />
               <span>
                 <strong>Keterangan Arsitektur: </strong>
-                Data operasional dan kesiapan nakes bersumber langsung dari basis data Supabase Lytera. Metrik volume rujukan klinis individual saat ini diisolasi oleh kebijakan RLS untuk mematuhi mandat privasi medis pasien.
+                Data operasional bersumber langsung dari basis data Supabase.hanya di peruntukkan untuk demo sehingga bukan data nyata. 
               </span>
             </div>
           </Card>
