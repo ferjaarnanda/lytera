@@ -217,6 +217,7 @@ export default function DinkesPemantauanPage() {
   const totalFacilities = facilities.length;
   const activeFacilities = facilities.filter((f) => f.status === "aktif").length;
   const pendingFacilities = facilities.filter((f) => f.status === "menunggu").length;
+  const rejectedFacilities = facilities.filter((f) => f.status === "ditolak").length;
 
   const hospitalsCount = facilities.filter((f) => f.type === "rumah_sakit" && f.status === "aktif").length;
   const puskesmasCount = facilities.filter((f) => f.type === "puskesmas" && f.status === "aktif").length;
@@ -367,10 +368,16 @@ export default function DinkesPemantauanPage() {
                 </div>
               </div>
               <div className="text-3xl font-extrabold text-[#0F3040] tabular-nums mb-1">{totalFacilities}</div>
-              <div className="flex items-center gap-2 text-xs text-slate-500">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                 <span className="text-[#2E7D51] font-semibold">{activeFacilities} Aktif</span>
                 <span>•</span>
                 <span className="text-amber-700 font-semibold">{pendingFacilities} Menunggu</span>
+                {rejectedFacilities > 0 && (
+                  <>
+                    <span>•</span>
+                    <span className="text-[#B3261E] font-semibold">{rejectedFacilities} Ditolak</span>
+                  </>
+                )}
               </div>
             </div>
           </Reveal>
