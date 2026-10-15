@@ -52,8 +52,8 @@ export async function cariPasienAction(nik: string): Promise<PatientSearchRespon
     if (error) {
       // Petakan pesan galat database ke bahasa Indonesia
       const msg = error.message || "";
-      if (msg.includes("bukan dokter aktif") || msg.includes("not an active doctor")) {
-        return { success: false, error: "Akun Anda tidak terdaftar sebagai dokter aktif di fasilitas kesehatan." };
+      if (msg.includes("bukan dokter aktif") || msg.includes("not an active doctor") || msg.includes("Hanya dokter aktif")) {
+        return { success: false, error: "Hanya dokter aktif di fasilitas aktif yang berwenang mencari pasien." };
       }
       if (msg.includes("16 digit") || msg.includes("invalid NIK")) {
         return { success: false, error: "NIK harus terdiri dari tepat 16 digit angka." };

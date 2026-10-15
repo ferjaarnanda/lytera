@@ -104,7 +104,8 @@ export default function MasukPage({ params }: PageProps) {
         return;
       }
 
-      // Berhasil — arahkan ke portal sesuai peran
+      // Berhasil — refresh router agar sesi cookie server tersinkronisasi lalu arahkan ke portal sesuai peran
+      router.refresh();
       router.push(`/portal/${peran}/${subperan}`);
     } catch {
       setErrorMsg("Terjadi kesalahan jaringan. Periksa koneksi internet Anda.");
