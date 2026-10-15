@@ -355,8 +355,8 @@ function renderFormattedContent(text: string): React.ReactNode {
                           </p>
                         )}
 
-                        <p className="text-[11.5px] text-slate-600 mt-1.5 bg-[#F4FAF6] p-2 rounded-[8px] border border-[#2E7D51]/10 leading-snug">
-                          💡 {rec.relevance}
+                        <p className="text-[11.5px] text-slate-500 mt-1.5 leading-snug">
+                          {rec.relevance}
                         </p>
 
                         {rec.actionUrl && (

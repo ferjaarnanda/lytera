@@ -37,6 +37,7 @@
 | Verifikasi SKTM & E2E Token Rekam Medis | SELESAI | f20e811 | Audit & pengujian lengkap alur verifikasi penjaminan daerah / SKTM (pengajuan pasien -> antrean verifikator berwilayah -> validasi penolakan berakar alasan -> persetujuan -> tercermin di rujukan masuk RS), penjadwalan DPJP spesialis RS (pembersihan penugasan saat tanpa dokter tertentu), penonaktifan overload legacy 5-param add_medical_record tanpa token, dan verifikasi interoperabilitas token rekam medis PDP 6-digit end-to-end (dinkes diblokir, salah token dicatat & dikunci, buka/tulis sukses, pencabutan token seketika). Uji impersonasi SQL 100% lolos. |
 | Navbar Admin Faskes & Identitas Akun | SELESAI | 3984a5d | Penyelarasan urutan navbar admin faskes ke Ringkasan -> Dokter & Petugas -> Daftar Rujukan di semua halaman (page, staf, rujukan). Identitas admin: "Admin" di baris atas dan nama fasilitas di baris bawah. Identitas dokter: nama dokter di baris atas dan nama fasilitas di baris bawah. Penghapusan tombol cokelat "Kembali ke Portal Puskesmas" di halaman staf. Lint 0 error, build exit 0. |
 | Perbaikan Persetujuan Spesialisasi Dokter | SELESAI | 6ba1086 | Perbaikan fungsi RPC `review_facility_staff` dengan dual-match ID (fss.id DAN specialization_id katalog), sinkronisasi otomatis teks `facility_staff.specialization` dari join is_verified=true, validasi fasilitas aktif, dan reset spesialisasi non-dokter. Perbaikan logika modal persetujuan di UI (default checkbox berdasarkan status staf; verifiedSpecIds hanya dikirim jika peran dokter). 5 skenario uji SQL impersonasi lolos 100%. Lint 0 error, build exit 0. |
+| Perapihan Format Rekomendasi Faskes Tetra | SELESAI | TBD | Format informasi rekomendasi fasilitas kesehatan pada asisten Tetra (`lib/tetra/tools.ts`, `TetraWidget.tsx`) dan preview landing page (`app/page.tsx`) distandarkan untuk semua jenis faskes (Puskesmas, Apotek, Klinik, Rumah Sakit). Penghapusan emoticon 💡 dan kalimat teknis ranking, diganti keterangan singkat '[Jenis] berlokasi di [Kecamatan, Kota].' yang konsisten dan akurat. Lint 0 error, build exit 0. |
 
 ---
 
@@ -596,6 +597,25 @@
   - `npm run lint`: **0 error**, 2 warnings (test script non-produksi).
   - `npm run build`: **Exit 0**, seluruh 19 rute Next.js 16 berhasil dikompilasi tanpa galat.
   - Verifikasi file berubah: Tepat 4 file (`Navbar.tsx`, `page.tsx`, `staf/page.tsx`, `rujukan/page.tsx`).
+
+### 40. Perapihan Format Informasi Rekomendasi Faskes Tetra (Selesai)
+- [x] **Akar Masalah**:
+  - Rekomendasi faskes Tetra sebelumnya menampilkan teks ranking internal (seperti *"Sesuai jenis fasilitas Faskes Primer (Puskesmas)"*) yang didahului oleh emoticon lampu 💡 dan ditempatkan dalam boks bernuansa hijau di kartu rekomendasi.
+  - Kartu preview di landing page (`app/page.tsx`) juga memiliki format lama dengan emoticon 💡.
+- [x] **Perubahan Terapan**:
+  1. *Standarisasi Generator Rekomendasi (`lib/tetra/tools.ts`)*:
+     - Fungsi `buildFacilityRecommendations` diperbarui untuk seluruh jenis fasilitas (`puskesmas`, `apotek`, `klinik`, `rumah_sakit`, dan faskes lainnya).
+     - Menghilangkan teks alasan internal scoring, menggantikannya dengan kalimat deskriptif langsung: `[Jenis] berlokasi di [Kecamatan, Kota].`
+     - Menggunakan normalisasi cerdas wilayah (menghindari duplikasi kata "Kecamatan", dan jika kecamatan tidak tersedia langsung menyajikan kota/kabupaten saja).
+  2. *Pembersihan Tampilan Komponen (`components/Tetra/TetraWidget.tsx`)*:
+     - Menghapus emoticon lampu 💡 dan latar boks khusus, menyajikan teks relevance secara bersih, ringkas, dan selaras dengan hierarki visual kartu.
+  3. *Penyelarasan Preview Landing Page (`app/page.tsx`)*:
+     - Kartu simulasi Rumah Sakit Colombia diperbarui ke format standar: *"Rumah Sakit berlokasi di Kecamatan Semarang Tengah, Kota Semarang."* tanpa emoticon.
+- [x] **Pengujian & Validasi**:
+  - Uji format 6 variasi fasilitas (Puskesmas, Apotek, Klinik, RS, tanpa kecamatan, dengan awalan "Kecamatan") lolos 100%.
+  - `npm run lint`: **0 error**, 2 warnings (test script non-produksi).
+  - `npm run build`: **Exit 0**, seluruh 19 rute Next.js 16 berhasil dikompilasi tanpa galat.
+  - File berubah: 3 file (`lib/tetra/tools.ts`, `components/Tetra/TetraWidget.tsx`, `app/page.tsx`).
 
 ---
 

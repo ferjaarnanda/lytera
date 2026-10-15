@@ -807,8 +807,8 @@ export default function HomePage() {
                                   <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
                                   Semarang Tengah, Kota Semarang
                                 </p>
-                                <p className="text-[11px] text-slate-600 mt-1.5 bg-[#F4FAF6] p-2 rounded-[8px] border border-[#2E7D51]/10 leading-snug">
-                                  💡 Fasilitas rujukan lanjutan terhubung untuk pelayanan rujukan terpadu dan rekam medis digital.
+                                <p className="text-[11.5px] text-slate-500 mt-1.5 leading-snug">
+                                  Rumah Sakit berlokasi di Kecamatan Semarang Tengah, Kota Semarang.
                                 </p>
                               </div>
                             </div>

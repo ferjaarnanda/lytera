@@ -407,7 +407,7 @@ export function buildFacilityRecommendations(
   limit = 3,
   context?: TetraUserContext
 ): TetraRecommendation[] {
-  return ranked.slice(0, limit).map(({ facility, relevanceReason }) => {
+  return ranked.slice(0, limit).map(({ facility }) => {
     const isDoctorOrStaff =
       context?.role === "dokter" ||
       context?.role === "puskesmas" ||
@@ -422,16 +422,50 @@ export function buildFacilityRecommendations(
       actionLabel = "Buat Rujukan ke RS Ini";
     }
 
-    const typeBadge =
-      facility.type === "rumah_sakit"
-        ? "Rumah Sakit Rujukan"
-        : facility.type === "puskesmas"
-        ? "Puskesmas Primer"
-        : facility.type === "klinik"
-        ? "Klinik Pratama"
-        : "Apotek";
+    let typeBadge = "Fasilitas Kesehatan";
+    let typeLabel = "Fasilitas Kesehatan";
+
+    if (facility.type === "rumah_sakit") {
+      typeBadge = "Rumah Sakit Rujukan";
+      typeLabel = "Rumah Sakit";
+    } else if (facility.type === "puskesmas") {
+      typeBadge = "Puskesmas Primer";
+      typeLabel = "Faskes Primer";
+    } else if (facility.type === "klinik") {
+      typeBadge = "Klinik Pratama";
+      typeLabel = "Klinik";
+    } else if (facility.type === "apotek") {
+      typeBadge = "Apotek";
+      typeLabel = "Apotek";
+    } else if (facility.type) {
+      const cleanType = String(facility.type).replace(/_/g, " ").trim();
+      const capType = cleanType.charAt(0).toUpperCase() + cleanType.slice(1);
+      typeBadge = capType;
+      typeLabel = capType;
+    }
 
     const location = formatFacilityLocation({ district: facility.district, city: facility.city });
+
+    // Kalimat lokasi ringkas: "[Jenis] berlokasi di [Kecamatan, Kota]."
+    // Format lokasi tetap menampilkan kecamatan dan kota/kabupaten jika tersedia.
+    // Jika kecamatan tidak tersedia, gunakan kota/kabupaten saja.
+    let locationClause: string;
+    const resolvedDistrict = resolveRegionName(facility.district) || facility.district?.trim();
+    const resolvedCity = resolveRegionName(facility.city) || facility.city?.trim();
+
+    if (resolvedDistrict && resolvedCity) {
+      const cleanDistrict = resolvedDistrict.replace(/^(kecamatan|kec\.)\s+/i, "").trim();
+      locationClause = `Kecamatan ${cleanDistrict}, ${resolvedCity}`;
+    } else if (resolvedCity) {
+      locationClause = resolvedCity;
+    } else if (resolvedDistrict) {
+      const cleanDistrict = resolvedDistrict.replace(/^(kecamatan|kec\.)\s+/i, "").trim();
+      locationClause = `Kecamatan ${cleanDistrict}`;
+    } else {
+      locationClause = "wilayah terdaftar";
+    }
+
+    const relevance = `${typeLabel} berlokasi di ${locationClause}.`;
 
     return {
       type: "facility",
@@ -441,7 +475,7 @@ export function buildFacilityRecommendations(
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(" "),
       category: typeBadge,
-      relevance: relevanceReason,
+      relevance,
       location,
       badge: "Faskes Aktif",
       actionUrl,
@@ -449,6 +483,7 @@ export function buildFacilityRecommendations(
     };
   });
 }
+
 
 /**
  * Format kartu rekomendasi dokter untuk UI.
