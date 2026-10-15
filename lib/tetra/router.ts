@@ -55,9 +55,145 @@ export function extractLocation(input: string): string | undefined {
 }
 
 /**
+ * Mengecek apakah pesan pengguna merupakan pertanyaan tentang identitas atau nama pengguna sendiri.
+ * Mendukung variasi bahasa formal, informal, bahasa gaul (gw, gue, gua), bahasa Inggris,
+ * serta pertanyaan lanjutan berbasis konteks percakapan.
+ */
+export function isSelfIdentityQuery(
+  rawInput: string,
+  conversationHistory?: Array<{ role: string; content: string }>
+): boolean {
+  const input = rawInput.toLowerCase().trim();
+  if (!input) return false;
+
+  // 1. FILTER NEGATIF: Pertanyaan edukatif / definisi konsep / arti kata
+  // Contoh: "apa arti nama?", "arti nama", "apa makna nama", "apa itu nama"
+  if (
+    input.includes("arti nama") ||
+    input.includes("makna nama") ||
+    input.includes("definisi nama") ||
+    input.startsWith("apa arti") ||
+    input.startsWith("apa itu nama")
+  ) {
+    return false;
+  }
+
+  // 2. FILTER NEGATIF: Pertanyaan tentang identitas pihak ketiga / orang lain / entitas lain
+  // Contoh: "siapa nama dokter itu?", "siapa nama pasien itu?", "siapa nama tokoh utama cerita ini?"
+  const thirdPartyTargets = [
+    "dokter",
+    "pasien",
+    "tokoh",
+    "karakter",
+    "penemu",
+    "presiden",
+    "menteri",
+    "kadinkes",
+    "gubernur",
+    "walikota",
+    "bupati",
+    "orang itu",
+    "orang lain",
+    "dia",
+    "mereka",
+    "beliau",
+    "rumah sakit",
+    "faskes",
+    "puskesmas",
+    "klinik",
+    "apotek",
+    "obat",
+    "penyakit",
+  ];
+
+  for (const target of thirdPartyTargets) {
+    if (
+      input.includes(`nama ${target}`) ||
+      input.includes(`${target} itu`) ||
+      input.includes(`${target} tersebut`)
+    ) {
+      return false;
+    }
+  }
+
+  if (/\bsiapa\s+(?:nama\s+)?(?:dokter|pasien|tokoh|penemu|presiden)\b/.test(input)) {
+    return false;
+  }
+
+  // 3. POLA LANGSUNG & PERCAKAPAN IDENTITAS DIRI
+  // Pola A: "siapa aku/saya/gue/gw/gua", "aku/saya/gue/gw/gua siapa", "who am i"
+  const whoAmIPattern = /\b(?:siapa\s+(?:sih\s+)?(?:aku|saya|gue|gua|gw|ogut|ku)|(?:aku|saya|gue|gua|gw|ogut)\s+(?:ini\s+|sih\s+)?siapa|who\s+am\s+i)\b/;
+  if (whoAmIPattern.test(input)) {
+    return true;
+  }
+
+  // Pola B: "nama saya", "siapa nama saya/aku/gue/gw", "namaku", "what is my name"
+  const nameOfMePattern = /\b(?:(?:siapa\s+)?nama\s+(?:lengkap\s+)?(?:saya|aku|gue|gua|gw|ogut|ku)|namaku(?:\s+siapa|\s+apa)?|namasaya|namague|namagw|namagua|what(?:'s|\s+is)\s+my\s+name)\b/;
+  if (nameOfMePattern.test(input)) {
+    return true;
+  }
+
+  // Pola C: "saya/aku/gue/gw namanya siapa", "nama saya/aku/gue apa"
+  const myNameWhoPattern = /\b(?:(?:saya|aku|gue|gua|gw)\s+(?:namanya\s+siapa|nama\s+lengkap\s+saya\s+apa)|nama\s+(?:saya|aku|gue|gua|gw)\s+apa)\b/;
+  if (myNameWhoPattern.test(input)) {
+    return true;
+  }
+
+  // Pola D: "kamu tahu/ingat aku siapa", "lu tau gue siapa", "ingat nama gue", "tahu nama saya"
+  const doYouKnowMePattern = /\b(?:(?:kamu|lu|lo|kau|anda)\s+(?:tahu|tau|ingat|inget)\s+(?:siapa\s+(?:aku|saya|gue|gua|gw)|(?:aku|saya|gue|gua|gw)\s+siapa)|(?:ingat|inget|tahu|tau)\s+nama\s+(?:saya|aku|gue|gua|gw)|lu\s+tahu\s+gue\s+siapa|lu\s+tau\s+gue\s+siapa|kamu\s+tahu\s+aku\s+siapa|kamu\s+ingat\s+siapa\s+aku|do\s+you\s+know\s+who\s+i\s+am|do\s+you\s+know\s+my\s+name)\b/;
+  if (doYouKnowMePattern.test(input)) {
+    return true;
+  }
+
+  // Pola E: "emang aku siapa", "coba sebutkan nama saya", "sebutkan nama saya/aku", "coba panggil aku dengan nama"
+  const callMePattern = /\b(?:emang\s+(?:aku|saya|gue|gw)\s+siapa|sebutkan\s+nama\s+(?:saya|aku|gue|gw)|panggil\s+(?:aku|saya|gue|gw)\s+(?:dengan\s+)?nama)\b/;
+  if (callMePattern.test(input)) {
+    return true;
+  }
+
+  // Pola F: "tadi aku bilang namaku siapa", "nama saya siapa tadi", "namaku siapa tadi"
+  const recalledNamePattern = /\b(?:tadi\s+(?:aku|saya|gue|gw)\s+(?:bilang\s+)?nama(?:ku|\s+saya|\s+aku|\s+gue|\s+gw)\s+siapa|nama\s+(?:saya|aku|gue|gw)\s+siapa\s+tadi|namaku\s+siapa\s+tadi)\b/;
+  if (recalledNamePattern.test(input)) {
+    return true;
+  }
+
+  // Pola G: "identitas aku/saya/gue apa", "terus identitas aku apa"
+  const identityPattern = /\b(?:identitas\s+(?:saya|aku|gue|gua|gw)|identitasku)\b/;
+  if (identityPattern.test(input)) {
+    return true;
+  }
+
+  // Pola H: "nama lengkapnya sekalian", "kalau nama lengkapku", "nama lengkapku"
+  const isFollowUpNamePattern = /\b(?:nama\s+lengkapnya(?:\s+sekalian|\s+apa)?|kalau\s+nama\s+lengkapku|nama\s+lengkapku)\b/;
+  if (isFollowUpNamePattern.test(input)) {
+    return true;
+  }
+
+  // 4. PERTANYAAN LANJUTAN BERBASIS KONTEKS PERCAKAPAN
+  if (conversationHistory && conversationHistory.length > 0) {
+    const lastUserMsg = [...conversationHistory].reverse().find((m) => m.role === "user");
+    if (lastUserMsg && isSelfIdentityQuery(lastUserMsg.content)) {
+      if (
+        input.includes("nama lengkap") ||
+        input.includes("lengkapnya") ||
+        input.includes("identitas") ||
+        input.includes("siapa tadi")
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
  * Mendeteksi intent dari pesan pengguna secara deterministik dan berbasis semantik.
  */
-export function classifyTetraIntent(rawInput: string): IntentMatchResult {
+export function classifyTetraIntent(
+  rawInput: string,
+  conversationHistory?: Array<{ role: string; content: string }>
+): IntentMatchResult {
   const input = rawInput.toLowerCase().trim();
   const detectedLocation = extractLocation(rawInput);
   const detectedSpecialization = extractSpecialization(rawInput);
@@ -94,20 +230,8 @@ export function classifyTetraIntent(rawInput: string): IntentMatchResult {
   }
 
   // 2. IDENTITAS DIRI / PERSONAL CONTEXT
-  // "nama saya siapa", "siapa saya", "nama saya", "siapa namaku", "apakah kamu tahu nama saya"
-  const identityPatterns = [
-    /\bnama saya siapa\b/,
-    /\bsiapa saya\b/,
-    /\bsiapa nama saya\b/,
-    /\bsiapa namaku\b/,
-    /\bnama saya\b/,
-    /\bidentitas saya\b/,
-    /\btahu nama saya\b/,
-    /\bapakah kamu tahu nama saya\b/,
-    /\bakun saya siapa\b/,
-  ];
-  if (identityPatterns.some((pattern) => pattern.test(input))) {
-    return { intent: "identity", confidence: 0.95 };
+  if (isSelfIdentityQuery(rawInput, conversationHistory)) {
+    return { intent: "identity", confidence: 0.98 };
   }
 
   // 3. IZIN AKSES / TOKEN 6 DIGIT

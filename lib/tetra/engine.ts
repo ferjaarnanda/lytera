@@ -22,9 +22,10 @@ import { formatFacilityLocation } from "@/lib/region-utils";
 async function generateIntentResponse(
   input: string,
   context: TetraUserContext,
-  availableFacilities: FacilityCandidate[]
+  availableFacilities: FacilityCandidate[],
+  conversationHistory?: Array<{ role: string; content: string }>
 ): Promise<TetraChatResponse> {
-  const match = classifyTetraIntent(input);
+  const match = classifyTetraIntent(input, conversationHistory);
   const intent = match.intent;
   const suggestions = getQuickSuggestions(context);
 
@@ -360,7 +361,7 @@ export async function executeTetraChat(request: TetraChatRequest): Promise<Tetra
   const groqModel = process.env.GROQ_MODEL?.trim() || "llama-3.3-70b-versatile";
 
   // 1. Klasifikasi Intent terlebih dahulu
-  const intentMatch = classifyTetraIntent(userInput);
+  const intentMatch = classifyTetraIntent(userInput, messages);
 
   // 2. Ambil data fasilitas aktif nyata dari Lytera via RPC resmi
   const activeFacilities = await searchActiveFacilities({
@@ -370,7 +371,7 @@ export async function executeTetraChat(request: TetraChatRequest): Promise<Tetra
 
   // 3. Jika API key Groq tidak tersedia atau formatnya bukan gsk_, gunakan deterministic intent engine
   if (!groqApiKey || !groqApiKey.startsWith("gsk_")) {
-    return generateIntentResponse(userInput, context, activeFacilities);
+    return generateIntentResponse(userInput, context, activeFacilities, messages);
   }
 
   // 4. Jika intent adalah informational murni (identity, token, referral flow, medical record, general info),
@@ -382,7 +383,7 @@ export async function executeTetraChat(request: TetraChatRequest): Promise<Tetra
     intentMatch.intent === "medical_record" ||
     intentMatch.intent === "payer_verification"
   ) {
-    return generateIntentResponse(userInput, context, activeFacilities);
+    return generateIntentResponse(userInput, context, activeFacilities, messages);
   }
 
   // 5. Panggilan ke Groq LLM untuk natural language reasoning
