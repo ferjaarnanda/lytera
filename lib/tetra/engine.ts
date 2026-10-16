@@ -51,7 +51,7 @@ async function generateIntentResponse(
       success: true,
       intent: "emergency",
       message:
-        "⚠️ **PERINGATAN KONDISI DARURAT MEDIS**\n\n" +
+        "**PERINGATAN KONDISI DARURAT MEDIS**\n\n" +
         "Keluhan yang kamu sebutkan berpotensi merupakan kondisi gawat darurat yang memerlukan penanganan medis segera. " +
         "Mohon segera bawa pasien ke **Instalasi Gawat Darurat (IGD) Rumah Sakit terdekat** atau hubungi nomor darurat medis **119**.\n\n" +
         "Jangan menunggu antrean atau pengajuan rujukan digital biasa.",
@@ -109,7 +109,7 @@ async function generateIntentResponse(
       success: true,
       intent: "token_access",
       message:
-        "🔐 **Kode Izin Akses Rekam Medis 6 Digit (UU PDP)**\n\n" +
+        "**Kode Izin Akses Rekam Medis 6 Digit (UU PDP)**\n\n" +
         "Di Lytera, dokter dan rumah sakit tidak dapat membuka riwayat medis tanpa persetujuan pasien. Mekanisme ini dirancang sesuai mandat UU Perlindungan Data Pribadi:\n\n" +
         "1. **Dibuat Mandiri**: Pasien membuat kode 6 digit di menu **Izin Akses**.\n" +
         "2. **Berlaku 60 Menit**: Kode memiliki hitung mundur aktif 60 menit dan otomatis hangus setelah waktu habis.\n" +
@@ -128,7 +128,7 @@ async function generateIntentResponse(
       success: true,
       intent: "referral_flow",
       message:
-        "📋 **Alur Rujukan Digital Berjenjang di Lytera:**\n\n" +
+        "**Alur Rujukan Digital Berjenjang di Lytera:**\n\n" +
         "1. **Pemeriksaan di Faskes Primer**: Dokter di Puskesmas atau Klinik memeriksa pasien, mengisi anamnesis klinis, dan menerbitkan rujukan digital ke Rumah Sakit tujuan.\n" +
         "2. **Verifikasi & Penjadwalan RS**: Rumah Sakit tujuan menerima berkas rujukan secara real-time dan menetapkan jadwal pemeriksaan dokter spesialis.\n" +
         "3. **Pemeriksaan Lanjutan Berizin Pasien**: Pasien datang ke RS sesuai jadwal dan membagikan kode izin 6 digit agar dokter spesialis dapat membuka rekam medis.\n" +
@@ -146,7 +146,7 @@ async function generateIntentResponse(
       success: true,
       intent: "medical_record",
       message:
-        "📁 **Rekam Medis Digital Terpadu Lytera**\n\n" +
+        "**Rekam Medis Digital Terpadu Lytera**\n\n" +
         "Seluruh catatan medis, diagnosa ICD-10, dan resume tindakan tersimpan secara aman dan terenkripsi.\n\n" +
         "• Pasien dapat meninjau riwayat kunjungan dan daftar faskes yang pernah memeriksa di tab **Riwayat Medis**.\n" +
         "• Dokter pemeriksa hanya dapat membuka rekam medis jika memiliki kode izin 6 digit yang masih aktif dari pasien.\n" +
@@ -164,7 +164,7 @@ async function generateIntentResponse(
       success: true,
       intent: "payer_verification",
       message:
-        "💳 **Penjamin Biaya & Verifikasi Administrasi**\n\n" +
+        "**Penjamin Biaya & Verifikasi Administrasi**\n\n" +
         "Di Lytera, pasien dapat memilih jenis penjamin pembiayaan kesehatan:\n" +
         "• **Mandiri / Umum** (Default)\n" +
         "• **BPJS Kesehatan**\n" +
