@@ -12,6 +12,7 @@ import {
   Clock,
   History,
   Lock,
+  RotateCw,
 } from "lucide-react";
 import { CardInner } from "@/components/Card";
 import { Badge } from "@/components/Badge";
@@ -50,6 +51,7 @@ export function RekamMedisDokterPanel({
   const [savingRecord, setSavingRecord] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [reloadingRecords, setReloadingRecords] = useState(false);
 
   // Jika bukan dokter aktif
   if (!isDoctor) {
@@ -92,6 +94,35 @@ export function RekamMedisDokterPanel({
     // Otorisasi Sukses
     setActiveVerifiedToken(clean);
     setRecords(res.records ?? []);
+  };
+
+  // ── Segarkan Riwayat Medis dari Database secara Otoritatif ──
+  const handleRefreshRecords = async () => {
+    if (!activeVerifiedToken) return;
+    setReloadingRecords(true);
+    setSaveError(null);
+    const res = await bukaRekamMedisDokterAction({
+      referralId,
+      tokenCode: activeVerifiedToken,
+    });
+    setReloadingRecords(false);
+    if (res.success) {
+      setRecords(res.records ?? []);
+    } else {
+      const err = res.error || "Gagal menyegarkan riwayat medis.";
+      if (
+        err.toLowerCase().includes("dicabut") ||
+        err.toLowerCase().includes("kedaluwarsa") ||
+        err.toLowerCase().includes("terkunci")
+      ) {
+        setActiveVerifiedToken(null);
+        setRecords(null);
+        setShowInputForm(false);
+        setVerifyError(err);
+      } else {
+        setSaveError(err);
+      }
+    }
   };
 
   // ── 2. Simpan Catatan Rekam Medis Baru ──
@@ -142,27 +173,31 @@ export function RekamMedisDokterPanel({
       return;
     }
 
-    // Sukses: perbarui riwayat lokal
-    setSaveSuccess(true);
+    // Sukses: reset formulir input
     setShowInputForm(false);
     setDiagnosisIcd10("");
     setRingkasan("");
+    setSaveError(null);
 
-    // Tambahkan record baru ke daftar lokal
-    setRecords((prev) => [
-      {
-        id: res.recordId || "new",
-        patient_id: "",
-        family_member_id: null,
-        facility_name: "Fasilitas Anda",
-        doctor_name: "Anda (Dokter Pemeriksa)",
-        tanggal: new Date().toISOString(),
-        diagnosis_icd10: diagnosisIcd10.trim(),
-        ringkasan: ringkasan.trim(),
-        referral_id: referralId,
-      },
-      ...(prev || []),
-    ]);
+    // Ambil ulang riwayat rekam medis aktual secara otoritatif dari database menggunakan token sesi aktif
+    setReloadingRecords(true);
+    const reloadRes = await bukaRekamMedisDokterAction({
+      referralId,
+      tokenCode: activeVerifiedToken,
+    });
+    setReloadingRecords(false);
+
+    if (reloadRes.success) {
+      setRecords(reloadRes.records ?? []);
+      setSaveSuccess(true);
+    } else {
+      setSaveError(
+        "Catatan medis berhasil disimpan ke basis data, namun pemuatan ulang riwayat terkendala: " +
+          (reloadRes.error || "Gagal membaca data terbaru") +
+          ". Tekan tombol 'Segarkan Riwayat' untuk memuat ulang data."
+      );
+      setSaveSuccess(true);
+    }
 
     if (onRecordAdded) {
       onRecordAdded();
@@ -374,10 +409,21 @@ export function RekamMedisDokterPanel({
           {/* ── TAMPILAN RIWAYAT MEDIS PASIEN (READ-ONLY) ── */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold text-[#0F3040] uppercase tracking-wider flex items-center gap-1.5">
-                <History className="w-3.5 h-3.5 text-[#8F5A4E]" />
-                <span>Riwayat Kunjungan Medis Pasien ({records?.length || 0})</span>
-              </h4>
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs font-bold text-[#0F3040] uppercase tracking-wider flex items-center gap-1.5">
+                  <History className="w-3.5 h-3.5 text-[#8F5A4E]" />
+                  <span>Riwayat Kunjungan Medis Pasien ({records?.length || 0})</span>
+                </h4>
+                <button
+                  type="button"
+                  onClick={handleRefreshRecords}
+                  disabled={reloadingRecords}
+                  title="Segarkan Riwayat Medis"
+                  className="p-1 rounded-md text-slate-400 hover:text-[#0F3040] hover:bg-slate-100 transition-colors disabled:opacity-50"
+                >
+                  <RotateCw className={`w-3.5 h-3.5 ${reloadingRecords ? "animate-spin text-[#0F3040]" : ""}`} />
+                </button>
+              </div>
               <Badge variant="info">Read-Only Otorisasi Pasien</Badge>
             </div>
 
@@ -418,12 +464,22 @@ export function RekamMedisDokterPanel({
                 ))}
               </div>
             ) : (
-              <CardInner variant="cream" className="p-6 text-center border border-[#E2E8F0] rounded-xl">
-                <Clock className="w-6 h-6 text-slate-400 mx-auto mb-1.5" />
-                <p className="text-xs font-bold text-[#0F3040]">Belum Ada Riwayat Kunjungan</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Pasien belum memiliki catatan rekam medis sebelumnya. Gunakan tombol &quot;Tambah Catatan Medis&quot; untuk mencatat kunjungan ini.
+              <CardInner variant="cream" className="p-6 text-center border border-[#E2E8F0] rounded-xl space-y-2">
+                <Clock className="w-6 h-6 text-slate-400 mx-auto mb-1" />
+                <p className="text-xs font-bold text-[#0F3040]">Belum Ada Riwayat Kunjungan Sebelumnya</p>
+                <p className="text-[11px] text-slate-500 max-w-sm mx-auto leading-relaxed">
+                  Otorisasi izin pasien aktif. Pasien belum memiliki catatan kunjungan medis masa lalu di sistem. Linimasa rujukan bukan rekam medis. Catat kunjungan ini secara sah dengan formulir di atas.
                 </p>
+                {!showInputForm && (
+                  <button
+                    type="button"
+                    onClick={() => setShowInputForm(true)}
+                    className="mt-2 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#0F3040] text-white text-xs font-semibold hover:bg-[#0A2230] transition-colors"
+                  >
+                    <FilePlus className="w-3.5 h-3.5" />
+                    <span>Tambah Catatan Kunjungan Pertama</span>
+                  </button>
+                )}
               </CardInner>
             )}
           </div>

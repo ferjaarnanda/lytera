@@ -48,6 +48,7 @@
 | Sinkronisasi Rujukan Terjadwal & Penegasan Identitas Pasien | SELESAI | b70e644 | Audit membuktikan rujukan d380e1d5 (jadwal 18 Okt 13:20 WIB) tersimpan valid di DB untuk pasien resmi 3cfd180a (ferjaarnanda0@gmail.com, NIK 1111…), sedangkan tester masuk akun duplikat 22937be6 (iwaktempel@gmail.com, NIK 5555…) dengan nama sama 'iwak peyek' tanpa rujukan. RujukanCard dilengkapi badge jadwal langsung di header ringkasan, callout konfirmasi jadwal, defaultOpen saat dijadwalkan, sortRujukanAktif memprioritaskan jadwal terdekat, fallback pemuatan rujukan langsung via Supabase browser client jika Server Action tertunda, penegasan email di navbar/sapaan/empty state, dan petunjuk akun uji di form login. Lint 0 error, build exit 0 (21 rute). |
 | Pemulihan Identitas Pasien, Form Masuk Normal & Rekonsiliasi Rujukan | SELESAI | 081bdcf | Pemulihan formulir login pasien pribadi tanpa bantuan akun uji/kredensial, pembersihan identitas navbar (hanya nama pasien & 'Pasien Pribadi', bebas email), inisial avatar dari nama pasien, migrasi 20261016090000 merekonsiliasi NIK 1111… dan rujukan terjadwal d380e1d5 ke akun aktif target (iwaktempel@gmail.com, 22937be6…) secara transaksional non-destruktif. Uji RLS impersonasi membuktikan akun target membaca rujukan terjadwal 18 Okt 13:20 WIB, akun lain terisolasi 100%, lint 0 error, build exit 0 (21 rute). |
 | Akses Rujukan RS, Jadwal Saya & Penyelesaian Rujukan | SELESAI | 85fdd39 | Pemulihan otorisasi akun staf/dokter aktif di fasilitas aktif tanpa memblokir profiles.status 'menunggu', sinkronisasi resolver faskes deterministik di dashboard & rujukan, dukungan navigasi URL Jadwal Saya (?tab=jadwal_saya) terintegrasi filter rujukan dijadwalkan & urutan jadwal terdekat, alur penyelesaian rujukan transaksional dengan rollback compensating & revalidatePath. 4 skenario uji impersonasi SQL lolos 100%, lint 0 error, build exit 0 (21 rute). |
+| Sinkronisasi Riwayat Medis Otoritatif Dokter–Pasien & Audit Log | SELESAI | 8f97a6f | Eliminasi manipulasi record lokal palsu di panel dokter, sinkronisasi otoritatif data rekam medis dari database pasca penyimpanan, revalidatePath portal, penyelarasan mapping kolom RPC (tanggal kunjungan & log doctor_name), empty state edukatif panel dokter, dan tombol segarkan data manual realtime pada dashboard pasien dan panel dokter. Uji SQL impersonasi end-to-end lolos 100%, lint 0 error, build exit 0 (21 rute). |
 
 ---
 
@@ -788,6 +789,41 @@
     - *Admin RS Kucing Garong (`0900ec3d-a431-4f4e-9726-02b91f967737` / mas adam)*: `list_facility_referrals('masuk')` berhasil membaca 1 berkas rujukan yang sama.
     - *Isolasi Faskes Primer (`093c6b36` / dr. Andi Wicaksono)*: `list_facility_referrals('masuk')` mengembalikan tepat 0 berkas (isolasi rujukan antar faskes terbukti 100%).
     - *Simulasi Mutasi Selesai & Linimasa*: Update status rujukan menjadi `selesai` dan insert linimasa `referral_events` terbukti berhasil dan bertambah dari 3 menjadi 4 event.
+  - `npm run lint`: **0 error**, **0 warning**.
+  - `npm run build`: **Exit 0**, seluruh 21 rute lolos kompilasi produksi Next.js 16.
+
+---
+
+### Tahap 51: Sinkronisasi Riwayat Medis Otoritatif Dokter–Pasien & Audit Log (Selesai)
+- [x] **Audit & Forensik Nyata**:
+  - **Akar Masalah Manipulasi State Lokal Palsu**: Pada `components/RekamMedisDokterPanel.tsx`, setelah dokter menyimpan catatan rekam medis, komponen tidak memuat ulang data dari database, melainkan menginjeksi baris buatan lokal (*hardcoded mock*) dengan `facility_name: "Fasilitas Anda"` dan `doctor_name: "Anda (Dokter Pemeriksa)"`. Hal ini menimbulkan ilusi frontend dan rentan tidak sinkron dengan data otoritatif database.
+  - **Akar Masalah Pemetaan Kolom Tanggal Kunjungan & Nama Dokter**:
+    - RPC `list_my_medical_records` mengembalikan kolom `tanggal`, sedangkan frontend `PasienDashboard.tsx` membaca `rec.visit_date ?? rec.created_at`. Akibatnya tanggal tampil kosong atau strip `-`.
+    - RPC `list_my_access_audit_logs` mengembalikan kolom `doctor_name`, sedangkan frontend membaca `log.accessor_name`. Akibatnya nama dokter yang membuka rekam medis tampil generik sebagai *"Dokter tidak dikenal"*.
+  - **Akar Masalah Cache Server Component**: Mutasi rekam medis di `app/actions/rekam-medis.ts` belum memicu `revalidatePath("/portal", "layout")`, sehingga portal pasien tidak segera menerima pembaharuan data kunjungan medis tanpa pembersihan cache.
+  - **Desain Otorisasi vs Empty State**: Pasien baru belum memiliki baris kunjungan di `medical_records`. Ketika token diverifikasi sukses, RPC mengembalikan status diagnosis `'KOSONG'` (bukan error). Panel dokter membutuhkan pemisahan yang jelas antara linimasa perjalanan rujukan dengan rekam medis klinis, serta tombol aksi cepat untuk mencatat kunjungan pertama.
+- [x] **Perbaikan Implementasi**:
+  1. *Sinkronisasi Otoritatif Panel Dokter (`components/RekamMedisDokterPanel.tsx`)*:
+     - Menghapus total pembuatan record palsu/mock di sisi klien.
+     - Setelah dokter berhasil menyimpan rekam medis (`tambahRekamMedisDokterAction`), komponen langsung memanggil `bukaRekamMedisDokterAction` dengan token aktif untuk mengambil baris riwayat medis yang tersimpan secara sah di basis data.
+     - Menyediakan tombol segarkan data manual (`RotateCw`) di samping judul riwayat kunjungan medis dokter.
+     - Memperbaiki empty state panel dokter dengan penjelasan edukatif: otorisasi izin pasien aktif, linimasa rujukan bukan rekam medis, belum ada kunjungan medis sebelumnya, dan menyertakan tombol aksi `Tambah Catatan Kunjungan Pertama`.
+     - Memastikan kepatuhan aturan Hooks React (memindahkan pemanggilan `useState` sebelum early return).
+  2. *Sinkronisasi Data & Audit Log Portal Pasien (`components/PasienDashboard.tsx`)*:
+     - Memperbaiki pemetaan kolom tanggal kunjungan medis: `rec.tanggal ?? rec.visit_date ?? rec.created_at` sehingga tanggal terformat resmi dalam Bahasa Indonesia (misal: "16 Oktober 2026").
+     - Memperbaiki pemetaan nama dokter pemeriksa pada audit log: `log.doctor_name ?? log.accessor_name ?? "Dokter tidak dikenal"`, sehingga nama resmi dokter (misal: "dr. Anggi Dwi Susanti Sp.PD") muncul jelas di log audit PDP pasien.
+     - Menambahkan tombol penyegaran manual (`RotateCw`) "Segarkan Data" pada header `KartuRiwayatMedis` untuk memicu pemuatan ulang realtime kunjungan medis dan audit log akses.
+  3. *Integritas Server Actions (`app/actions/rekam-medis.ts`)*:
+     - Menambahkan `revalidatePath("/portal", "layout")` pasca penulisan rekam medis berhasil.
+     - Memperbarui interface TypeScript `MedicalRecordItem` (`tanggal?: string | null`) dan `AccessAuditLogItem` (`doctor_name?: string | null`) agar sinkron dengan output RPC Supabase.
+- [x] **Pengujian & Validasi**:
+  - **Uji Impersonasi SQL Supabase (`execute_sql` RLS)**:
+    - *Skenario End-to-End Penuh*:
+      1. Pasien target (`22937be6-9583-48b1-996b-cf7247e721b0`) menerbitkan kode izin 6 digit via `create_patient_access_token()` -> Kode aktif terbit (contoh: `286404`).
+      2. Dokter spesialis RS Kucing Garong (`5ba1dfc2-578d-4739-b534-1a646916c3be` / dr. Anggi) membuka rekam medis via `open_patient_medical_record(p_patient_id, token_code)` -> Sukses, otorisasi valid, status awal `'KOSONG'`.
+      3. Dokter menambahkan catatan rekam medis via `add_medical_record(p_patient_id, null, referral_id, 'I10', ringkasan, token_code)` -> Sukses, record baru tersimpan sah dengan UUID riil.
+      4. Pasien memeriksa riwayat rekam medis via `list_my_medical_records()` -> Sukses, baris kunjungan termuat dengan `diagnosis_icd10 = 'I10'`, `doctor_name = 'dr. Anggi Dwi Susanti Sp.PD'`, dan tanggal kunjungan aktual.
+      5. Pasien memeriksa audit log via `list_my_access_audit_logs()` -> Sukses, log mencatat `doctor_name = 'dr. Anggi Dwi Susanti Sp.PD'` dengan status `access_result = 'berhasil'`.
   - `npm run lint`: **0 error**, **0 warning**.
   - `npm run build`: **Exit 0**, seluruh 21 rute lolos kompilasi produksi Next.js 16.
 

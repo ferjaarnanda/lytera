@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 // ============================================================================
@@ -47,6 +48,7 @@ export interface MedicalRecordItem {
   facility_name: string | null;
   doctor_name: string | null;
   visit_date: string | null;
+  tanggal?: string | null;
   diagnosis_icd10: string | null;
   ringkasan: string | null;
   referral_id: string | null;
@@ -68,6 +70,7 @@ export interface AccessAuditLogItem {
   id: string;
   accessed_by: string;
   accessor_name: string | null;
+  doctor_name?: string | null;
   facility_id: string | null;
   facility_name: string | null;
   patient_id: string;
@@ -468,6 +471,8 @@ export async function tambahRekamMedisDokterAction(params: {
       }
       return { success: false, error: msg };
     }
+
+    revalidatePath("/portal", "layout");
 
     return {
       success: true,

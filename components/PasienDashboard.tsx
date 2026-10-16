@@ -692,50 +692,64 @@ function KartuRiwayatMedis() {
   const [records, setRecords] = useState<MedicalRecordItem[] | null>(null);
   const [auditLogs, setAuditLogs] = useState<AccessAuditLogItem[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reloading, setReloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<"kunjungan" | "log-akses">("kunjungan");
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      setLoading(true);
-      setError(null);
-      const [recRes, logRes] = await Promise.all([
-        listMyMedicalRecordsAction(),
-        listMyAccessAuditLogsAction(),
-      ]);
-      if (cancelled) return;
-      setLoading(false);
-      if (recRes.success) setRecords(recRes.records ?? []);
-      else setError(recRes.error ?? "Gagal memuat riwayat.");
-      if (logRes.success) setAuditLogs(logRes.logs ?? []);
-    }
-    load();
-    return () => { cancelled = true; };
+  const loadData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setReloading(true);
+    else setLoading(true);
+    setError(null);
+    const [recRes, logRes] = await Promise.all([
+      listMyMedicalRecordsAction(),
+      listMyAccessAuditLogsAction(),
+    ]);
+    if (isRefresh) setReloading(false);
+    else setLoading(false);
+    if (recRes.success) setRecords(recRes.records ?? []);
+    else setError(recRes.error ?? "Gagal memuat riwayat.");
+    if (logRes.success) setAuditLogs(logRes.logs ?? []);
   }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadData();
+  }, [loadData]);
 
   return (
     <div className="space-y-6">
-      {/* Sub-tab */}
-      <div className="flex items-center gap-2">
-        {(["kunjungan", "log-akses"] as const).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveSubTab(tab)}
-            className={`px-4 py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
-              activeSubTab === tab
-                ? "bg-[#0F3040] text-white shadow-2xs"
-                : "bg-white text-slate-600 border border-[#E2E8F0] hover:bg-slate-50"
-            }`}
-          >
-            {tab === "kunjungan" ? (
-              <span className="flex items-center gap-1.5"><Stethoscope className="w-3.5 h-3.5" />Kunjungan Medis</span>
-            ) : (
-              <span className="flex items-center gap-1.5"><Activity className="w-3.5 h-3.5" />Log Akses Rekam Medis</span>
-            )}
-          </button>
-        ))}
+      {/* Sub-tab & tombol refresh manual */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          {(["kunjungan", "log-akses"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveSubTab(tab)}
+              className={`px-4 py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
+                activeSubTab === tab
+                  ? "bg-[#0F3040] text-white shadow-2xs"
+                  : "bg-white text-slate-600 border border-[#E2E8F0] hover:bg-slate-50"
+              }`}
+            >
+              {tab === "kunjungan" ? (
+                <span className="flex items-center gap-1.5"><Stethoscope className="w-3.5 h-3.5" />Kunjungan Medis</span>
+              ) : (
+                <span className="flex items-center gap-1.5"><Activity className="w-3.5 h-3.5" />Log Akses Rekam Medis</span>
+              )}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => void loadData(true)}
+          disabled={reloading || loading}
+          className="px-3.5 py-1.5 rounded-full border border-[#E2E8F0] bg-white text-xs font-semibold text-slate-600 hover:text-[#0F3040] hover:bg-slate-50 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
+          title="Segarkan riwayat kunjungan dan log audit akses"
+        >
+          <RotateCw className={`w-3.5 h-3.5 ${reloading ? "animate-spin text-[#0F3040]" : ""}`} />
+          <span>Segarkan Data</span>
+        </button>
       </div>
 
       {loading ? (
@@ -792,7 +806,7 @@ function KartuRiwayatMedis() {
                         </span>
                       )}
                       <span className="text-[11px] font-mono text-slate-400 bg-white px-2.5 py-1 rounded-full border border-[#E2E8F0]">
-                        {formatDateIndo(rec.visit_date ?? rec.created_at)}
+                        {formatDateIndo(rec.tanggal ?? rec.visit_date ?? rec.created_at)}
                       </span>
                     </div>
                   </div>
@@ -866,7 +880,7 @@ function KartuRiwayatMedis() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-bold text-[#0F3040]">
-                            {log.accessor_name ?? "Dokter tidak dikenal"}
+                            {log.doctor_name ?? log.accessor_name ?? "Dokter tidak dikenal"}
                           </span>
                           <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
                             resultInfo.variant === "selesai"
