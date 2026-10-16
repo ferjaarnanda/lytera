@@ -185,27 +185,41 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isDoctorRole = variant === "dokter-puskesmas" || variant === "rumah-sakit";
   const isFaskesPortal = isAdminFaskes || isDoctorRole;
 
+  // Deteksi nilai email agar email tidak dipakai sebagai nama atau label peran di navbar
+  const containsEmail = (str?: string | null) => Boolean(str && str.includes("@"));
+
   // Baris atas: Tampilkan nama pengguna nyata jika tersedia, fallback sesuai peran jika kosong
   const displayTopName =
-    userName && userName.trim() && userName !== "Pengguna"
-      ? userName
+    userName && userName.trim() && userName !== "Pengguna" && !containsEmail(userName)
+      ? userName.trim()
       : isAdminFaskes
       ? "Admin Fasilitas"
+      : variant === "pasien"
+      ? "Pasien"
       : "Pengguna";
 
   // Baris bawah: Admin & Dokter menampilkan nama fasilitas yang terhubung atau label peran
-  const displayBottomRole = isFaskesPortal
+  const rawRole = isFaskesPortal
     ? (facilityName || userRole || "Fasilitas Kesehatan")
-    : (userRole || (variant === "pasien" ? "Pasien" : "Petugas"));
+    : (userRole || (variant === "pasien" ? "Pasien Pribadi" : "Petugas"));
 
-  // Inisial avatar
-  const avatarInitials = (displayTopName || "U")
+  // Hilangkan bagian email jika terselip di userRole
+  const displayBottomRole = rawRole
+    ? rawRole
+        .split(/[·•]/)[0]
+        .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, "")
+        .trim() || (variant === "pasien" ? "Pasien Pribadi" : "Petugas")
+    : (variant === "pasien" ? "Pasien Pribadi" : "Petugas");
+
+  // Inisial avatar murni dari displayTopName (nama pasien / pengguna, bukan email)
+  const avatarInitials = (displayTopName || "P")
     .trim()
     .split(/\s+/)
+    .filter((w) => !w.includes("@"))
     .map((w) => w[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase();
+    .toUpperCase() || "P";
 
   const router = useRouter();
 

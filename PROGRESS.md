@@ -46,6 +46,7 @@
 | Otorisasi Pencarian Pasien Dokter & Sinkronisasi Sesi | SELESAI | 5d37cd2 | Audit log ClickHouse Supabase membuktikan RPC find_patient_by_nik pada jam 05:44 & 08:02 UTC dipanggil oleh user non-staf (mas adam, 0900ec3d) akibat cookie sesi browser lama tertinggal, bukan dr. Budiono Siregar (mbek@gmail.com, 4fc7cf0b). Status profiles 'menunggu' dokter terbukti valid & didesain demikian (sama seperti dr. Andi Wicaksono). Migrasi `20261015160000_clarify_find_patient_by_nik_authorization.sql`: pemecahan guard otorisasi bertahap dan deskriptif (belum terdaftar, bukan dokter, staf menunggu/ditolak, faskes menunggu/ditolak). MasukPage ditambah router.refresh() untuk sinkronisasi sesi cookie baru. Uji SQL impersonasi 5 skenario lolos 100% (dr. Budiono menemukan pasien & buat rujukan sukses, dr. Andi sukses, staf menunggu ditolak dengan pesan jelas, non-staf ditolak dengan pesan jelas). Lint 0 error, build exit 0 (21 rute). |
 | Rekonsiliasi Verifikasi Faskes & Profil Admin | SELESAI | e72b808 | Pemulihan akses rujukan masuk RS setelah verifikasi Dinkes: migrasi DB 20261015190000 menyinkronkan status profiles admin faskes ke 'aktif' secara atomik saat faskes disetujui, relaksasi RLS profiles update untuk Dinkes, trigger sinkronisasi otomatis status fasilitas, perbaikan status label UI verifikasi, dan identitas admin navbar non-generik. 7 skenario pengujian SQL lolos 100%, lint 0 error, build exit 0 (21 rute). |
 | Sinkronisasi Rujukan Terjadwal & Penegasan Identitas Pasien | SELESAI | b70e644 | Audit membuktikan rujukan d380e1d5 (jadwal 18 Okt 13:20 WIB) tersimpan valid di DB untuk pasien resmi 3cfd180a (ferjaarnanda0@gmail.com, NIK 1111…), sedangkan tester masuk akun duplikat 22937be6 (iwaktempel@gmail.com, NIK 5555…) dengan nama sama 'iwak peyek' tanpa rujukan. RujukanCard dilengkapi badge jadwal langsung di header ringkasan, callout konfirmasi jadwal, defaultOpen saat dijadwalkan, sortRujukanAktif memprioritaskan jadwal terdekat, fallback pemuatan rujukan langsung via Supabase browser client jika Server Action tertunda, penegasan email di navbar/sapaan/empty state, dan petunjuk akun uji di form login. Lint 0 error, build exit 0 (21 rute). |
+| Pemulihan Identitas Pasien, Form Masuk Normal & Rekonsiliasi Rujukan | SELESAI | 081bdcf | Pemulihan formulir login pasien pribadi tanpa bantuan akun uji/kredensial, pembersihan identitas navbar (hanya nama pasien & 'Pasien Pribadi', bebas email), inisial avatar dari nama pasien, migrasi 20261016090000 merekonsiliasi NIK 1111… dan rujukan terjadwal d380e1d5 ke akun aktif target (iwaktempel@gmail.com, 22937be6…) secara transaksional non-destruktif. Uji RLS impersonasi membuktikan akun target membaca rujukan terjadwal 18 Okt 13:20 WIB, akun lain terisolasi 100%, lint 0 error, build exit 0 (21 rute). |
 
 ---
 
@@ -732,6 +733,32 @@
   - Uji Impersonasi SQL Supabase untuk pasien `3cfd180a-f563-4924-bc0b-5101d7b06868`: RPC `list_my_referrals()` mengembalikan rujukan `d380e1d5` (status `dijadwalkan`, jadwal `2026-10-18 06:20:00+00`).
   - `npm run lint`: **0 error**, **0 warning**.
   - `npm run build`: **Exit 0**, seluruh 21 rute Next.js 16 berhasil dikompilasi secara optimal.
+
+---
+
+### Tahap 49: Pemulihan Identitas Pasien, Form Masuk Normal & Rekonsiliasi Rujukan (Selesai)
+- [x] **Audit & Forensik Nyata**:
+  - **Kondisi Awal**: Akun aktif yang digunakan pada browser pengujian adalah `iwaktempel@gmail.com` (`22937be6-9583-48b1-996b-cf7247e721b0`) dengan nama "iwak peyek", namun tercatat dengan NIK `5555555555555555` dan memiliki 0 rujukan. Sementara rujukan terjadwal `d380e1d5-81dd-435a-9bed-49923216cef7` (jadwal 18 Oktober 2026 pukul 13.20 WIB di Poli Penyakit Dalam RS Kucing Garong) tercatat atas NIK `1111111111111111` pada akun donor `3cfd180a-f563-4924-bc0b-5101d7b06868`.
+  - **Formulir Masuk & Identitas**: Terdapat kotak bantuan akun uji pada `app/masuk/[peran]/[subperan]/page.tsx` yang memaparkan email dan NIK akun donor, serta navbar yang menampilkan email di baris bawah.
+- [x] **Perbaikan Implementasi**:
+  1. *Pemulihan Formulir Masuk (`app/masuk/[peran]/[subperan]/page.tsx`)*: Menghapus total komponen bantuan akun uji, NIK, email, dan tombol autofill. Formulir login pasien pribadi kembali normal, bersih, dan profesional. Formulir pendaftaran diverifikasi tetap normal tanpa kredensial pihak lain.
+  2. *Identitas Navbar Pasien Bersih (`components/Navbar.tsx` & `PasienDashboard.tsx`)*:
+     - Baris atas: nama pasien profil akun login aktual (`profile.full_name`, misal "iwak peyek").
+     - Baris bawah: hanya label peran `"Pasien Pribadi"` (atau `"Pasien Keluarga"`), sepenuhnya bebas dari alamat email.
+     - Inisial avatar murni diekstrak dari nama pasien.
+     - Penjagaan sanitasi teks di `Navbar.tsx` mencegah string email lolos ke display top name maupun display bottom role.
+     - Kartu sapaan dan pesan empty state di dashboard pasien dibersihkan dari pencantuman email secara vulgar.
+  3. *Rekonsiliasi Database Transaksional (`supabase/migrations/20261016090000_reconcile_patient_nik_and_scheduled_referral.sql`)*:
+     - Pertukaran NIK atomik via NIK sementara: NIK `1111111111111111` resmi dialihkan ke akun target `22937be6-9583-48b1-996b-cf7247e721b0` (`iwaktempel@gmail.com`), sementara akun donor memegang NIK unik `5555555555555555`. Constraint unik `patients_nik_unique` tetap terjaga utuh.
+     - Pemindahan rujukan terjadwal `d380e1d5-81dd-435a-9bed-49923216cef7` (`patient_id` dialihkan ke `22937be6-9583-48b1-996b-cf7247e721b0`). Seluruh ID rujukan, status `dijadwalkan`, jadwal `2026-10-18 06:20:00+00`, dokter DPJP, dan histori `referral_events` dipertahankan 100%.
+     - Pemindahan log pencarian pasien terkait (`3c0da7ed` dan `c5e2f176`) ke akun target agar histori audit PDP di portal pasien konsisten.
+- [x] **Pengujian & Validasi**:
+  - **Uji Impersonasi SQL Supabase (`execute_sql` RLS)**:
+    - *Akun Target (`22937be6-9583-48b1-996b-cf7247e721b0` / `iwaktempel@gmail.com`)*: Eksekusi `list_my_referrals()` mengembalikan tepat 1 berkas: `d380e1d5-81dd-435a-9bed-49923216cef7` | `dijadwalkan` | `2026-10-18 06:20:00+00` | *rumah sakit kucing garong* | *dr. Anggi Dwi Susanti Sp.PD*.
+    - *Isolasi Akun Donor (`3cfd180a`)*: Rujukan `d380e1d5` terbukti tidak bocor ke akun lain (`UJI_ISOLASI_SUKSES`).
+  - **Security Advisor Supabase**: `get_advisors(security)` bersih tanpa kerentanan baru.
+  - `npm run lint`: **0 error**, **0 warning**.
+  - `npm run build`: **Exit 0**, seluruh 21 rute Next.js 16 berhasil dikompilasi secara optimal tanpa galat.
 
 ---
 

@@ -1318,13 +1318,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
       <Navbar
         variant="pasien"
         userName={profile.full_name}
-        userRole={
-          profile.email
-            ? `${isKeluarga ? "Pasien Keluarga" : "Pasien Pribadi"} · ${profile.email}`
-            : isKeluarga
-            ? "Pasien Keluarga"
-            : "Pasien Pribadi"
-        }
+        userRole={isKeluarga ? "Pasien Keluarga" : "Pasien Pribadi"}
         activeItem={activeTab}
         onItemClick={(item) => setActiveTab(item)}
         forceGlass={true}
@@ -1343,9 +1337,6 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
                   <Badge variant="info">
                     {isKeluarga ? "Kategori: Pasien Keluarga" : "Kategori: Pasien Pribadi"}
                   </Badge>
-                  <span className="text-xs font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
-                    {profile.email}
-                  </span>
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F3040] tracking-tight">
                   Halo, {profile.full_name}
@@ -1684,9 +1675,9 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
                       </div>
                       <h3 className="text-sm font-bold text-[#0F3040]">Belum ada rujukan aktif</h3>
                       <p className="text-xs text-slate-600 mt-1 leading-relaxed max-w-md mx-auto">
-                        Saat ini akun <span className="font-semibold text-[#0F3040]">{profile.email}</span> (NIK: <span className="font-mono">{maskNik(patient?.nik)}</span>) belum memiliki surat rujukan aktif. Surat rujukan digital akan
+                        Saat ini kamu tidak memiliki surat rujukan aktif. Surat rujukan digital akan
                         otomatis tampil di sini setelah diterbitkan oleh dokter di faskes tingkat pertama
-                        (Puskesmas atau Klinik) untuk NIK Anda.
+                        (Puskesmas atau Klinik).
                       </p>
                     </CardInner>
                   )}
@@ -1791,7 +1782,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
                   <CardInner variant="cream" className="p-8 text-center border border-[#E2E8F0]">
                     <p className="text-sm font-semibold text-[#0F3040]">Tidak ada rujukan aktif</p>
                     <p className="text-xs text-slate-500 mt-1">
-                      Akun <span className="font-semibold text-[#0F3040]">{profile.email}</span> (NIK: <span className="font-mono">{maskNik(patient?.nik)}</span>) tidak memiliki rujukan aktif. Seluruh rujukan telah selesai atau belum ada pengajuan baru dari faskes primer.
+                      Saat ini seluruh rujukanmu telah selesai atau belum ada pengajuan baru dari faskes primer.
                     </p>
                   </CardInner>
                 )}
