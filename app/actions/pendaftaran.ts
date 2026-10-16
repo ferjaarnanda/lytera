@@ -21,7 +21,13 @@ const PasienPribadiSchema = z.object({
   kota: z.string().min(1, "Kota/Kabupaten wajib dipilih"),
   kecamatan: z.string().min(1, "Kecamatan wajib dipilih"),
   kelurahan: z.string().min(1, "Kelurahan wajib dipilih"),
-  alamatDetail: z.string().min(5, "Alamat lengkap wajib diisi minimal 5 karakter"),
+  alamatDetail: z
+    .string()
+    .min(5, "Alamat lengkap wajib diisi minimal 5 karakter")
+    .refine((val) => /[a-zA-Z]/.test(val.trim()), {
+      message:
+        "Detail alamat harus memuat nama jalan, banjar, nomor rumah, atau RT/RW (tidak boleh hanya angka)",
+    }),
   noBpjs: z.string().optional().or(z.literal("")),
   penjamin: z.enum(["mandiri", "bpjs", "asuransi", "jaminan_daerah"]).optional().default("mandiri"),
   namaAsuransi: z.string().optional().or(z.literal("")),
@@ -46,7 +52,20 @@ const PasienKeluargaSchema = z.object({
   kota: z.string().optional().or(z.literal("")),
   kecamatan: z.string().optional().or(z.literal("")),
   kelurahan: z.string().optional().or(z.literal("")),
-  alamatWali: z.string().optional().or(z.literal("")),
+  alamatWali: z
+    .string()
+    .optional()
+    .or(z.literal(""))
+    .refine(
+      (val) => {
+        if (!val || !val.trim()) return true;
+        return /[a-zA-Z]/.test(val.trim());
+      },
+      {
+        message:
+          "Detail alamat wali harus memuat nama jalan, banjar, nomor rumah, atau RT/RW (tidak boleh hanya angka)",
+      }
+    ),
   anggotaKeluarga: z
     .array(
       z.object({
@@ -77,7 +96,13 @@ const FasilitasAdminSchema = z.object({
   kota: z.string().min(1, "Kota/Kabupaten wajib dipilih"),
   kecamatan: z.string().min(1, "Kecamatan wajib dipilih"),
   kelurahan: z.string().min(1, "Kelurahan wajib dipilih"),
-  alamatLengkap: z.string().min(5, "Alamat lengkap fasilitas wajib diisi minimal 5 karakter"),
+  alamatLengkap: z
+    .string()
+    .min(5, "Alamat lengkap fasilitas wajib diisi minimal 5 karakter")
+    .refine((val) => /[a-zA-Z]/.test(val.trim()), {
+      message:
+        "Alamat lengkap fasilitas harus memuat nama jalan atau nomor gedung (tidak boleh hanya angka)",
+    }),
   noTelp: z.string().min(6, "Nomor telepon operasional faskes wajib diisi"),
   penanggungJawab: z.string().min(2, "Nama kepala faskes atau penanggung jawab wajib diisi"),
   emailFaskes: z.string().email("Format email tidak valid, gunakan format seperti nama@contoh.com"),

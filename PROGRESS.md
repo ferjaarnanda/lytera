@@ -50,6 +50,7 @@
 | Akses Rujukan RS, Jadwal Saya & Penyelesaian Rujukan | SELESAI | 85fdd39 | Pemulihan otorisasi akun staf/dokter aktif di fasilitas aktif tanpa memblokir profiles.status 'menunggu', sinkronisasi resolver faskes deterministik di dashboard & rujukan, dukungan navigasi URL Jadwal Saya (?tab=jadwal_saya) terintegrasi filter rujukan dijadwalkan & urutan jadwal terdekat, alur penyelesaian rujukan transaksional dengan rollback compensating & revalidatePath. 4 skenario uji impersonasi SQL lolos 100%, lint 0 error, build exit 0 (21 rute). |
 | Sinkronisasi Riwayat Medis Otoritatif Dokter–Pasien & Audit Log | SELESAI | 8f97a6f | Eliminasi manipulasi record lokal palsu di panel dokter, sinkronisasi otoritatif data rekam medis dari database pasca penyimpanan, revalidatePath portal, penyelarasan mapping kolom RPC (tanggal kunjungan & log doctor_name), empty state edukatif panel dokter, dan tombol segarkan data manual realtime pada dashboard pasien dan panel dokter. Uji SQL impersonasi end-to-end lolos 100%, lint 0 error, build exit 0 (21 rute). |
 | Tahap 52: Riwayat Kesehatan Terdahulu Berizin Pasien | SELESAI | dbf0edd | Entitas riwayat penyakit terdahulu pasien mandiri (tabel patient_medical_histories & 5 RPC SECURITY DEFINER) terpisah dari rekam medis faskes. Panel dokter memisahkan Bagian A (Laporan Pasien, Belum Diverifikasi) & Bagian B (Kunjungan Nakes). Token izin 6-digit diverifikasi, audit log tercatat, isolasi faskes terjamin. 10 skenario impersonasi SQL lolos 100%, lint 0 error, build exit 0. |
+| Tahap 53: Validasi Alamat Domisili, Resolusi Wilayah & Ikon Lokasi | SELESAI | 94f3f37 | Pencegahan nilai numerik mentah ('912939139') muncul sebagai alamat dengan fallback jelas 'Detail alamat belum dilengkapi' & konteks wilayah manusiawi. Ikon Wilayah Administratif diselaraskan ke MapPin hijau (menggantikan Sparkles). Penguatan validasi alamat di form pendaftaran (klien & Zod server) mewajibkan teks nama jalan/banjar/RT/RW tanpa menolak angka nomor rumah yang sah. 10 butir uji verifikasi lolos 100%, lint 0 error, build exit 0. |
 
 ---
 
@@ -871,6 +872,41 @@
   - **Security Advisor Supabase**: `get_advisors(security)` bersih, hak eksekusi anon/public untuk kelima RPC baru telah dicabut.
   - `npm run lint`: **0 error**, **0 warning**.
   - `npm run build`: **Exit 0**, seluruh 21 rute Next.js 16 berhasil dikompilasi secara optimal.
+
+---
+
+### Tahap 53: Validasi Alamat Domisili, Resolusi Wilayah & Ikon Lokasi (Selesai)
+- [x] **Audit & Forensik Nyata**:
+  - **Akar Masalah Nilai Alamat Numerik Mentah**: Pasien tertentu (misal akun `22937be6-9583-48b1-996b-cf7247e721b0` / NIK `1111111111111111`) memiliki kolom `patients.address` tersimpan sebagai string angka mentah `"912939139"`. Komponen `PasienDashboard.tsx` sebelumnya merender `patient?.address` secara langsung tanpa memeriksa apakah nilainya merupakan detail jalan/domisili yang sah atau hanya barisan angka/simbol.
+  - **Ketidaksesuaian Ikon Wilayah**: Bagian Wilayah Administratif menggunakan ikon `Sparkles` dari Lucide yang berkonotasi fitur AI alih-alih identitas lokasi.
+  - **Celah Validasi Pendaftaran**: Skema pendaftaran sebelumnya hanya mengecek panjang minimal 5 karakter (`z.string().min(5)`), sehingga pengguna dapat mengetik angka sembarangan seperti `"912939139"` dan lolos ke basis data.
+- [x] **Perbaikan Implementasi**:
+  1. *Pemeriksaan Alamat & Format Wilayah Otoritatif (`components/PasienDashboard.tsx`)*:
+     - Implementasi `isValidAddressDetail(addr)`: Memastikan alamat memiliki karakter huruf/alfabet (nama jalan, banjar, RT/RW, blok, dsb.). String yang hanya terdiri dari angka, tanda baca, atau spasi ditolak secara visual.
+     - Fallback edukatif jika alamat tidak valid: Menampilkan `"Detail alamat belum dilengkapi"` dan menampilkan baris konteks wilayah di bawahnya (*"Konteks wilayah: [Desa, Kecamatan, Kota, Provinsi]"*) jika data wilayah tersedia.
+     - Alamat yang valid (seperti `"Jl. Pemuda No. 12"` yang memuat angka dan huruf sah) tetap ditampilkan lengkap.
+     - Peningkatan `getRegionDisplay`: Mengintegrasikan `resolveRegionName` dari `@/lib/region-utils` untuk memetakan kode wilayah internal jika ada, membersihkan nilai kosong/undefined, dan mencegah pengulangan nama yang identik secara berturut-turut.
+     - Penyelarasan Ikon Lokasi: Mengganti ikon `Sparkles` pada Wilayah Administratif dengan `MapPin` warna hijau sukses (`text-[#1B6B4D]`), serta mempertahankan `MapPin` warna tembaga (`text-[#8F5A4E]`) pada Alamat Domisili dengan ukuran (`w-4 h-4`) dan alignment yang konsisten. Impor `Sparkles` dibersihkan.
+  2. *Validasi Sisi Server (`app/actions/pendaftaran.ts`)*:
+     - Menambahkan aturan `.refine((val) => /[a-zA-Z]/.test(val.trim()))` pada `PasienPribadiSchema.alamatDetail`, `PasienKeluargaSchema.alamatWali`, dan `FasilitasAdminSchema.alamatLengkap`.
+     - Memberikan pesan galat informatif: *"Detail alamat harus memuat nama jalan, banjar, nomor rumah, atau RT/RW (tidak boleh hanya angka)"*.
+  3. *Validasi Sisi Klien & Umpan Balik Visual (`app/daftar/[peran]/[subperan]/page.tsx`)*:
+     - Menambahkan validasi regex alfabet pada `validateStep` untuk pasien pribadi, pasien keluarga, dan faskes admin sebelum melangkah ke tahap berikutnya.
+     - Menambahkan penayangan pesan galat `{errors.alamatWali}` di bawah input detail alamat wali.
+- [x] **Pengujian & Validasi**:
+  - **Uji Logika & Validasi (10 Skenario Teruji Penuh)**:
+    1. Input numerik mentah (`"912939139"`, `"12345678"`, `"123/45 - 67"`) terbukti tidak valid dan digantikan fallback *"Detail alamat belum dilengkapi"*.
+    2. Wilayah aktual *"Abang Batu Dinding, Kintamani, Kabupaten Bangli, Bali"* terbukti diformat konsisten dan benar.
+    3. Ikon Wilayah Administratif terverifikasi menggunakan `MapPin` hijau, bebas dari `Sparkles`.
+    4. Alamat sah dengan nomor rumah (`"Jl. Pemuda No. 12"`, `"Banjar Dinas Kangin No. 4"`, `"RT 05 / RW 02"`) terbukti lolos validasi dan tampil utuh.
+    5. Validasi pendaftaran di sisi klien dan server menolak input alamat yang hanya angka dengan pesan jelas.
+    6. Field wilayah parsial/kosong tidak menghasilkan koma berlebih atau teks `undefined`.
+    7. Integritas data sensitif pasien (NIK, telepon, rekam medis, token) tetap terjaga 100%.
+    8. Basis data pasien lama tidak diubah sembarangan dan profil lama menampilkan fallback aman.
+    9. Tata letak grid responsif desktop/mobile dipertahankan tanpa pergeseran elemen.
+    10. Verifikasi linting dan build produksi Next.js 16.
+  - `npm run lint`: **0 error**, **0 warning**.
+  - `npm run build`: **Exit 0**, seluruh 21 rute lolos kompilasi optimal.
 
 ---
 

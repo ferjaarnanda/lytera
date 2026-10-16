@@ -7,7 +7,6 @@ import {
   Users,
   FileText,
   ShieldCheck,
-  Sparkles,
   MapPin,
   AlertTriangle,
   RotateCw,
@@ -31,6 +30,7 @@ import {
   Trash2,
   Edit3,
 } from "lucide-react";
+import { resolveRegionName } from "@/lib/region-utils";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardInner } from "@/components/Card";
 import { Badge } from "@/components/Badge";
@@ -180,14 +180,39 @@ function maskNik(nik?: string | null): string {
   return `${start} •••• •••• ${end}`;
 }
 
+function isValidAddressDetail(addr?: string | null): boolean {
+  if (!addr) return false;
+  const clean = addr.trim();
+  if (clean.length === 0) return false;
+  // Detail alamat yang valid wajib memuat karakter huruf/alfabet (nama jalan, banjar, RT/RW, nomor rumah dengan teks, dsb.)
+  // Alamat yang hanya terdiri dari angka, spasi, atau simbol (misal: "912939139") bukan alamat yang valid
+  return /[a-zA-Z]/.test(clean);
+}
+
 function getRegionDisplay(
   province?: string | null,
   city?: string | null,
   district?: string | null,
   village?: string | null
 ): string {
-  const parts = [village, district, city, province].filter(Boolean);
-  return parts.length > 0 ? parts.join(", ") : "-";
+  const rawParts = [village, district, city, province];
+  const resolvedParts: string[] = [];
+
+  for (const part of rawParts) {
+    if (!part) continue;
+    const resolved = resolveRegionName(part);
+    if (resolved && resolved.trim()) {
+      const clean = resolved.trim();
+      if (
+        resolvedParts.length === 0 ||
+        resolvedParts[resolvedParts.length - 1].toLowerCase() !== clean.toLowerCase()
+      ) {
+        resolvedParts.push(clean);
+      }
+    }
+  }
+
+  return resolvedParts.length > 0 ? resolvedParts.join(", ") : "-";
 }
 
 function formatRelation(relation?: string | null): string {
@@ -1847,13 +1872,32 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
                 <div className="text-xs sm:text-sm">
                   <span className="text-slate-500 block">Alamat Domisili</span>
                   <span className="font-semibold text-[#0F3040]">
-                    {patient?.address || "Belum melengkapi detail alamat"}
+                    {isValidAddressDetail(patient?.address)
+                      ? patient?.address?.trim()
+                      : "Detail alamat belum dilengkapi"}
                   </span>
+                  {!isValidAddressDetail(patient?.address) && (
+                    <span className="text-[11px] text-slate-400 block mt-0.5 font-normal">
+                      {getRegionDisplay(
+                        patient?.province,
+                        patient?.city,
+                        patient?.district,
+                        patient?.village
+                      ) !== "-"
+                        ? `Konteks wilayah: ${getRegionDisplay(
+                            patient?.province,
+                            patient?.city,
+                            patient?.district,
+                            patient?.village
+                          )}`
+                        : "Wilayah belum tercatat"}
+                    </span>
+                  )}
                 </div>
               </div>
 
               <div className="flex items-start gap-2.5">
-                <Sparkles className="w-4 h-4 text-[#1B6B4D] shrink-0 mt-0.5" />
+                <MapPin className="w-4 h-4 text-[#1B6B4D] shrink-0 mt-0.5" />
                 <div className="text-xs sm:text-sm">
                   <span className="text-slate-500 block">Wilayah Administratif</span>
                   <span className="font-semibold text-[#0F3040]">

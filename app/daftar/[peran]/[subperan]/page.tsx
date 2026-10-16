@@ -284,6 +284,8 @@ export default function PendaftaranPage({ params }: PageProps) {
         }
         if (!pribadiData.alamatDetail.trim() || pribadiData.alamatDetail.trim().length < 5) {
           newErrors.alamatDetail = "Alamat lengkap wajib diisi minimal 5 karakter";
+        } else if (!/[a-zA-Z]/.test(pribadiData.alamatDetail.trim())) {
+          newErrors.alamatDetail = "Detail alamat harus memuat nama jalan, banjar, nomor rumah, atau RT/RW (tidak boleh hanya angka)";
         }
         if (pribadiData.noBpjs && !/^\d{13}$/.test(pribadiData.noBpjs)) {
           newErrors.noBpjs = "Nomor BPJS harus 13 digit angka";
@@ -319,6 +321,9 @@ export default function PendaftaranPage({ params }: PageProps) {
       } else if (currentStep === 1) {
         if (!/^\d{16}$/.test(keluargaData.noKk)) {
           newErrors.noKk = "Nomor Kartu Keluarga harus 16 digit angka";
+        }
+        if (keluargaData.alamatWali && keluargaData.alamatWali.trim() && !/[a-zA-Z]/.test(keluargaData.alamatWali.trim())) {
+          newErrors.alamatWali = "Detail alamat wali harus memuat nama jalan, banjar, nomor rumah, atau RT/RW (tidak boleh hanya angka)";
         }
         if (!uploadedFile) {
           newErrors.file = "Unggah foto atau scan Kartu Keluarga";
@@ -374,6 +379,8 @@ export default function PendaftaranPage({ params }: PageProps) {
           }
           if (!faskesAdminData.alamatLengkap.trim() || faskesAdminData.alamatLengkap.trim().length < 5) {
             newErrors.alamatLengkap = "Alamat lengkap faskes wajib diisi minimal 5 karakter";
+          } else if (!/[a-zA-Z]/.test(faskesAdminData.alamatLengkap.trim())) {
+            newErrors.alamatLengkap = "Alamat lengkap faskes harus memuat nama jalan atau nomor gedung (tidak boleh hanya angka)";
           }
           if (!faskesAdminData.noTelp.trim() || faskesAdminData.noTelp.trim().length < 6) {
             newErrors.noTelp = "Nomor telepon operasional faskes wajib diisi";
@@ -1387,6 +1394,9 @@ export default function PendaftaranPage({ params }: PageProps) {
                           placeholder="Contoh: Jl. Melati No. 5 RT 02 / RW 03"
                           className="w-full h-12 px-4 rounded-[14px] border border-[#E2E8F0] focus:ring-2 focus:ring-[#8F5A4E]/30 focus:border-[#8F5A4E] outline-none text-sm"
                         />
+                        {errors.alamatWali && (
+                          <p className="text-xs text-[#B3261E] mt-1">{errors.alamatWali}</p>
+                        )}
                       </div>
                     </div>
 
