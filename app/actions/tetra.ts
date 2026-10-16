@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { TetraChatRequest, TetraChatResponse, TetraUserContext } from "@/lib/tetra/types";
 import { executeTetraChat } from "@/lib/tetra/engine";
+import { detectPrivacyIntent, TetraPrivacyContext } from "@/lib/tetra/privacy";
 
 /**
  * Server Action utama untuk berinteraksi dengan Tetra AI.
@@ -43,14 +44,30 @@ export async function sendTetraMessageAction(
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role, sub_role, full_name, email, status")
-          .eq("id", user.id)
-          .maybeSingle();
+      const { data: profile } = user
+        ? await supabase
+            .from("profiles")
+            .select("role, sub_role, full_name, email, status")
+            .eq("id", user.id)
+            .maybeSingle()
+        : { data: null };
 
-        if (profile) {
+      if (!user || !profile) {
+        // Tanpa sesi yang sah, konteks dari klien TIDAK dipercaya sebagai identitas.
+        resolvedContext = {
+          role: "landing",
+          subRole: null,
+          page: resolvedContext.page,
+          district: null,
+          city: null,
+          province: null,
+          selectedFamilyMemberId: null,
+          selectedFamilyMemberName: null,
+        };
+      }
+
+      if (user && profile) {
+        {
           resolvedContext = {
             ...resolvedContext,
             userId: user.id,
@@ -60,19 +77,43 @@ export async function sendTetraMessageAction(
             email: profile.email,
           };
 
-          // Ambil data wilayah pasien jika perannya pasien
+          // Ambil data wilayah pasien jika perannya pasien (RLS: hanya baris milik sendiri)
           if (profile.role === "pasien") {
+            const wantsOwnAddress =
+              detectPrivacyIntent(userInput, messages).address?.subject === "self";
             const { data: patient } = await supabase
               .from("patients")
-              .select("province, city, district, village, patient_type")
+              .select(
+                wantsOwnAddress
+                  ? "province, city, district, village, address"
+                  : "province, city, district, village"
+              )
               .eq("id", user.id)
-              .maybeSingle();
+              .maybeSingle<{
+                province: string | null;
+                city: string | null;
+                district: string | null;
+                village: string | null;
+                address?: string | null;
+              }>();
 
             if (patient) {
               resolvedContext.province = patient.province;
               resolvedContext.city = patient.city;
               resolvedContext.district = patient.district;
               resolvedContext.village = patient.village;
+            }
+
+            if (wantsOwnAddress) {
+              (resolvedContext as TetraPrivacyContext).ownAddress = patient
+                ? {
+                    province: patient.province,
+                    city: patient.city,
+                    district: patient.district,
+                    village: patient.village,
+                    address: patient.address ?? null,
+                  }
+                : null;
             }
 
             // Ambil daftar anggota keluarga jika sub-peran keluarga

@@ -15,6 +15,12 @@ import {
   FacilityCandidate,
 } from "./tools";
 import { formatFacilityLocation } from "@/lib/region-utils";
+import {
+  buildPrivacyResponse,
+  redactHistory,
+  redactSensitiveText,
+  TetraPrivacyContext,
+} from "./privacy";
 
 /**
  * Fallback Generator berbasis Intent yang cerdas, faktual, dan patuh guardrails.
@@ -360,6 +366,17 @@ export async function executeTetraChat(request: TetraChatRequest): Promise<Tetra
   const groqApiKey = process.env.GROQ_API_KEY?.trim();
   const groqModel = process.env.GROQ_MODEL?.trim() || "llama-3.3-70b-versatile";
 
+  // 0. Penjaga privasi deterministik: data sensitif, nama, dan alamat tidak pernah diserahkan ke LLM.
+  const privacyResponse = buildPrivacyResponse(
+    userInput,
+    messages,
+    context as TetraPrivacyContext,
+    getQuickSuggestions(context)
+  );
+  if (privacyResponse) {
+    return privacyResponse;
+  }
+
   // 1. Klasifikasi Intent terlebih dahulu
   const intentMatch = classifyTetraIntent(userInput, messages);
 
@@ -414,7 +431,7 @@ export async function executeTetraChat(request: TetraChatRequest): Promise<Tetra
   const formattedMessages = [
     { role: "system", content: systemPrompt },
     { role: "system", content: dataContextMessage },
-    ...messages.slice(-6).map((m) => ({
+    ...redactHistory(messages.slice(-6)).map((m) => ({
       role: m.role,
       content: m.content,
     })),
@@ -447,7 +464,7 @@ export async function executeTetraChat(request: TetraChatRequest): Promise<Tetra
     }
 
     const data = await res.json();
-    const replyContent: string = data.choices?.[0]?.message?.content || "";
+    const replyContent: string = redactSensitiveText(data.choices?.[0]?.message?.content || "");
 
     if (!replyContent) {
       return generateIntentResponse(userInput, context, activeFacilities);

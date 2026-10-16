@@ -51,7 +51,8 @@
 | Sinkronisasi Riwayat Medis Otoritatif Dokter–Pasien & Audit Log | SELESAI | 8f97a6f | Eliminasi manipulasi record lokal palsu di panel dokter, sinkronisasi otoritatif data rekam medis dari database pasca penyimpanan, revalidatePath portal, penyelarasan mapping kolom RPC (tanggal kunjungan & log doctor_name), empty state edukatif panel dokter, dan tombol segarkan data manual realtime pada dashboard pasien dan panel dokter. Uji SQL impersonasi end-to-end lolos 100%, lint 0 error, build exit 0 (21 rute). |
 | Tahap 52: Riwayat Kesehatan Terdahulu Berizin Pasien | SELESAI | dbf0edd | Entitas riwayat penyakit terdahulu pasien mandiri (tabel patient_medical_histories & 5 RPC SECURITY DEFINER) terpisah dari rekam medis faskes. Panel dokter memisahkan Bagian A (Laporan Pasien, Belum Diverifikasi) & Bagian B (Kunjungan Nakes). Token izin 6-digit diverifikasi, audit log tercatat, isolasi faskes terjamin. 10 skenario impersonasi SQL lolos 100%, lint 0 error, build exit 0. |
 | Tahap 53: Validasi Alamat Domisili, Resolusi Wilayah & Ikon Lokasi | SELESAI | 94f3f37 | Pencegahan nilai numerik mentah ('912939139') muncul sebagai alamat dengan fallback jelas 'Detail alamat belum dilengkapi' & konteks wilayah manusiawi. Ikon Wilayah Administratif diselaraskan ke MapPin hijau (menggantikan Sparkles). Penguatan validasi alamat di form pendaftaran (klien & Zod server) mewajibkan teks nama jalan/banjar/RT/RW tanpa menolak angka nomor rumah yang sah. 10 butir uji verifikasi lolos 100%, lint 0 error, build exit 0. |
-| Tahap 54: Identitas Dokter Faskes, Persetujuan Penugasan & Alur Rujukan Keluar | SELESAI | e76c810 | Pemisahan resolusi identitas pengguna & konteks faskes dari keputusan otorisasi operasional rujukan di rujukan/page.tsx dan rujukan/baru/page.tsx. Eliminasi regresi navbar 'Petugas Administrasi' pada dokter berpenugasan menunggu (tetap menampilkan nama dokter & nama puskesmas). Penegasan wewenang klinis operasional (menu/tombol buat rujukan hanya untuk dokter aktif). Verifikasi multi-staff & revalidatePath di buatRujukanAction. 5 skenario impersonasi SQL lolos 100%, lint 0 error, build exit 0. |
+| Tahap 54: Identitas Dokter Faskes, Persetujuan Penugasan & Alur Rujukan Keluar | SELESAI | b7f6b75 | Pemisahan resolusi identitas pengguna & konteks faskes dari keputusan otorisasi operasional rujukan di rujukan/page.tsx dan rujukan/baru/page.tsx. Eliminasi regresi navbar 'Petugas Administrasi' pada dokter berpenugasan menunggu (tetap menampilkan nama dokter & nama puskesmas). Penegasan wewenang klinis operasional (menu/tombol buat rujukan hanya untuk dokter aktif). Verifikasi multi-staff & revalidatePath di buatRujukanAction. 5 skenario impersonasi SQL lolos 100%, lint 0 error, build exit 0. |
+| Tahap 55: Deteksi Pertanyaan Sensitif, Privasi NIK & Akses Profil Berbasis Konteks | SELESAI | 07c371d | Penjaga privasi deterministik server-side Tetra (lib/tetra/privacy.ts): penolakan tegas & edukatif atas permintaan NIK, KK, password, token, rekam medis, kontak, dan data pribadi tanpa bocor ke LLM. Akses nama & alamat lengkap dari profil otoritatif Lytera berbasis autentikasi server sah (userId). Pengguna belum login diarahkan login tanpa membocorkan data. Pertanyaan edukatif tetap dijawab. Redaksi angka identitas pada riwayat LLM & output. 193 butir pengujian otomatis lolos 100%, lint 0 error, build exit 0. |
 
 ---
 
@@ -937,6 +938,56 @@
     5. *Rollback & Isolasi Data*: Seluruh transaksi pengujian dibatalkan via exception tanpa ada status akun uji yang diubah permanen.
   - `npm run lint`: **0 error**, **0 warning**.
   - `npm run build`: **Exit 0**, seluruh 21 rute lolos kompilasi optimal Next.js 16.
+
+---
+
+### Tahap 55: Deteksi Pertanyaan Sensitif, Privasi NIK & Akses Profil Berbasis Konteks pada Tetra (Selesai)
+- [x] **Audit & Forensik**:
+  - **Kesenjangan Deteksi Makna vs Pencocokan Kata**: Sebelumnya pengenalan identitas diri (`isSelfIdentityQuery`) hanya mendeteksi nama secara semantik, sementara data sensitif (NIK, nomor KK, kata sandi, token autentikasi, rekam medis) hanya dilindungi melalui instruksi system prompt LLM yang rentan diterobos lewat instruksi tidak langsung, parafrasa, atau manipulasi prompt (jailbreak).
+  - **Pemeriksaan Otorisasi Hakiki Server-Side**: Status login tidak boleh disamakan dengan izin membuka semua data pribadi. Selain itu, parameter konteks dari klien (`clientContext`) tidak boleh dipercaya sebagai bukti autentikasi sah tanpa verifikasi sesi nyata di server (`supabase.auth.getUser()`).
+- [x] **Implementasi Sistem Penjaga Privasi Deterministik**:
+  1. *Modul Penjaga Privasi Server-Side (`lib/tetra/privacy.ts`)*:
+     - **Normalisasi Teks Multi-Bentuk**: Normalisasi teks berbasis fonetik/makna (menghilangkan tanda baca, menyamakan kata ganti `aku/gue/gua/gw/ku/saya`, singkatan `brp/dmn/no/kab/kec/kel`, dan variasi salah ketik wajar `n1k/nikk/niik`).
+     - **Deteksi Pertanyaan Berbasis Makna & Konteks Percakapan**:
+       - Mengenali variasi permintaan NIK ("NIK saya berapa?", "Coba sebutkan nomor NIK saya.", "Apa nomor identitas saya?", "Nomor KTP saya berapa?", "Can you tell me my NIK?", dll.).
+       - Menangani pertanyaan lanjutan berbasis riwayat (misal: "NIK saya berapa?" lalu "nomor itu berapa tadi?") dan permintaan mengulang data sensitif yang pernah dikirim pengguna ("ulangi pesan pertama saya").
+       - Menjaga pertanyaan edukatif ("Apa itu NIK?", "Mengapa NIK harus dilindungi?", "Apa itu izin akses 6 digit?", "Apa itu kode pos?", "Bagaimana format penulisan alamat?") agar tetap terjawab informatif tanpa memicu penolakan.
+     - **Penegasan Batasan Data Sensitif**:
+       - Menolak secara tegas permintaan NIK, KK, kata sandi/kredensial, token/kode izin, rekam medis, nomor BPJS/asuransi, dan nomor HP/kontak pribadi dengan respons singkat, jelas, dan mengarahkan ke dokumen identitas/saluran resmi.
+       - Menolak permintaan data sensitif dan alamat milik orang lain/pihak ketiga ("Berapa NIK pasien iwak peyek?", "Alamat pasien itu di mana?").
+       - Menangani kata kunci tunggal yang ambigu ("nik", "alamat") dengan meminta klarifikasi ramah tanpa membocorkan data.
+     - **Akses Data Profil Milik Sendiri (Nama & Alamat Lengkap)**:
+       - **Pengguna Belum Login**: Jika meminta nama, alamat, atau profil pribadi, Tetra secara konsisten meminta pengguna untuk login terlebih dahulu (*"Silakan login terlebih dahulu agar saya dapat membantu memeriksa informasi profil Anda."*). Konteks klien palsu (`spoofed client`) tanpa sesi server ditolak 100%.
+       - **Pengguna Sudah Login**: Menjawab nama dan alamat tempat tinggal dari sumber profil otoritatif di Lytera (`profiles` & `patients`).
+       - **Penyajian Alamat Terstruktur**: Menampilkan komponen alamat nyata (Provinsi, Kabupaten/Kota, Kecamatan, Kelurahan/Desa, Detail Jalan/Nomor Rumah/RT/RW). Data yang kosong dijelaskan secara jujur (*_belum tercatat_*) dan tidak pernah ditebak atau dikarang dari IP/lokasi faskes. Kode numerik mentah tidak pernah disajikan sebagai nama jalan. Kode pos dinyatakan tidak disimpan di profil Lytera.
+     - **Redaksi Angka Identitas**: Seluruh angka panjang (>= 10 digit) otomatis disamarkan (`[data disamarkan]`) dari riwayat sebelum dikirim ke LLM dan dari teks balasan model jika LLM mencoba mengulang data sensitif. Tidak ada pencatatan data pengguna ke console log.
+  2. *Integrasi Penjaga Privasi pada Engine (`lib/tetra/engine.ts`)*:
+     - Lapisan `buildPrivacyResponse` dieksekusi di gerbang paling awal `executeTetraChat` sebelum memanggil data faskes atau API LLM. Permintaan data sensitif, penolakan anonim, dan akses profil dijawab secara deterministik dan aman.
+     - Pertanyaan kombinasi (misal: nama dan NIK sekaligus) dijawab secara proporsional: NIK ditolak sesuai kebijakan, nama profil dijawab sesuai hak akses.
+  3. *Verifikasi Autentikasi Sesi & Alamat di Server Action (`app/actions/tetra.ts`)*:
+     - Konteks klien yang tidak memiliki sesi auth server yang sah (`user` + `profile`) dipaksa menjadi peran `landing` anonim (mengabaikan klaim palsu dari klien).
+     - Query kolom `address` pada tabel `patients` hanya dieksekusi secara kondisional jika pengguna meminta alamatnya sendiri (prinsip hak akses minimum).
+- [x] **Pengujian & Validasi**:
+  - **Rangkaian Uji Otomatis Komprehensif (`scripts/test_tetra.ts`)**:
+    - **Blok A**: 8 tes fitur inti Lytera (alur rujukan, izin akses 6 digit, pencarian faskes/dokter/RS).
+    - **Blok B**: 37 tes klasifikasi semantik identitas diri (formal, gaul, tidak langsung, follow-up, bahasa Inggris, filter negatif edukatif/orang lain).
+    - **Blok C (148 skenario baru)**:
+      - C-1: 14 variasi susunan kata, typo, informal, dan bahasa Inggris NIK (anonim & login) -> 100% ditolak tanpa bocor.
+      - C-2: Pertanyaan lanjutan dengan kata ganti/rujukan konteks -> 100% terlindungi.
+      - C-3: Permintaan mengulang NIK dari chat sebelumnya -> 100% ditolak.
+      - C-4: Pertanyaan edukatif NIK & kode pos -> 100% lolos dijawab.
+      - C-5: Data sensitif milik orang lain -> 100% ditolak.
+      - C-6: Data sensitif KK, password, token, rekam medis, BPJS, kontak -> 100% ditolak untuk semua peran.
+      - C-7: Manipulasi prompt / jailbreak -> 100% ditolak.
+      - C-8: Redaksi angka identitas & verifikasi kebersihan log -> 100% lolos.
+      - C-9: Permintaan profil pengguna belum login (landing, halaman masuk, client spoofing) -> 100% meminta login tanpa bocor data.
+      - C-10: Permintaan nama pengguna login -> 100% dijawab sesuai profil sendiri, nama kosong dilaporkan belum tercatat.
+      - C-11: Permintaan alamat lengkap pengguna login (alamat penuh, sebagian, kosong, dokter) -> 100% akurat tanpa tebakan.
+      - C-12: Permintaan alamat pihak lain -> 100% ditolak.
+      - C-13: Kata kunci ambigu tunggal -> 100% meminta klarifikasi ramah.
+    - **Hasil Akhir**: **193 uji lulus (PASS: 193 | FAIL: 0)**.
+  - `npm run lint`: **0 error**, **0 warning**.
+  - `npm run build`: **Exit 0**, seluruh 21 rute lolos kompilasi optimal Next.js 16 (Turbopack).
 
 ---
 
