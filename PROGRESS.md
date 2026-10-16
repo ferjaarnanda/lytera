@@ -1041,8 +1041,29 @@
 
 ---
 
+### Tahap 57: Persiapan Berkas Proyek, Panduan Penjurian & Verifikasi Keamanan Supabase (Selesai)
+- [x] **Audit Security Advisors Supabase (`losqwizqvuikoueswxnc`)**:
+  - Menjalankan linter keamanan database resmi Supabase (`get_advisors(security)`).
+  - Mengonfirmasi seluruh tabel medis sensitif (`medical_records`, `patient_access_tokens`, `medical_record_access_logs`) berstatus Row Level Security (RLS) aktif dengan prinsip *default deny* (tidak dapat diakses melalui REST langsung oleh pihak lain tanpa izin).
+  - Memverifikasi bahwa pembukaan dan pencatatan riwayat medis hanya dapat dilakukan melalui RPC tersertifikasi (`open_patient_medical_record`, `add_medical_record`) dengan validasi kode izin 6 digit aktif dari pasien.
+- [x] **Pembuatan Dokumen Panduan Penjurian Resmi (`PANDUAN_PENJURIAN.md`)**:
+  - Menyusun panduan langkah demi langkah demonstrasi sistem bagi Dewan Juri (*The Golden Path Demo Walkthrough*):
+    - **Skenario 1**: Beranda & Tetra AI (Pencarian dokter/faskes riil, proteksi data pribadi NIK, resolusi konteks pertanyaan lanjutan).
+    - **Skenario 2**: Portal Pasien (Kedaulatan kode izin 6 digit, hitung mundur 60 menit, riwayat kunjungan & riwayat medis terdahulu).
+    - **Skenario 3**: Faskes Primer (Puskesmas Kedung Rejo: dr. Andi Wicaksono, pencarian NIK terdaftar, penerbitan rujukan ICD-10).
+    - **Skenario 4**: Rumah Sakit Rujukan (RS Kucing Garong: penerimaan berkas, penjadwalan DPJP spesialis, membuka rekam medis dengan token 6 digit, pengisian resume medis terpadu, penyelesaian rujukan).
+    - **Skenario 5**: Verifikasi Hak Pasien & Jejak Audit (Tinjauan resume medis oleh pasien, transparansi log audit pembukaan data medis).
+    - **Skenario 6**: Portal Dinas Kesehatan (Pemantauan wilayah, persetujuan faskes & tenaga medis baru, aturan rujukan daerah).
+  - Menyediakan daftar akun pengujian siap pakai untuk seluruh peran (Pasien, Dokter, Rumah Sakit, Dinkes, Verifikator).
+  - Memaparkan arsitektur kepatuhan UU PDP dan diagram alur interaksi terpadu.
+- [x] **Pengujian & Validasi Kualitas**:
+  - `npm run lint`: **0 error**, **0 warning**.
+  - `npm run build`: **Exit 0**, seluruh 21 rute Next.js 16 (Turbopack) berhasil dikompilasi optimal tanpa galat.
+
+---
+
 ### Berikutnya
-- Persiapan Final Berkas Proyek & Dokumentasi Penjurian: Audit akhir seluruh alur platform (Landing page, Pasien Pribadi/Keluarga, Faskes Primer, RS Rujukan, Verifikator, Dinkes), pembuatan panduan demo penjurian, dan verifikasi akhir security advisors Supabase.
+- Pelaksanaan sesi presentasi / live demo penjurian lomba menggunakan panduan `PANDUAN_PENJURIAN.md` dan akun pengujian terverifikasi.
 
 
 
