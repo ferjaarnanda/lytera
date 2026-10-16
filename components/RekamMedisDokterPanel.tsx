@@ -16,11 +16,26 @@ import {
 } from "lucide-react";
 import { CardInner } from "@/components/Card";
 import { Badge } from "@/components/Badge";
+import { createClient } from "@/lib/supabase/client";
 import {
   bukaRekamMedisDokterAction,
   tambahRekamMedisDokterAction,
   type OpenMedicalRecordResult,
 } from "@/app/actions/rekam-medis";
+
+export interface DoctorPatientMedicalHistory {
+  id: string | null;
+  patient_id: string;
+  family_member_id: string | null;
+  subject_name: string | null;
+  kondisi_penyakit: string;
+  tahun_kejadian: string | null;
+  status_riwayat: string | null;
+  catatan: string | null;
+  sumber_informasi: string | null;
+  status_verifikasi: string | null;
+  created_at: string | null;
+}
 
 interface RekamMedisDokterPanelProps {
   referralId: string;
@@ -39,10 +54,12 @@ export function RekamMedisDokterPanel({
   const [tokenInput, setTokenInput] = useState("");
   const [activeVerifiedToken, setActiveVerifiedToken] = useState<string | null>(null);
 
-  // ── State Membuka Rekam Medis ──
+  // ── State Membuka Rekam Medis (Kunjungan & Riwayat Terdahulu) ──
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [records, setRecords] = useState<OpenMedicalRecordResult[] | null>(null);
+  const [medicalHistories, setMedicalHistories] = useState<DoctorPatientMedicalHistory[] | null>(null);
+  const [loadingHistories, setLoadingHistories] = useState(false);
 
   // ── State Penulisan Rekam Medis Baru ──
   const [showInputForm, setShowInputForm] = useState(false);
@@ -65,7 +82,7 @@ export function RekamMedisDokterPanel({
     );
   }
 
-  // ── 1. Verifikasi Token & Buka Rekam Medis ──
+  // ── 1. Verifikasi Token & Buka Rekam Medis & Riwayat Terdahulu ──
   const handleVerifyToken = async (e: React.FormEvent) => {
     e.preventDefault();
     const clean = tokenInput.trim();
@@ -88,12 +105,39 @@ export function RekamMedisDokterPanel({
       setVerifyError(res.error || "Gagal membuka rekam medis dengan kode tersebut.");
       setActiveVerifiedToken(null);
       setRecords(null);
+      setMedicalHistories(null);
       return;
     }
 
     // Otorisasi Sukses
     setActiveVerifiedToken(clean);
     setRecords(res.records ?? []);
+
+    // Muat Riwayat Kesehatan Terdahulu (Laporan Pasien) via RPC open_patient_medical_histories
+    setLoadingHistories(true);
+    try {
+      const supabase = createClient();
+      const { data: histData, error: histErr } = await supabase.rpc("open_patient_medical_histories", {
+        p_referral_id: referralId,
+        p_token_code: clean,
+      });
+      if (!histErr && histData) {
+        const rows = histData as DoctorPatientMedicalHistory[];
+        if (rows.length === 1 && rows[0].kondisi_penyakit === "KOSONG") {
+          setMedicalHistories([]);
+        } else if (rows.length > 0 && rows[0].kondisi_penyakit === "AKSES_DITOLAK") {
+          setMedicalHistories(null);
+        } else {
+          setMedicalHistories(rows);
+        }
+      } else {
+        setMedicalHistories([]);
+      }
+    } catch {
+      setMedicalHistories([]);
+    } finally {
+      setLoadingHistories(false);
+    }
   };
 
   // ── Segarkan Riwayat Medis dari Database secara Otoritatif ──
@@ -108,6 +152,26 @@ export function RekamMedisDokterPanel({
     setReloadingRecords(false);
     if (res.success) {
       setRecords(res.records ?? []);
+      // Segarkan juga riwayat kesehatan terdahulu
+      try {
+        const supabase = createClient();
+        const { data: histData } = await supabase.rpc("open_patient_medical_histories", {
+          p_referral_id: referralId,
+          p_token_code: activeVerifiedToken,
+        });
+        if (histData) {
+          const rows = histData as DoctorPatientMedicalHistory[];
+          if (rows.length === 1 && rows[0].kondisi_penyakit === "KOSONG") {
+            setMedicalHistories([]);
+          } else if (rows.length > 0 && rows[0].kondisi_penyakit === "AKSES_DITOLAK") {
+            setMedicalHistories(null);
+          } else {
+            setMedicalHistories(rows);
+          }
+        }
+      } catch {
+        // Abaikan error background refresh
+      }
     } else {
       const err = res.error || "Gagal menyegarkan riwayat medis.";
       if (
@@ -117,6 +181,7 @@ export function RekamMedisDokterPanel({
       ) {
         setActiveVerifiedToken(null);
         setRecords(null);
+        setMedicalHistories(null);
         setShowInputForm(false);
         setVerifyError(err);
       } else {
@@ -406,25 +471,88 @@ export function RekamMedisDokterPanel({
             </CardInner>
           )}
 
-          {/* ── TAMPILAN RIWAYAT MEDIS PASIEN (READ-ONLY) ── */}
-          <div className="space-y-3">
+          {/* ── BAGIAN A: RIWAYAT KESEHATAN TERDAHULU (DILAPORKAN PASIEN) ── */}
+          <div className="space-y-3 pt-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <h4 className="text-xs font-bold text-[#0F3040] uppercase tracking-wider flex items-center gap-1.5">
                   <History className="w-3.5 h-3.5 text-[#8F5A4E]" />
-                  <span>Riwayat Kunjungan Medis Pasien ({records?.length || 0})</span>
+                  <span>A. Riwayat Kesehatan Terdahulu ({medicalHistories?.length || 0})</span>
                 </h4>
                 <button
                   type="button"
                   onClick={handleRefreshRecords}
                   disabled={reloadingRecords}
-                  title="Segarkan Riwayat Medis"
+                  title="Segarkan Riwayat"
                   className="p-1 rounded-md text-slate-400 hover:text-[#0F3040] hover:bg-slate-100 transition-colors disabled:opacity-50"
                 >
                   <RotateCw className={`w-3.5 h-3.5 ${reloadingRecords ? "animate-spin text-[#0F3040]" : ""}`} />
                 </button>
               </div>
-              <Badge variant="info">Read-Only Otorisasi Pasien</Badge>
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                <AlertTriangle className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                <span>Laporan Pasien — Belum Diverifikasi</span>
+              </span>
+            </div>
+
+            {loadingHistories ? (
+              <div className="p-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Memuat riwayat kesehatan terdahulu...</span>
+              </div>
+            ) : medicalHistories && medicalHistories.length > 0 ? (
+              <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                {medicalHistories.map((h, idx) => (
+                  <CardInner
+                    key={h.id || idx}
+                    variant="cream"
+                    className="p-3 rounded-xl border border-[#E2E8F0] space-y-1.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="font-bold text-[#0F3040] text-xs block">
+                          {h.kondisi_penyakit}
+                        </span>
+                        <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                          <span>
+                            Status: <span className="font-semibold text-slate-700 capitalize">{h.status_riwayat?.replace(/_/g, " ") || "-"}</span>
+                          </span>
+                          {h.tahun_kejadian && <span>· Waktu: {h.tahun_kejadian}</span>}
+                          {h.subject_name && <span>· Subjek: {h.subject_name}</span>}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-500 bg-white px-2 py-0.5 rounded-full border border-[#E2E8F0] shrink-0">
+                        {h.sumber_informasi === "laporan_wali" ? "Laporan Wali" : "Laporan Pasien"}
+                      </span>
+                    </div>
+                    {h.catatan && (
+                      <p className="text-[11px] text-slate-600 pl-2 border-l-2 border-[#E2E8F0] bg-white/60 p-1 rounded-r">
+                        {h.catatan}
+                      </p>
+                    )}
+                  </CardInner>
+                ))}
+              </div>
+            ) : (
+              <CardInner variant="cream" className="p-4 text-center border border-[#E2E8F0] rounded-xl">
+                <p className="text-xs font-bold text-[#0F3040]">Data Belum Tersedia</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Pasien belum memasukkan catatan riwayat kesehatan terdahulu secara mandiri di portal pasien.
+                </p>
+              </CardInner>
+            )}
+          </div>
+
+          {/* ── BAGIAN B: RIWAYAT KUNJUNGAN MEDIS DI LYTERA (DICATAT DOKTER) ── */}
+          <div className="space-y-3 pt-3 border-t border-[#E2E8F0]">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs font-bold text-[#0F3040] uppercase tracking-wider flex items-center gap-1.5">
+                  <Stethoscope className="w-3.5 h-3.5 text-[#8F5A4E]" />
+                  <span>B. Riwayat Kunjungan Medis di Lytera ({records?.length || 0})</span>
+                </h4>
+              </div>
+              <Badge variant="info">Dicatat Nakes di Fasilitas</Badge>
             </div>
 
             {records && records.length > 0 ? (
@@ -466,9 +594,9 @@ export function RekamMedisDokterPanel({
             ) : (
               <CardInner variant="cream" className="p-6 text-center border border-[#E2E8F0] rounded-xl space-y-2">
                 <Clock className="w-6 h-6 text-slate-400 mx-auto mb-1" />
-                <p className="text-xs font-bold text-[#0F3040]">Belum Ada Riwayat Kunjungan Sebelumnya</p>
+                <p className="text-xs font-bold text-[#0F3040]">Belum Ada Riwayat Kunjungan di Lytera</p>
                 <p className="text-[11px] text-slate-500 max-w-sm mx-auto leading-relaxed">
-                  Otorisasi izin pasien aktif. Pasien belum memiliki catatan kunjungan medis masa lalu di sistem. Linimasa rujukan bukan rekam medis. Catat kunjungan ini secara sah dengan formulir di atas.
+                  Otorisasi izin pasien aktif. Pasien belum memiliki kunjungan klinis yang tercatat di sistem Lytera. Linimasa rujukan bukan rekam medis. Catat kunjungan ini secara sah dengan formulir di atas.
                 </p>
                 {!showInputForm && (
                   <button

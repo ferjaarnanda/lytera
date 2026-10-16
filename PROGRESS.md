@@ -49,6 +49,7 @@
 | Pemulihan Identitas Pasien, Form Masuk Normal & Rekonsiliasi Rujukan | SELESAI | 081bdcf | Pemulihan formulir login pasien pribadi tanpa bantuan akun uji/kredensial, pembersihan identitas navbar (hanya nama pasien & 'Pasien Pribadi', bebas email), inisial avatar dari nama pasien, migrasi 20261016090000 merekonsiliasi NIK 1111… dan rujukan terjadwal d380e1d5 ke akun aktif target (iwaktempel@gmail.com, 22937be6…) secara transaksional non-destruktif. Uji RLS impersonasi membuktikan akun target membaca rujukan terjadwal 18 Okt 13:20 WIB, akun lain terisolasi 100%, lint 0 error, build exit 0 (21 rute). |
 | Akses Rujukan RS, Jadwal Saya & Penyelesaian Rujukan | SELESAI | 85fdd39 | Pemulihan otorisasi akun staf/dokter aktif di fasilitas aktif tanpa memblokir profiles.status 'menunggu', sinkronisasi resolver faskes deterministik di dashboard & rujukan, dukungan navigasi URL Jadwal Saya (?tab=jadwal_saya) terintegrasi filter rujukan dijadwalkan & urutan jadwal terdekat, alur penyelesaian rujukan transaksional dengan rollback compensating & revalidatePath. 4 skenario uji impersonasi SQL lolos 100%, lint 0 error, build exit 0 (21 rute). |
 | Sinkronisasi Riwayat Medis Otoritatif Dokter–Pasien & Audit Log | SELESAI | 8f97a6f | Eliminasi manipulasi record lokal palsu di panel dokter, sinkronisasi otoritatif data rekam medis dari database pasca penyimpanan, revalidatePath portal, penyelarasan mapping kolom RPC (tanggal kunjungan & log doctor_name), empty state edukatif panel dokter, dan tombol segarkan data manual realtime pada dashboard pasien dan panel dokter. Uji SQL impersonasi end-to-end lolos 100%, lint 0 error, build exit 0 (21 rute). |
+| Tahap 52: Riwayat Kesehatan Terdahulu Berizin Pasien | SELESAI | dbf0edd | Entitas riwayat penyakit terdahulu pasien mandiri (tabel patient_medical_histories & 5 RPC SECURITY DEFINER) terpisah dari rekam medis faskes. Panel dokter memisahkan Bagian A (Laporan Pasien, Belum Diverifikasi) & Bagian B (Kunjungan Nakes). Token izin 6-digit diverifikasi, audit log tercatat, isolasi faskes terjamin. 10 skenario impersonasi SQL lolos 100%, lint 0 error, build exit 0. |
 
 ---
 
@@ -826,6 +827,50 @@
       5. Pasien memeriksa audit log via `list_my_access_audit_logs()` -> Sukses, log mencatat `doctor_name = 'dr. Anggi Dwi Susanti Sp.PD'` dengan status `access_result = 'berhasil'`.
   - `npm run lint`: **0 error**, **0 warning**.
   - `npm run build`: **Exit 0**, seluruh 21 rute lolos kompilasi produksi Next.js 16.
+
+---
+
+### Tahap 52: Riwayat Kesehatan Terdahulu Berizin Pasien (Selesai)
+- [x] **Audit & Forensik Nyata**:
+  - **Pemisahan Riwayat Medis Mandiri vs Kunjungan Nakes**: Riwayat penyakit terdahulu yang dilaporkan pasien (misal: riwayat Tuberkulosis/TBC tahun 2021) tidak boleh dicampuradukkan dengan riwayat kunjungan klinis di fasilitas kesehatan (`medical_records`), karena data laporan mandiri belum diverifikasi secara klinis oleh nakes.
+  - **Kebutuhan Izin Pasien (UU PDP)**: Riwayat penyakit terdahulu bersifat sensitif dan hanya boleh dibuka oleh dokter yang sedang menangani rujukan pasien aktif dengan validasi kode izin 6 digit yang sah. Akses dokter wajib tercatat di audit log (`medical_record_access_logs`).
+  - **Hak Mandiri Pasien**: Pasien memiliki hak penuh membaca, menambah, mengubah, dan menghapus riwayat kesehatan terdahulu miliknya sendiri tanpa memerlukan token akses.
+- [x] **Perbaikan Implementasi**:
+  1. *Skema Database & RPC Otoritatif (`supabase/migrations/20261016140000_patient_medical_histories.sql`)*:
+     - Pembuatan tabel `public.patient_medical_histories` dengan relasi ke `patients(id)` dan `family_members(id)`.
+     - Enum status riwayat: `masih_berlangsung`, `sudah_selesai`, `tidak_diketahui`. Status verifikasi default: `belum_diverifikasi` dengan sumber `laporan_pasien`.
+     - Kebijakan RLS ketat: akses langsung tabel dibatasi penuh; operasi data difasilitasi melalui 5 fungsi `SECURITY DEFINER` yang dicabut haknya dari `anon`/`public` dan hanya diberikan ke `authenticated`:
+       - `list_my_medical_histories()`: Membaca seluruh riwayat mandiri milik pasien/keluarga yang sedang login.
+       - `add_patient_medical_history(...)`: Menambah riwayat mandiri baru (validasi panjang kondisi & catatan, validasi tahun).
+       - `update_patient_medical_history(...)`: Mengubah kondisi, tahun, status riwayat, atau catatan riwayat sendiri.
+       - `delete_patient_medical_history(...)`: Menghapus baris riwayat kesehatan terdahulu milik sendiri.
+       - `open_patient_medical_histories(p_referral_id, p_token_code)`: Fungsi khusus dokter pemeriksa rujukan aktif untuk membuka riwayat terdahulu pasien dengan token 6 digit, dengan validasi otorisasi dokter aktif pada faskes tujuan/asal rujukan dan pencatatan audit log otomatis ke `medical_record_access_logs`.
+  2. *Antarmuka Pasien (`components/PasienDashboard.tsx`)*:
+     - Sub-tab navigasi pada `KartuRiwayatMedis`: **Kunjungan Medis** (dicatat nakes) dan **Riwayat Penyakit Terdahulu** (laporan mandiri).
+     - Formulir interaktif tambah dan ubah riwayat terdahulu: kondisi penyakit, tahun kejadian, status riwayat, dan catatan tambahan.
+     - Callout edukatif pasien: penegasan bahwa riwayat yang dicatat berstatus *Dilaporkan Pasien — Belum Diverifikasi* dan bukan vonis diagnosis klinis mutlak.
+     - Tombol aksi hapus riwayat mandiri dengan dialog konfirmasi aman.
+  3. *Antarmuka Dokter (`components/RekamMedisDokterPanel.tsx`)*:
+     - Pemisahan visual tegas pasca pembukaan izin 6-digit:
+       - **Bagian A: Riwayat Kesehatan Terdahulu (Laporan Pasien)** dengan badge `Laporan Pasien — Belum Diverifikasi` dan empty state edukatif jika belum ada data.
+       - **Bagian B: Riwayat Kunjungan Medis di Lytera (Dicatat Nakes)** dengan badge `Dicatat Nakes di Fasilitas`.
+     - Pemuatan paralel riwayat kunjungan dan riwayat terdahulu dari database saat token diverifikasi dan saat tombol Segarkan Data ditekan.
+     - Formulir catatan kunjungan baru dokter tetap tersimpan secara terpisah di `medical_records`.
+- [x] **Pengujian & Validasi**:
+  - **Uji Impersonasi SQL Supabase (`execute_sql` RLS - 10 Skenario)**:
+    1. Pasien menambah riwayat penyakit terdahulu mandiri (Tuberkulosis, 2021, selesai) -> Sukses, ID terbit.
+    2. Pasien memperbarui riwayat penyakit miliknya -> Sukses terupdate.
+    3. Pasien menerbitkan kode izin 6 digit -> Sukses terbit.
+    4. Dokter RS Kucing Garong membuka riwayat kesehatan terdahulu pasien dengan token -> Sukses, data termuat dengan status `belum_diverifikasi` dan sumber `laporan_pasien`.
+    5. Dokter RS Kucing Garong mencatat rekam medis kunjungan baru (ICD-10: I10) -> Sukses tersimpan di `medical_records`.
+    6. Dokter RS Kucing Garong membaca riwayat kunjungan medis pasien -> Sukses, data kunjungan baru termuat.
+    7. Dokter dari faskes lain (dr. Andi Wicaksono) mencoba membuka riwayat pasien dengan token yang sama -> Ditolak tegas (*"Anda tidak memiliki wewenang pada faskes rujukan pasien ini"*).
+    8. Akses dengan token salah/kadaluarsa -> Ditolak tegas (`AKSES_DITOLAK`) dan tercatat di audit log.
+    9. Pasien membaca audit log akses rekam medis miliknya -> Sukses, seluruh riwayat akses dokter tercatat lengkap.
+    10. Pasien membaca kembali riwayat kunjungan dan riwayat terdahulu miliknya -> Sukses, kedua data sinkron dan terisolasi.
+  - **Security Advisor Supabase**: `get_advisors(security)` bersih, hak eksekusi anon/public untuk kelima RPC baru telah dicabut.
+  - `npm run lint`: **0 error**, **0 warning**.
+  - `npm run build`: **Exit 0**, seluruh 21 rute Next.js 16 berhasil dikompilasi secara optimal.
 
 ---
 

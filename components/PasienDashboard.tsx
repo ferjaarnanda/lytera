@@ -27,6 +27,9 @@ import {
   ShieldAlert,
   ShieldOff,
   CreditCard,
+  Plus,
+  Trash2,
+  Edit3,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardInner } from "@/components/Card";
@@ -104,6 +107,27 @@ export interface FamilyMemberData {
   insurance_name?: string | null;
   insurance_policy_number?: string | null;
 }
+
+export interface PatientMedicalHistoryItem {
+  id: string;
+  patient_id: string;
+  family_member_id: string | null;
+  subject_name: string | null;
+  kondisi_penyakit: string;
+  tahun_kejadian: string | null;
+  status_riwayat: string;
+  catatan: string | null;
+  sumber_informasi: string;
+  status_verifikasi: string;
+  created_at: string;
+  updated_at: string;
+}
+
+const STATUS_RIWAYAT_LABEL: Record<string, { label: string; variant: "selesai" | "proses" | "netral" }> = {
+  masih_berlangsung: { label: "Masih Berlangsung", variant: "proses" },
+  sudah_selesai: { label: "Sudah Selesai / Teratasi", variant: "selesai" },
+  tidak_diketahui: { label: "Tidak Diketahui", variant: "netral" },
+};
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Fungsi Pembantu Tampilan (Format Tanggal & Masking NIK)
@@ -691,24 +715,42 @@ function KartuIzinAkses() {
 function KartuRiwayatMedis() {
   const [records, setRecords] = useState<MedicalRecordItem[] | null>(null);
   const [auditLogs, setAuditLogs] = useState<AccessAuditLogItem[] | null>(null);
+  const [histories, setHistories] = useState<PatientMedicalHistoryItem[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloading, setReloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeSubTab, setActiveSubTab] = useState<"kunjungan" | "log-akses">("kunjungan");
+  const [activeSubTab, setActiveSubTab] = useState<"riwayat-terdahulu" | "kunjungan" | "log-akses">("riwayat-terdahulu");
+
+  // State Formulir Riwayat Terdahulu
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formKondisi, setFormKondisi] = useState("");
+  const [formTahun, setFormTahun] = useState("");
+  const [formStatus, setFormStatus] = useState("masih_berlangsung");
+  const [formCatatan, setFormCatatan] = useState("");
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setReloading(true);
     else setLoading(true);
     setError(null);
-    const [recRes, logRes] = await Promise.all([
+    const supabase = createClient();
+    const [recRes, logRes, histRes] = await Promise.all([
       listMyMedicalRecordsAction(),
       listMyAccessAuditLogsAction(),
+      supabase.rpc("list_my_medical_histories"),
     ]);
     if (isRefresh) setReloading(false);
     else setLoading(false);
     if (recRes.success) setRecords(recRes.records ?? []);
     else setError(recRes.error ?? "Gagal memuat riwayat.");
     if (logRes.success) setAuditLogs(logRes.logs ?? []);
+    if (!histRes.error && histRes.data) {
+      setHistories(histRes.data as PatientMedicalHistoryItem[]);
+    }
   }, []);
 
   useEffect(() => {
@@ -716,12 +758,95 @@ function KartuRiwayatMedis() {
     void loadData();
   }, [loadData]);
 
+  const handleOpenAddForm = () => {
+    setEditingId(null);
+    setFormKondisi("");
+    setFormTahun("");
+    setFormStatus("masih_berlangsung");
+    setFormCatatan("");
+    setFormError(null);
+    setShowForm(true);
+  };
+
+  const handleOpenEditForm = (item: PatientMedicalHistoryItem) => {
+    setEditingId(item.id);
+    setFormKondisi(item.kondisi_penyakit);
+    setFormTahun(item.tahun_kejadian || "");
+    setFormStatus(item.status_riwayat || "masih_berlangsung");
+    setFormCatatan(item.catatan || "");
+    setFormError(null);
+    setShowForm(true);
+  };
+
+  const handleSaveHistory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanKondisi = formKondisi.trim();
+    if (!cleanKondisi) {
+      setFormError("Nama kondisi atau penyakit terdahulu wajib diisi.");
+      return;
+    }
+    setFormSubmitting(true);
+    setFormError(null);
+    const supabase = createClient();
+    try {
+      if (editingId) {
+        const { error: err } = await supabase.rpc("update_patient_medical_history", {
+          p_id: editingId,
+          p_kondisi_penyakit: cleanKondisi,
+          p_tahun_kejadian: formTahun.trim() || null,
+          p_status_riwayat: formStatus,
+          p_catatan: formCatatan.trim() || null,
+        });
+        if (err) throw err;
+      } else {
+        const { error: err } = await supabase.rpc("add_patient_medical_history", {
+          p_kondisi_penyakit: cleanKondisi,
+          p_tahun_kejadian: formTahun.trim() || null,
+          p_status_riwayat: formStatus,
+          p_catatan: formCatatan.trim() || null,
+          p_family_member_id: null,
+        });
+        if (err) throw err;
+      }
+      setShowForm(false);
+      setEditingId(null);
+      setFormKondisi("");
+      setFormTahun("");
+      setFormStatus("masih_berlangsung");
+      setFormCatatan("");
+      await loadData(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setFormError(msg || "Gagal menyimpan riwayat kesehatan.");
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
+
+  const handleDeleteHistory = async (id: string) => {
+    setDeleting(true);
+    const supabase = createClient();
+    try {
+      const { error: err } = await supabase.rpc("delete_patient_medical_history", {
+        p_id: id,
+      });
+      if (err) throw err;
+      setDeleteConfirmId(null);
+      await loadData(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert("Gagal menghapus riwayat: " + msg);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Sub-tab & tombol refresh manual */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2">
-          {(["kunjungan", "log-akses"] as const).map((tab) => (
+        <div className="flex items-center gap-2 flex-wrap">
+          {(["riwayat-terdahulu", "kunjungan", "log-akses"] as const).map((tab) => (
             <button
               key={tab}
               type="button"
@@ -732,7 +857,9 @@ function KartuRiwayatMedis() {
                   : "bg-white text-slate-600 border border-[#E2E8F0] hover:bg-slate-50"
               }`}
             >
-              {tab === "kunjungan" ? (
+              {tab === "riwayat-terdahulu" ? (
+                <span className="flex items-center gap-1.5"><History className="w-3.5 h-3.5" />Riwayat Terdahulu</span>
+              ) : tab === "kunjungan" ? (
                 <span className="flex items-center gap-1.5"><Stethoscope className="w-3.5 h-3.5" />Kunjungan Medis</span>
               ) : (
                 <span className="flex items-center gap-1.5"><Activity className="w-3.5 h-3.5" />Log Akses Rekam Medis</span>
@@ -745,7 +872,7 @@ function KartuRiwayatMedis() {
           onClick={() => void loadData(true)}
           disabled={reloading || loading}
           className="px-3.5 py-1.5 rounded-full border border-[#E2E8F0] bg-white text-xs font-semibold text-slate-600 hover:text-[#0F3040] hover:bg-slate-50 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
-          title="Segarkan riwayat kunjungan dan log audit akses"
+          title="Segarkan data riwayat dan log audit akses"
         >
           <RotateCw className={`w-3.5 h-3.5 ${reloading ? "animate-spin text-[#0F3040]" : ""}`} />
           <span>Segarkan Data</span>
@@ -763,6 +890,253 @@ function KartuRiwayatMedis() {
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
+        </Card>
+      ) : activeSubTab === "riwayat-terdahulu" ? (
+        <Card variant="white" className="p-6 sm:p-8 shadow-sm border border-[#E2E8F0]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-6 border-b border-[#E2E8F0]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#FAF5F2] flex items-center justify-center text-[#8F5A4E] shrink-0">
+                <History className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-[#0F3040]">Riwayat Kesehatan Terdahulu</h2>
+                <p className="text-xs text-slate-500">
+                  Kondisi atau riwayat penyakit masa lalu yang Anda laporkan secara mandiri untuk pertimbangan klinis nakes.
+                </p>
+              </div>
+            </div>
+            {!showForm && (
+              <button
+                type="button"
+                onClick={handleOpenAddForm}
+                className="px-4 py-2 rounded-xl bg-[#0F3040] text-white text-xs font-semibold hover:bg-[#0A2230] transition-colors inline-flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-2xs"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Catat Riwayat Baru</span>
+              </button>
+            )}
+          </div>
+
+          {/* Banner Edukasi Laporan Mandiri Pasien */}
+          <div className="mb-6 p-4 rounded-xl bg-amber-50/70 border border-amber-200/80 flex items-start gap-3">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-900 leading-relaxed">
+              <span className="font-semibold block mb-0.5">Laporan Mandiri Pasien (Belum Diverifikasi)</span>
+              Riwayat yang Anda masukkan di sini berfungsi sebagai informasi awal bagi tenaga medis yang Anda beri izin.
+              Status verifikasi awal adalah <strong>Belum Diverifikasi</strong> dan tidak dianggap sebagai vonis diagnosis klinis mutlak.
+            </div>
+          </div>
+
+          {/* Formulir Tambah / Edit Riwayat Terdahulu */}
+          {showForm && (
+            <CardInner variant="cream" className="p-5 rounded-2xl border border-[#E2E8F0] mb-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-[#0F3040] flex items-center gap-2">
+                  <Edit3 className="w-4 h-4 text-[#8F5A4E]" />
+                  <span>{editingId ? "Ubah Riwayat Kesehatan" : "Catat Riwayat Kesehatan Terdahulu"}</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="text-xs text-slate-500 hover:text-slate-800"
+                >
+                  Batal
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveHistory} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Nama Kondisi atau Penyakit <span className="text-[#B3261E]">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formKondisi}
+                    onChange={(e) => setFormKondisi(e.target.value)}
+                    placeholder="Contoh: Tuberkulosis (TBC), Asma, Hipertensi"
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-[#E2E8F0] bg-white focus:outline-none focus:border-[#0F3040] text-slate-800"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Perkiraan Tahun / Waktu Kejadian
+                    </label>
+                    <input
+                      type="text"
+                      value={formTahun}
+                      onChange={(e) => setFormTahun(e.target.value)}
+                      placeholder="Contoh: 2021, Masa kanak-kanak"
+                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-[#E2E8F0] bg-white focus:outline-none focus:border-[#0F3040] text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Status Riwayat Saat Ini
+                    </label>
+                    <select
+                      value={formStatus}
+                      onChange={(e) => setFormStatus(e.target.value)}
+                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-[#E2E8F0] bg-white focus:outline-none focus:border-[#0F3040] text-slate-800"
+                    >
+                      <option value="masih_berlangsung">Masih Berlangsung</option>
+                      <option value="sudah_selesai">Sudah Selesai / Teratasi</option>
+                      <option value="tidak_diketahui">Tidak Diketahui</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Catatan Tambahan (Opsional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={formCatatan}
+                    onChange={(e) => setFormCatatan(e.target.value)}
+                    placeholder="Contoh: Pengobatan rutin 6 bulan tuntas di puskesmas, tidak ada keluhan sisa."
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-[#E2E8F0] bg-white focus:outline-none focus:border-[#0F3040] text-slate-800"
+                  />
+                </div>
+
+                {formError && (
+                  <div className="p-2.5 rounded-xl bg-[#FDECEA] border border-[#B3261E]/30 text-[#B3261E] text-xs flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>{formError}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowForm(false)}
+                    className="px-3.5 py-1.5 rounded-xl border border-[#E2E8F0] text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={formSubmitting}
+                    className="px-4 py-2 rounded-xl bg-[#0F3040] text-white text-xs font-semibold hover:bg-[#0A2230] disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
+                  >
+                    {formSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                    <span>{formSubmitting ? "Menyimpan..." : editingId ? "Perbarui Riwayat" : "Simpan Riwayat"}</span>
+                  </button>
+                </div>
+              </form>
+            </CardInner>
+          )}
+
+          {/* Daftar Riwayat Terdahulu */}
+          {histories && histories.length > 0 ? (
+            <div className="space-y-3">
+              {histories.map((h) => {
+                const statusMeta = STATUS_RIWAYAT_LABEL[h.status_riwayat] ?? {
+                  label: h.status_riwayat,
+                  variant: "netral" as const,
+                };
+                return (
+                  <CardInner
+                    key={h.id}
+                    variant="cream"
+                    className="p-4 rounded-[16px] border border-[#E2E8F0] space-y-2.5"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <h4 className="text-sm font-bold text-[#0F3040]">{h.kondisi_penyakit}</h4>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                            <AlertTriangle className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                            <span>Dilaporkan Pasien — Belum Diverifikasi</span>
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap text-xs text-slate-500">
+                          <span className="font-medium text-slate-700">
+                            Status: <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
+                          </span>
+                          {h.tahun_kejadian && (
+                            <span className="text-slate-400">· Waktu: {h.tahun_kejadian}</span>
+                          )}
+                          {h.subject_name && (
+                            <span className="text-slate-400">· Subjek: {h.subject_name}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 self-end sm:self-start shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditForm(h)}
+                          title="Ubah riwayat"
+                          className="p-1.5 rounded-lg border border-[#E2E8F0] bg-white text-slate-600 hover:text-[#0F3040] hover:bg-slate-50 transition-colors"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        {deleteConfirmId === h.id ? (
+                          <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-[#B3261E]/30">
+                            <span className="text-[10px] font-bold text-[#B3261E] px-1">Hapus?</span>
+                            <button
+                              type="button"
+                              disabled={deleting}
+                              onClick={() => handleDeleteHistory(h.id)}
+                              className="px-2 py-0.5 rounded bg-[#B3261E] text-white text-[10px] font-bold hover:bg-[#8B1C14]"
+                            >
+                              {deleting ? "..." : "Ya"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeleteConfirmId(null)}
+                              className="px-1.5 py-0.5 text-[10px] text-slate-600 hover:text-slate-900"
+                            >
+                              Batal
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteConfirmId(h.id)}
+                            title="Hapus riwayat"
+                            className="p-1.5 rounded-lg border border-[#E2E8F0] bg-white text-slate-400 hover:text-[#B3261E] hover:border-[#B3261E]/30 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {h.catatan && (
+                      <p className="text-xs text-slate-600 leading-relaxed pl-2 border-l-2 border-[#E2E8F0] bg-white/50 p-1.5 rounded-r-lg">
+                        {h.catatan}
+                      </p>
+                    )}
+                  </CardInner>
+                );
+              })}
+            </div>
+          ) : (
+            <CardInner variant="cream" className="p-10 text-center border border-[#E2E8F0] space-y-2">
+              <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center mx-auto mb-2 text-slate-400 border border-[#E2E8F0]">
+                <History className="w-6 h-6" />
+              </div>
+              <p className="text-base font-bold text-[#0F3040]">Belum Ada Riwayat Kesehatan Terdahulu</p>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                Anda belum mencatat riwayat penyakit masa lalu. Catat kondisi terdahulu (misal: riwayat TBC, asma, alergi) untuk mempermudah dokter saat rujukan.
+              </p>
+              {!showForm && (
+                <button
+                  type="button"
+                  onClick={handleOpenAddForm}
+                  className="mt-3 px-4 py-2 rounded-xl bg-[#0F3040] text-white text-xs font-semibold hover:bg-[#0A2230] transition-colors inline-flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Catat Riwayat Kesehatan Pertama</span>
+                </button>
+              )}
+            </CardInner>
+          )}
         </Card>
       ) : activeSubTab === "kunjungan" ? (
         <Card variant="white" className="p-6 sm:p-8 shadow-sm border border-[#E2E8F0]">
