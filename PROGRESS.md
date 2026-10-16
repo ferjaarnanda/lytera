@@ -44,6 +44,8 @@
 | Perbaikan Navigasi CTA & Layout Masuk Sesuai Peran | SELESAI | 7557332 | Semua CTA landing page (hero Mulai Sekarang, navbar Daftar desktop & mobile, footer CTA) diarahkan ke section `#masuk-peran` via smooth scroll + pushState + fallback `router.push`. Section masuk-peran dioptimalkan: `scroll-mt-[92px]`, padding `pt-8→pt-12`, panel judul dipadatkan `py-5`, ikon `w-11 h-11`, tag & tombol `mb-4 py-2.5 rounded-[12px]`. Footer mendapat link "Masuk Sesuai Peran" dan tombol "Mulai Sekarang". Lint 0 error 0 warning, build exit 0 (21 rute). |
 | Sinkronisasi Statistik Dashboard Pemantauan Dinkes | SELESAI | 9f9a584 | Penyebab ditemukan: kartu "Total Fasilitas" menampilkan breakdown hanya Aktif+Menunggu (11+3=14) sehingga tidak menjumlah ke Total (15) karena 1 fasilitas berstatus `ditolak` tidak dihitung di breakdown. Ditambahkan `rejectedFacilities` dan tampil kondisional "N Ditolak" (merah) di breakdown. Mekanisme refresh sudah benar (client-side fetch on mount + tombol Segarkan). RLS dinkes divalidasi impersonasi: total=15, aktif=11, menunggu=3, ditolak=1 sesuai DB. Lint 0 error, build exit 0. |
 | Otorisasi Pencarian Pasien Dokter & Sinkronisasi Sesi | SELESAI | 5d37cd2 | Audit log ClickHouse Supabase membuktikan RPC find_patient_by_nik pada jam 05:44 & 08:02 UTC dipanggil oleh user non-staf (mas adam, 0900ec3d) akibat cookie sesi browser lama tertinggal, bukan dr. Budiono Siregar (mbek@gmail.com, 4fc7cf0b). Status profiles 'menunggu' dokter terbukti valid & didesain demikian (sama seperti dr. Andi Wicaksono). Migrasi `20261015160000_clarify_find_patient_by_nik_authorization.sql`: pemecahan guard otorisasi bertahap dan deskriptif (belum terdaftar, bukan dokter, staf menunggu/ditolak, faskes menunggu/ditolak). MasukPage ditambah router.refresh() untuk sinkronisasi sesi cookie baru. Uji SQL impersonasi 5 skenario lolos 100% (dr. Budiono menemukan pasien & buat rujukan sukses, dr. Andi sukses, staf menunggu ditolak dengan pesan jelas, non-staf ditolak dengan pesan jelas). Lint 0 error, build exit 0 (21 rute). |
+| Rekonsiliasi Verifikasi Faskes & Profil Admin | SELESAI | e72b808 | Pemulihan akses rujukan masuk RS setelah verifikasi Dinkes: migrasi DB 20261015190000 menyinkronkan status profiles admin faskes ke 'aktif' secara atomik saat faskes disetujui, relaksasi RLS profiles update untuk Dinkes, trigger sinkronisasi otomatis status fasilitas, perbaikan status label UI verifikasi, dan identitas admin navbar non-generik. 7 skenario pengujian SQL lolos 100%, lint 0 error, build exit 0 (21 rute). |
+| Sinkronisasi Rujukan Terjadwal & Penegasan Identitas Pasien | SELESAI | b70e644 | Audit membuktikan rujukan d380e1d5 (jadwal 18 Okt 13:20 WIB) tersimpan valid di DB untuk pasien resmi 3cfd180a (ferjaarnanda0@gmail.com, NIK 1111…), sedangkan tester masuk akun duplikat 22937be6 (iwaktempel@gmail.com, NIK 5555…) dengan nama sama 'iwak peyek' tanpa rujukan. RujukanCard dilengkapi badge jadwal langsung di header ringkasan, callout konfirmasi jadwal, defaultOpen saat dijadwalkan, sortRujukanAktif memprioritaskan jadwal terdekat, fallback pemuatan rujukan langsung via Supabase browser client jika Server Action tertunda, penegasan email di navbar/sapaan/empty state, dan petunjuk akun uji di form login. Lint 0 error, build exit 0 (21 rute). |
 
 ---
 
@@ -711,6 +713,25 @@
   - **Security Advisor Supabase**: `get_advisors(security)` bersih tanpa kerentanan baru.
   - `npm run lint`: **0 error**, **0 warning**.
   - `npm run build`: **Exit 0**, seluruh 21 rute Next.js 16 berhasil dikompilasi secara optimal tanpa galat.
+
+---
+
+### Tahap 48: Sinkronisasi Rujukan Terjadwal & Penegasan Identitas Pasien (Selesai)
+- [x] **Audit & Forensik Nyata**:
+  - **Status Database**: Rujukan `d380e1d5-81dd-435a-9bed-49923216cef7` dari *Puskesmas Hamster Sejahtera* ke *Rumah Sakit Kucing Garong* (Poli Penyakit Dalam, DPJP dr. Anggi Dwi Susanti Sp.PD) terbukti tersimpan valid dengan status `dijadwalkan` dan `jadwal_pemeriksaan` = `2026-10-18 06:20:00+00` (18 Oktober 2026 pukul 13.20 WIB). Linimasa `referral_events` tercatat lengkap (diajukan -> diterima -> dijadwalkan).
+  - **Akar Masalah Sesi Pasien Ganda**: Rujukan `d380e1d5` terkait dengan `patient_id` `3cfd180a-f563-4924-bc0b-5101d7b06868` (akun resmi `ferjaarnanda0@gmail.com`, NIK `1111111111111111`). Log autentikasi Supabase membuktikan pada tanggal 15 Oktober 2026 jam 13:22 UTC (3 menit setelah rujukan dijadwalkan), pengguna login ke akun duplikat `22937be6-9583-48b1-996b-cf7247e721b0` (`iwaktempel@gmail.com`, NIK `5555555555555555`) yang memiliki nama identik *"iwak peyek"* tetapi tidak memiliki rujukan.
+  - **Akar Masalah Resiliensi Data**: Server Action `listMyReferralsAction` rentan terhadap keterlambatan sesi cookie server setelah login baru di browser client. Jika Server Action mengembalikan error/kosong, state rujukan diabaikan dan dibiarkan array kosong tanpa fallback.
+  - **Akar Masalah UX Tampilan**: Komponen `RujukanCard` sebelumnya menyembunyikan tanggal & jam jadwal pemeriksaan di dalam accordion detail tertutup tanpa indikator di baris header ringkasan kartu.
+- [x] **Perbaikan Implementasi**:
+  1. *Pemuatan Resilient (`components/PasienDashboard.tsx`)*: Mengintegrasikan fallback otomatis ke `supabase.rpc("list_my_referrals")` dan `supabase.rpc("list_my_lookup_logs")` via Supabase Browser Client jika Server Action gagal atau tertunda, memastikan data rujukan selalu terambil secara konsisten.
+  2. *Prioritas Rujukan Aktif (`sortRujukanAktif`)*: Memprioritaskan rujukan berstatus `dijadwalkan` di urutan teratas berdasarkan kedekatan jadwal pemeriksaan, diikuti rujukan aktif lainnya secara kronologis.
+  3. *Sorotan Jadwal Pemeriksaan Terkonfirmasi*: Menambahkan badge jadwal langsung di header ringkasan `RujukanCard` (`Jadwal: {tgl, jam} WIB`), banner callout janji temu terkonfirmasi di dalam detail, dan membuka otomatis kartu berstatus `dijadwalkan` (`defaultOpen`).
+  4. *Penegasan Identitas Pasien*: Menampilkan email akun aktif di navbar (`userName` + `userRole` ber-email), badge email di kartu sapaan, serta keterangan email & NIK pada empty state kartu Beranda dan tab Rujukan Saya.
+  5. *Bantuan Pasien Uji Resmi (`app/masuk/[peran]/[subperan]/page.tsx`)*: Menyediakan kotak petunjuk akun pasien uji resmi `ferjaarnanda0@gmail.com` dengan fitur one-click fill pada halaman login pasien pribadi.
+- [x] **Pengujian & Validasi**:
+  - Uji Impersonasi SQL Supabase untuk pasien `3cfd180a-f563-4924-bc0b-5101d7b06868`: RPC `list_my_referrals()` mengembalikan rujukan `d380e1d5` (status `dijadwalkan`, jadwal `2026-10-18 06:20:00+00`).
+  - `npm run lint`: **0 error**, **0 warning**.
+  - `npm run build`: **Exit 0**, seluruh 21 rute Next.js 16 berhasil dikompilasi secara optimal.
 
 ---
 

@@ -230,6 +230,25 @@ export default function MasukPage({ params }: PageProps) {
             </div>
           </form>
 
+          {peran === "pasien" && subperan === "pribadi" && (
+            <div className="mt-5 p-3.5 rounded-[14px] bg-[#FAF5F2] border border-[#E2E8F0] text-xs text-[#0F3040]">
+              <span className="font-bold text-[#8F5A4E] block mb-1">
+                Akun Pasien Uji Resmi Lytera:
+              </span>
+              <p className="text-slate-600 leading-relaxed">
+                Akun pasien terhubung surat rujukan aktif (NIK 1111111111111111):{" "}
+                <button
+                  type="button"
+                  onClick={() => setEmail("ferjaarnanda0@gmail.com")}
+                  className="font-mono text-[#8F5A4E] font-bold hover:underline inline-flex items-center gap-1"
+                  title="Klik untuk mengisi email ini"
+                >
+                  ferjaarnanda0@gmail.com
+                </button>
+              </p>
+            </div>
+          )}
+
           {/* Footer Register Link */}
           <div className="mt-8 pt-6 border-t border-[#E2E8F0] text-center text-xs text-[#464858]">
             <span>Belum memiliki akun {subRoleMeta.name}? </span>
