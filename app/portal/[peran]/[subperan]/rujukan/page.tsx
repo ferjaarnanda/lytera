@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, use } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, use, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Plus,
@@ -78,8 +78,11 @@ function formatDateTimeIndo(isoString?: string | null): string {
   }
 }
 
-export default function DaftarRujukanFaskesPage({ params }: PageProps) {
+function DaftarRujukanFaskesContent({ params }: PageProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+
   const resolvedParams = use(params);
   const { peran, subperan } = resolvedParams;
 
@@ -107,9 +110,33 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
   const [referrals, setReferrals] = useState<ReferralRow[]>([]);
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Filter & Tab
+  // Filter & Tab: Jadwal Saya dikendalikan oleh URL query parameter
+  const [internalPriorityTab, setInternalPriorityTab] = useState<string>("semua");
+  const priorityTab = tabParam === "jadwal_saya" ? "jadwal_saya" : internalPriorityTab;
   const [statusFilter, setStatusFilter] = useState<string>("semua");
-  const [priorityTab, setPriorityTab] = useState<string>("semua"); // semua, gawat_darurat, urgent, elektif, jadwal_saya
+
+  const handleTabChange = (tabId: string) => {
+    if (tabId === "jadwal_saya") {
+      setStatusFilter("semua");
+      router.replace(`/portal/${peran}/${subperan}/rujukan?tab=jadwal_saya`);
+    } else {
+      setInternalPriorityTab(tabId);
+      if (tabParam === "jadwal_saya") {
+        router.replace(`/portal/${peran}/${subperan}/rujukan`);
+      }
+    }
+  };
+
+  const handleStatusFilterChange = (newStatus: string) => {
+    setStatusFilter(newStatus);
+    // Jika keluar dari status dijadwalkan saat di tab jadwal_saya, kembalikan tab ke semua
+    if (priorityTab === "jadwal_saya" && newStatus !== "semua" && newStatus !== "dijadwalkan") {
+      setInternalPriorityTab("semua");
+      if (tabParam === "jadwal_saya") {
+        router.replace(`/portal/${peran}/${subperan}/rujukan`);
+      }
+    }
+  };
 
   // Modal Detail & Aksi
   const [selectedReferral, setSelectedReferral] = useState<ReferralRow | null>(null);
@@ -174,14 +201,6 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
           return;
         }
 
-        if (profile.status !== "aktif") {
-          setErrorMsg(
-            `Akun fasilitas kesehatan Anda saat ini berstatus ${profile.status}. Mohon menunggu persetujuan verifikasi dari Dinas Kesehatan.`
-          );
-          setLoading(false);
-          return;
-        }
-
         // Ambil data fasilitas yang dikelola sebagai admin
         const { data: adminFacs } = await supabase
           .from("facilities")
@@ -198,98 +217,154 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
 
         type FacRel = { id: string; name: string; type: string; status: string };
 
-        // Cari faskes yang relevan sesuai konteks halaman (isHospital = Rumah Sakit, sebaliknya faskes primer)
+        // Cari relasi fasilitas yang cocok dengan subperan (isHospital ? RS : Faskes Primer)
         let chosenFacId: string | undefined;
         let chosenFacName: string | undefined;
         let chosenStaffRole = "Petugas";
         let chosenIsAdmin = false;
-        let chosenFacStatus: string | undefined;
-        let chosenStaffStatus: string | undefined;
 
         if (isHospital) {
-          // Prioritaskan Rumah Sakit di mana pengguna adalah admin
-          const rsAdmin = adminFacs?.find((f) => f.type === "rumah_sakit" || f.type === "rumah-sakit");
-          // Prioritaskan Rumah Sakit di mana pengguna adalah staf aktif
-          const rsStaff = staffList?.find((s) => {
+          // Konteks: Rumah Sakit
+          // 1. Prioritaskan staf aktif di RS yang aktif
+          const activeHospitalStaff = staffList?.find((s) => {
             const fac = s.facilities as unknown as FacRel | null;
-            return fac?.type === "rumah_sakit" || fac?.type === "rumah-sakit";
+            const isRS = fac?.type === "rumah_sakit" || fac?.type === "rumah-sakit";
+            return isRS && s.status === "aktif" && fac?.status === "aktif";
           });
 
-          if (rsAdmin) {
-            chosenFacId = rsAdmin.id;
-            chosenFacName = rsAdmin.name;
+          // 2. Prioritaskan admin di RS yang aktif
+          const activeHospitalAdmin = adminFacs?.find((f) => {
+            const isRS = f.type === "rumah_sakit" || f.type === "rumah-sakit";
+            return isRS && f.status === "aktif";
+          });
+
+          if (activeHospitalStaff) {
+            const fac = activeHospitalStaff.facilities as unknown as FacRel | null;
+            chosenFacId = activeHospitalStaff.facility_id;
+            chosenFacName = fac?.name;
+            chosenStaffRole = activeHospitalStaff.staff_role;
+            chosenIsAdmin = false;
+          } else if (activeHospitalAdmin) {
+            // Untuk admin fasilitas, akun profil harus aktif (disetujui Dinkes bersama faskes)
+            if (profile.status !== "aktif") {
+              setErrorMsg(
+                `Akun administrator fasilitas kesehatan Anda saat ini berstatus ${profile.status}. Mohon menunggu persetujuan verifikasi dari Dinas Kesehatan.`
+              );
+              setLoading(false);
+              return;
+            }
+            chosenFacId = activeHospitalAdmin.id;
+            chosenFacName = activeHospitalAdmin.name;
             chosenStaffRole = "Admin Rumah Sakit";
             chosenIsAdmin = true;
-            chosenFacStatus = rsAdmin.status;
-          } else if (rsStaff) {
-            const fac = rsStaff.facilities as unknown as FacRel | null;
-            chosenFacId = rsStaff.facility_id;
-            chosenFacName = fac?.name;
-            chosenStaffRole = rsStaff.staff_role;
-            chosenIsAdmin = false;
-            chosenFacStatus = fac?.status;
-            chosenStaffStatus = rsStaff.status;
+          } else {
+            // Evaluasi relasi RS non-aktif untuk memberikan pesan yang informatif
+            const anyHospitalStaff = staffList?.find((s) => {
+              const fac = s.facilities as unknown as FacRel | null;
+              return fac?.type === "rumah_sakit" || fac?.type === "rumah-sakit";
+            });
+            const anyHospitalAdmin = adminFacs?.find(
+              (f) => f.type === "rumah_sakit" || f.type === "rumah-sakit"
+            );
+
+            if (anyHospitalStaff) {
+              const fac = anyHospitalStaff.facilities as unknown as FacRel | null;
+              if (fac?.status !== "aktif") {
+                setErrorMsg(
+                  `Rumah sakit "${fac?.name || "Tujuan"}" saat ini berstatus ${fac?.status}. Akses rujukan hanya untuk fasilitas aktif.`
+                );
+              } else {
+                setErrorMsg(
+                  `Status penugasan staf Anda pada "${fac?.name}" saat ini berstatus ${anyHospitalStaff.status}. Akses rujukan memerlukan penugasan aktif.`
+                );
+              }
+              setLoading(false);
+              return;
+            }
+
+            if (anyHospitalAdmin) {
+              setErrorMsg(
+                `Rumah sakit "${anyHospitalAdmin.name}" saat ini berstatus ${anyHospitalAdmin.status}. Akses rujukan hanya untuk fasilitas aktif.`
+              );
+              setLoading(false);
+              return;
+            }
+
+            setErrorMsg("Akun Anda tidak memiliki penugasan staf aktif atau wewenang administrator pada fasilitas Rumah Sakit.");
+            setLoading(false);
+            return;
           }
         } else {
-          // Portal Faskes Primer (Puskesmas / Klinik)
-          const primerStaff = staffList?.find((s) => {
+          // Konteks: Faskes Primer (Puskesmas / Klinik)
+          const activePrimerStaff = staffList?.find((s) => {
             const fac = s.facilities as unknown as FacRel | null;
-            return fac?.type !== "rumah_sakit" && fac?.type !== "rumah-sakit";
+            const isPrimer = fac?.type !== "rumah_sakit" && fac?.type !== "rumah-sakit";
+            return isPrimer && s.status === "aktif" && fac?.status === "aktif";
           });
-          const primerAdmin = adminFacs?.find((f) => f.type !== "rumah_sakit" && f.type !== "rumah-sakit");
 
-          if (primerStaff) {
-            const fac = primerStaff.facilities as unknown as FacRel | null;
-            chosenFacId = primerStaff.facility_id;
+          const activePrimerAdmin = adminFacs?.find((f) => {
+            const isPrimer = f.type !== "rumah_sakit" && f.type !== "rumah-sakit";
+            return isPrimer && f.status === "aktif";
+          });
+
+          if (activePrimerStaff) {
+            const fac = activePrimerStaff.facilities as unknown as FacRel | null;
+            chosenFacId = activePrimerStaff.facility_id;
             chosenFacName = fac?.name;
-            chosenStaffRole = primerStaff.staff_role;
+            chosenStaffRole = activePrimerStaff.staff_role;
             chosenIsAdmin = false;
-            chosenFacStatus = fac?.status;
-            chosenStaffStatus = primerStaff.status;
-          } else if (primerAdmin) {
-            chosenFacId = primerAdmin.id;
-            chosenFacName = primerAdmin.name;
+          } else if (activePrimerAdmin) {
+            if (profile.status !== "aktif") {
+              setErrorMsg(
+                `Akun administrator fasilitas kesehatan Anda saat ini berstatus ${profile.status}. Mohon menunggu persetujuan verifikasi dari Dinas Kesehatan.`
+              );
+              setLoading(false);
+              return;
+            }
+            chosenFacId = activePrimerAdmin.id;
+            chosenFacName = activePrimerAdmin.name;
             chosenStaffRole = "Admin Faskes";
             chosenIsAdmin = true;
-            chosenFacStatus = primerAdmin.status;
+          } else {
+            const anyPrimerStaff = staffList?.find((s) => {
+              const fac = s.facilities as unknown as FacRel | null;
+              return fac?.type !== "rumah_sakit" && fac?.type !== "rumah-sakit";
+            });
+            const anyPrimerAdmin = adminFacs?.find(
+              (f) => f.type !== "rumah_sakit" && f.type !== "rumah-sakit"
+            );
+
+            if (anyPrimerStaff) {
+              const fac = anyPrimerStaff.facilities as unknown as FacRel | null;
+              if (fac?.status !== "aktif") {
+                setErrorMsg(
+                  `Fasilitas kesehatan "${fac?.name || "Faskes"}" saat ini berstatus ${fac?.status}. Akses rujukan hanya untuk fasilitas aktif.`
+                );
+              } else {
+                setErrorMsg(
+                  `Status penugasan staf Anda pada "${fac?.name}" saat ini berstatus ${anyPrimerStaff.status}. Akses rujukan memerlukan penugasan aktif.`
+                );
+              }
+              setLoading(false);
+              return;
+            }
+
+            if (anyPrimerAdmin) {
+              setErrorMsg(
+                `Fasilitas kesehatan "${anyPrimerAdmin.name}" saat ini berstatus ${anyPrimerAdmin.status}. Akses rujukan hanya untuk fasilitas aktif.`
+              );
+              setLoading(false);
+              return;
+            }
+
+            setErrorMsg("Akun Anda tidak memiliki penugasan staf aktif atau wewenang administrator pada fasilitas kesehatan primer.");
+            setLoading(false);
+            return;
           }
         }
 
-        // Fallback jika belum match dengan tipe rute, gunakan faskes pertama yang ada
         if (!chosenFacId) {
-          if (adminFacs && adminFacs.length > 0) {
-            const f = adminFacs[0];
-            chosenFacId = f.id;
-            chosenFacName = f.name;
-            chosenStaffRole = "Admin Faskes";
-            chosenIsAdmin = true;
-            chosenFacStatus = f.status;
-          } else if (staffList && staffList.length > 0) {
-            const s = staffList[0];
-            const fac = s.facilities as unknown as FacRel | null;
-            chosenFacId = s.facility_id;
-            chosenFacName = fac?.name;
-            chosenStaffRole = s.staff_role;
-            chosenIsAdmin = false;
-            chosenFacStatus = fac?.status;
-            chosenStaffStatus = s.status;
-          }
-        }
-
-        if (!chosenFacId) {
-          setErrorMsg("Akun Anda belum terhubung ke fasilitas kesehatan mana pun. Silakan hubungi admin fasilitas kesehatan Anda.");
-          setLoading(false);
-          return;
-        }
-
-        if (chosenFacStatus && chosenFacStatus !== "aktif") {
-          setErrorMsg(`Fasilitas kesehatan "${chosenFacName}" saat ini berstatus ${chosenFacStatus}. Akses rujukan hanya untuk fasilitas aktif.`);
-          setLoading(false);
-          return;
-        }
-
-        if (chosenStaffStatus && chosenStaffStatus !== "aktif") {
-          setErrorMsg(`Status penugasan Anda pada "${chosenFacName}" saat ini berstatus ${chosenStaffStatus}.`);
+          setErrorMsg("Akun Anda belum terhubung ke fasilitas kesehatan aktif.");
           setLoading(false);
           return;
         }
@@ -423,8 +498,12 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
     return true;
   }).sort((a, b) => {
     // Jika tab Jadwal Saya, urutkan berdasarkan jadwal_pemeriksaan terdekat
-    if (priorityTab === "jadwal_saya" && a.jadwal_pemeriksaan && b.jadwal_pemeriksaan) {
-      return new Date(a.jadwal_pemeriksaan).getTime() - new Date(b.jadwal_pemeriksaan).getTime();
+    if (priorityTab === "jadwal_saya") {
+      if (a.jadwal_pemeriksaan && b.jadwal_pemeriksaan) {
+        return new Date(a.jadwal_pemeriksaan).getTime() - new Date(b.jadwal_pemeriksaan).getTime();
+      }
+      if (a.jadwal_pemeriksaan) return -1;
+      if (b.jadwal_pemeriksaan) return 1;
     }
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
@@ -451,7 +530,7 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
   };
 
   const isDoctor = facilityInfo?.staffRole === "dokter";
-  const isAdmin = facilityInfo?.staffRole === "Admin Faskes" || (facilityInfo?.isAdmin && !isDoctor);
+  const isAdmin = facilityInfo?.staffRole === "Admin Rumah Sakit" || facilityInfo?.staffRole === "Admin Faskes" || (facilityInfo?.isAdmin && !isDoctor);
 
   const navVariant = isAdmin
     ? "admin-faskes"
@@ -492,11 +571,23 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
       <Navbar
         variant={navVariant}
         facilityName={facilityInfo?.facilityName}
-        userName={facilityInfo?.staffName || currentProfileName || (isAdmin ? "Admin Fasilitas" : "Pengguna")}
+        userName={
+          isAdmin
+            ? (currentProfileName && currentProfileName !== "Pengguna" ? currentProfileName : "Admin")
+            : (facilityInfo?.staffName || currentProfileName || "Dokter")
+        }
         userRole={facilityInfo?.facilityName || userRoleLabel}
         forceGlass={true}
         customMenuItems={customNavItems}
-        activeItem={isAdmin ? "Daftar Rujukan" : (isHospital ? "Rujukan Masuk" : "Riwayat Rujukan")}
+        activeItem={
+          isAdmin
+            ? "Daftar Rujukan"
+            : isHospital
+            ? priorityTab === "jadwal_saya"
+              ? "Jadwal Saya"
+              : "Rujukan Masuk"
+            : "Riwayat Rujukan"
+        }
       />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-20">
@@ -582,7 +673,7 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
                   <button
                     key={tab.id}
                     type="button"
-                    onClick={() => setPriorityTab(tab.id)}
+                    onClick={() => handleTabChange(tab.id)}
                     className={`px-4 py-2 rounded-xl text-xs font-semibold transition-colors ${
                       priorityTab === tab.id
                         ? "bg-[#0F3040] text-white shadow-2xs"
@@ -609,7 +700,7 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
                 <button
                   key={s.id}
                   type="button"
-                  onClick={() => setStatusFilter(s.id)}
+                  onClick={() => handleStatusFilterChange(s.id)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                     statusFilter === s.id
                       ? "bg-[#8F5A4E] text-white"
@@ -1066,5 +1157,27 @@ export default function DaftarRujukanFaskesPage({ params }: PageProps) {
         )}
       </main>
     </div>
+  );
+}
+
+export default function DaftarRujukanFaskesPage(props: PageProps) {
+  return (
+    <Suspense
+      fallback={
+        <div
+          className="min-h-screen text-[#464858] flex items-center justify-center p-4"
+          data-portal-wallpaper="true"
+        >
+          <div className="bg-white p-8 rounded-[24px] border border-[#E2E8F0] shadow-sm text-center max-w-sm w-full">
+            <Loader2 className="w-8 h-8 text-[#8F5A4E] animate-spin mx-auto mb-3" />
+            <p className="text-sm font-semibold text-[#0F3040]">
+              Memuat antarmuka rujukan fasilitas...
+            </p>
+          </div>
+        </div>
+      }
+    >
+      <DaftarRujukanFaskesContent {...props} />
+    </Suspense>
   );
 }

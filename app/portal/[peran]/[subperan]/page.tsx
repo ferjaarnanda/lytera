@@ -118,21 +118,19 @@ export default function PortalSimulasiPage({ params }: PageProps) {
 
       const profileName = profile?.full_name || "Pengguna Lytera";
 
-      // 2. Cek apakah pengguna adalah Admin Fasilitas
-      const { data: adminFac } = await supabase
+      // 2. Ambil seluruh fasilitas yang dikelola sebagai admin
+      const { data: adminFacs } = await supabase
         .from("facilities")
         .select("id, name, type, status, city, district, address")
-        .eq("admin_id", user.id)
-        .maybeSingle();
+        .eq("admin_id", user.id);
 
-      // 3. Cek apakah pengguna adalah Staf Fasilitas
-      const { data: staffRow } = await supabase
+      // 3. Ambil seluruh penugasan staf medis / petugas
+      const { data: staffList } = await supabase
         .from("facility_staff")
         .select(
           "id, staff_role, profession, specialization, status, facility_id, facilities(id, name, type, status, city, district, address)"
         )
-        .eq("profile_id", user.id)
-        .maybeSingle();
+        .eq("profile_id", user.id);
 
       let isAdmin = false;
       let isStaff = false;
@@ -142,21 +140,94 @@ export default function PortalSimulasiPage({ params }: PageProps) {
       let profession: string | null = null;
       let facility: FacilityData | null = null;
 
-      if (adminFac) {
-        isAdmin = true;
-        facility = adminFac as FacilityData;
-      }
+      type FacRel = FacilityData;
+      const isHospitalContext = subperan === "rumah-sakit" || subperan === "rumah_sakit";
 
-      if (staffRow) {
-        isStaff = true;
-        staffRole = staffRow.staff_role;
-        staffStatus = staffRow.status;
-        profession = staffRow.profession;
-        if (staffRow.staff_role === "dokter" && staffRow.status === "aktif") {
-          isDoctor = true;
+      if (isHospitalContext) {
+        // Konteks: Rumah Sakit
+        const activeStaff = staffList?.find((s) => {
+          const fac = s.facilities as unknown as FacRel | null;
+          const isRS = fac?.type === "rumah_sakit" || fac?.type === "rumah-sakit";
+          return isRS && s.status === "aktif" && fac?.status === "aktif";
+        });
+
+        const activeAdmin = adminFacs?.find((f) => {
+          const isRS = f.type === "rumah_sakit" || f.type === "rumah-sakit";
+          return isRS && f.status === "aktif";
+        });
+
+        if (activeStaff) {
+          isStaff = true;
+          staffRole = activeStaff.staff_role as "dokter" | "petugas" | "apoteker";
+          staffStatus = activeStaff.status;
+          profession = activeStaff.profession;
+          if (activeStaff.staff_role === "dokter" && activeStaff.status === "aktif") {
+            isDoctor = true;
+          }
+          facility = activeStaff.facilities as unknown as FacilityData;
+        } else if (activeAdmin) {
+          isAdmin = true;
+          facility = activeAdmin as FacilityData;
+        } else {
+          const anyStaff = staffList?.find((s) => {
+            const fac = s.facilities as unknown as FacRel | null;
+            return fac?.type === "rumah_sakit" || fac?.type === "rumah-sakit";
+          });
+          const anyAdmin = adminFacs?.find((f) => f.type === "rumah_sakit" || f.type === "rumah-sakit");
+
+          if (anyStaff) {
+            isStaff = true;
+            staffRole = anyStaff.staff_role as "dokter" | "petugas" | "apoteker";
+            staffStatus = anyStaff.status;
+            profession = anyStaff.profession;
+            facility = anyStaff.facilities as unknown as FacilityData;
+          } else if (anyAdmin) {
+            isAdmin = true;
+            facility = anyAdmin as FacilityData;
+          }
         }
-        if (!facility && staffRow.facilities) {
-          facility = staffRow.facilities as unknown as FacilityData;
+      } else {
+        // Konteks: Faskes Primer (Puskesmas / Klinik / Apotek)
+        const activeStaff = staffList?.find((s) => {
+          const fac = s.facilities as unknown as FacRel | null;
+          const isPrimer = fac?.type !== "rumah_sakit" && fac?.type !== "rumah-sakit";
+          return isPrimer && s.status === "aktif" && fac?.status === "aktif";
+        });
+
+        const activeAdmin = adminFacs?.find((f) => {
+          const isPrimer = f.type !== "rumah_sakit" && f.type !== "rumah-sakit";
+          return isPrimer && f.status === "aktif";
+        });
+
+        if (activeStaff) {
+          isStaff = true;
+          staffRole = activeStaff.staff_role as "dokter" | "petugas" | "apoteker";
+          staffStatus = activeStaff.status;
+          profession = activeStaff.profession;
+          if (activeStaff.staff_role === "dokter" && activeStaff.status === "aktif") {
+            isDoctor = true;
+          }
+          facility = activeStaff.facilities as unknown as FacilityData;
+        } else if (activeAdmin) {
+          isAdmin = true;
+          facility = activeAdmin as FacilityData;
+        } else {
+          const anyStaff = staffList?.find((s) => {
+            const fac = s.facilities as unknown as FacRel | null;
+            return fac?.type !== "rumah_sakit" && fac?.type !== "rumah-sakit";
+          });
+          const anyAdmin = adminFacs?.find((f) => f.type !== "rumah_sakit" && f.type !== "rumah-sakit");
+
+          if (anyStaff) {
+            isStaff = true;
+            staffRole = anyStaff.staff_role as "dokter" | "petugas" | "apoteker";
+            staffStatus = anyStaff.status;
+            profession = anyStaff.profession;
+            facility = anyStaff.facilities as unknown as FacilityData;
+          } else if (anyAdmin) {
+            isAdmin = true;
+            facility = anyAdmin as FacilityData;
+          }
         }
       }
 

@@ -47,6 +47,7 @@
 | Rekonsiliasi Verifikasi Faskes & Profil Admin | SELESAI | e72b808 | Pemulihan akses rujukan masuk RS setelah verifikasi Dinkes: migrasi DB 20261015190000 menyinkronkan status profiles admin faskes ke 'aktif' secara atomik saat faskes disetujui, relaksasi RLS profiles update untuk Dinkes, trigger sinkronisasi otomatis status fasilitas, perbaikan status label UI verifikasi, dan identitas admin navbar non-generik. 7 skenario pengujian SQL lolos 100%, lint 0 error, build exit 0 (21 rute). |
 | Sinkronisasi Rujukan Terjadwal & Penegasan Identitas Pasien | SELESAI | b70e644 | Audit membuktikan rujukan d380e1d5 (jadwal 18 Okt 13:20 WIB) tersimpan valid di DB untuk pasien resmi 3cfd180a (ferjaarnanda0@gmail.com, NIK 1111…), sedangkan tester masuk akun duplikat 22937be6 (iwaktempel@gmail.com, NIK 5555…) dengan nama sama 'iwak peyek' tanpa rujukan. RujukanCard dilengkapi badge jadwal langsung di header ringkasan, callout konfirmasi jadwal, defaultOpen saat dijadwalkan, sortRujukanAktif memprioritaskan jadwal terdekat, fallback pemuatan rujukan langsung via Supabase browser client jika Server Action tertunda, penegasan email di navbar/sapaan/empty state, dan petunjuk akun uji di form login. Lint 0 error, build exit 0 (21 rute). |
 | Pemulihan Identitas Pasien, Form Masuk Normal & Rekonsiliasi Rujukan | SELESAI | 081bdcf | Pemulihan formulir login pasien pribadi tanpa bantuan akun uji/kredensial, pembersihan identitas navbar (hanya nama pasien & 'Pasien Pribadi', bebas email), inisial avatar dari nama pasien, migrasi 20261016090000 merekonsiliasi NIK 1111… dan rujukan terjadwal d380e1d5 ke akun aktif target (iwaktempel@gmail.com, 22937be6…) secara transaksional non-destruktif. Uji RLS impersonasi membuktikan akun target membaca rujukan terjadwal 18 Okt 13:20 WIB, akun lain terisolasi 100%, lint 0 error, build exit 0 (21 rute). |
+| Akses Rujukan RS, Jadwal Saya & Penyelesaian Rujukan | SELESAI | 85fdd39 | Pemulihan otorisasi akun staf/dokter aktif di fasilitas aktif tanpa memblokir profiles.status 'menunggu', sinkronisasi resolver faskes deterministik di dashboard & rujukan, dukungan navigasi URL Jadwal Saya (?tab=jadwal_saya) terintegrasi filter rujukan dijadwalkan & urutan jadwal terdekat, alur penyelesaian rujukan transaksional dengan rollback compensating & revalidatePath. 4 skenario uji impersonasi SQL lolos 100%, lint 0 error, build exit 0 (21 rute). |
 
 ---
 
@@ -759,6 +760,36 @@
   - **Security Advisor Supabase**: `get_advisors(security)` bersih tanpa kerentanan baru.
   - `npm run lint`: **0 error**, **0 warning**.
   - `npm run build`: **Exit 0**, seluruh 21 rute Next.js 16 berhasil dikompilasi secara optimal tanpa galat.
+
+---
+
+### Tahap 50: Akses Rujukan Rumah Sakit, Jadwal Saya & Penyelesaian Rujukan (Selesai)
+- [x] **Audit & Forensik Nyata**:
+  - **Akar Masalah Akses Rujukan Masuk**: Pada `app/portal/[peran]/[subperan]/rujukan/page.tsx`, terdapat pengecekan prematur `profile.status !== 'aktif'` yang langsung memblokir akun dokter/staf berstatus profile `menunggu`. Sesuai rancangan skema pendaftaran nakes di database Lytera (dan sama seperti dr. Andi Wicaksono di puskesmas), dokter spesialis di RS Kucing Garong (`dr. Anggi Dwi Susanti Sp.PD`) memiliki status `facility_staff.status = 'aktif'` pada fasilitas aktif (`status = 'aktif'`), namun `profiles.status = 'menunggu'`. Akibatnya, dokter spesialis terblokir dengan pesan akun berstatus menunggu dan rujukan masuk tidak termuat.
+  - **Akar Masalah Navigasi Jadwal Saya**: Tautan navbar mengarah ke `?tab=jadwal_saya`, tetapi halaman rujukan sebelumnya tidak membaca URL query parameter (`searchParams`) dan state tab/status dimulai dari `"semua"`, sehingga tab Jadwal Saya tidak aktif dan rujukan tidak terfilter berdasarkan jadwal pemeriksaan.
+  - **Akar Masalah Resolver Fasilitas di Dashboard**: Pemuatan relasi akun fasilitas di `page.tsx` menggunakan `maybeSingle()` tanpa filter kecocokan subperan (`isHospitalContext`), berisiko mengambil fasilitas yang tidak sesuai konteks rute aktif.
+  - **Integritas Alur Penyelesaian Rujukan**: Aksi `prosesRujukanAction` belum dilengkapi compensating rollback jika pencatatan event ke `referral_events` gagal, serta belum memanggil `revalidatePath` untuk membersihkan cache server component portal.
+- [x] **Perbaikan Implementasi**:
+  1. *Otorisasi Fasilitas Terfokus & Deterministik (`rujukan/page.tsx` & `page.tsx`)*:
+     - Menghilangkan pemblokiran sepihak berbasis `profiles.status === 'aktif'` untuk seluruh akun fasilitas.
+     - Memisahkan validasi: Admin fasilitas wajib terhubung via `facilities.admin_id` aktif dan profil aktif disetujui Dinkes; Tenaga medis/staf wajib memiliki penugasan `facility_staff` berstatus `aktif` pada fasilitas yang `aktif`. Status profil `menunggu` bagi staf aktif diakui sah.
+     - Menyaring relasi faskes secara ketat sesuai tipe rute aktif (Rumah Sakit vs Faskes Primer), mencegah fallback diam-diam ke tipe fasilitas yang tidak berwenang.
+  2. *Navigasi & Filter Jadwal Saya (`rujukan/page.tsx`)*:
+     - Membaca URL query parameter `tab` via `useSearchParams()` secara reaktif menggunakan derived state bebas dari efek cascading render.
+     - Ketika `?tab=jadwal_saya` aktif: tab prioritas otomatis memilih Jadwal Saya, filter status direset ke `"semua"`, hanya menampilkan rujukan berstatus `dijadwalkan`, diurutkan kronologis berdasarkan `jadwal_pemeriksaan` terdekat, dan `activeItem` di Navbar aktif pada `Jadwal Saya`.
+     - Sinkronisasi dua arah: tombol filter tab dan filter status di halaman otomatis memperbarui URL dan state tanpa full reload.
+     - Membungkus komponen rujukan dengan `<Suspense>` untuk kepatuhan streaming Next.js 16.
+  3. *Alur Penyelesaian Rujukan Tuntas & Konsisten (`app/actions/rujukan.ts`)*:
+     - Menambahkan compensating rollback atomik pada `prosesRujukanAction`: jika `referral_events.insert` gagal, status rujukan otomatis dikembalikan ke status asalnya untuk mencegah inkonsistensi data.
+     - Menambahkan `revalidatePath("/portal", "layout")` pasca mutasi sukses sehingga cache dashboard dan daftar rujukan selalu terbarui seketika.
+- [x] **Pengujian & Validasi**:
+  - **Uji Impersonasi SQL Supabase (`execute_sql` RLS)**:
+    - *Dokter RS Kucing Garong (`5ba1dfc2-578d-4739-b534-1a646916c3be` / dr. Anggi)*: `list_facility_referrals('masuk')` berhasil membaca 1 berkas rujukan (pasien *iwak peyek*, NIK termasker `1111••••••••1111`, status `dijadwalkan`, jadwal `2026-10-18 06:20:00+00`).
+    - *Admin RS Kucing Garong (`0900ec3d-a431-4f4e-9726-02b91f967737` / mas adam)*: `list_facility_referrals('masuk')` berhasil membaca 1 berkas rujukan yang sama.
+    - *Isolasi Faskes Primer (`093c6b36` / dr. Andi Wicaksono)*: `list_facility_referrals('masuk')` mengembalikan tepat 0 berkas (isolasi rujukan antar faskes terbukti 100%).
+    - *Simulasi Mutasi Selesai & Linimasa*: Update status rujukan menjadi `selesai` dan insert linimasa `referral_events` terbukti berhasil dan bertambah dari 3 menjadi 4 event.
+  - `npm run lint`: **0 error**, **0 warning**.
+  - `npm run build`: **Exit 0**, seluruh 21 rute lolos kompilasi produksi Next.js 16.
 
 ---
 

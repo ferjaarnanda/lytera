@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 // ============================================================================
@@ -462,7 +463,7 @@ export async function prosesRujukanAction(payload: unknown): Promise<ProsesRujuk
     // 1. Ambil data rujukan yang akan diproses
     const { data: referral, error: refError } = await supabase
       .from("referrals")
-      .select("id, status, destination_facility_id, origin_facility_id, destination_doctor_id, poli")
+      .select("id, status, destination_facility_id, origin_facility_id, destination_doctor_id, poli, jadwal_pemeriksaan")
       .eq("id", referralId)
       .maybeSingle();
 
@@ -607,12 +608,23 @@ export async function prosesRujukanAction(payload: unknown): Promise<ProsesRujuk
     });
 
     if (eventError) {
+      // Rollback status rujukan untuk menjaga konsistensi transisi status dan linimasa
+      await supabase
+        .from("referrals")
+        .update({
+          status: referral.status,
+          jadwal_pemeriksaan: referral.jadwal_pemeriksaan,
+          destination_doctor_id: referral.destination_doctor_id,
+        })
+        .eq("id", referralId);
+
       return {
         success: false,
-        error: "Status rujukan berhasil diperbarui namun gagal mencatat linimasa rujukan: " + eventError.message,
+        error: "Status rujukan batal diperbarui karena gagal mencatat linimasa rujukan: " + eventError.message,
       };
     }
 
+    revalidatePath("/portal", "layout");
     return { success: true };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
