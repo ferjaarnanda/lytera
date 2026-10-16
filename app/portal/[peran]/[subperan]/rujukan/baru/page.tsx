@@ -266,41 +266,69 @@ export default function BuatRujukanBaruPage({ params }: PageProps) {
         if (!user) { router.replace("/"); return; }
 
         const { data: profile } = await supabase
-          .from("profiles").select("full_name").eq("id", user.id).maybeSingle();
+          .from("profiles").select("full_name, role, status").eq("id", user.id).maybeSingle();
 
-        const { data: staff, error: staffErr } = await supabase
+        const { data: staffList, error: staffErr } = await supabase
           .from("facility_staff")
           .select("id, staff_role, status, facility_id, facilities(id, name, type, status)")
-          .eq("profile_id", user.id)
-          .maybeSingle();
+          .eq("profile_id", user.id);
 
         if (staffErr) { setUnauthorizedMsg("Gagal memverifikasi status staf: " + staffErr.message); return; }
 
-        if (!staff || !staff.facility_id) {
+        if (!staffList || staffList.length === 0) {
           setUnauthorizedMsg("Akun Anda belum terdaftar sebagai staf pada fasilitas kesehatan mana pun di sistem Lytera.");
           return;
         }
-        if (staff.staff_role !== "dokter") {
-          setUnauthorizedMsg(`Halaman Buat Rujukan hanya dapat diakses oleh Dokter. Peran akun Anda: '${staff.staff_role}'.`);
-          return;
-        }
-        if (staff.status !== "aktif") {
-          setUnauthorizedMsg(`Status kepegawaian Anda saat ini '${staff.status}'. Hanya dokter berstatus aktif yang berwenang menerbitkan rujukan digital.`);
-          return;
-        }
 
-        const f = staff.facilities as unknown as { id: string; name: string; type: string; status: string } | null;
-        if (f?.status !== "aktif") {
-          setUnauthorizedMsg(`Fasilitas Anda (${f?.name ?? "-"}) berstatus '${f?.status ?? "-"}'. Rujukan hanya dapat diterbitkan dari fasilitas aktif.`);
-          return;
-        }
+        type FacRel = { id: string; name: string; type: string; status: string };
 
+        // Cari staf dokter pada fasilitas primer (Puskesmas / Klinik)
+        const activeDoctorStaff = staffList.find((s) => {
+          const fac = s.facilities as unknown as FacRel | null;
+          const isPrimer = fac?.type !== "rumah_sakit" && fac?.type !== "rumah-sakit";
+          return isPrimer && s.staff_role === "dokter" && s.status === "aktif" && fac?.status === "aktif";
+        });
+
+        const anyPrimerDoctor = staffList.find((s) => {
+          const fac = s.facilities as unknown as FacRel | null;
+          return fac?.type !== "rumah_sakit" && fac?.type !== "rumah-sakit" && s.staff_role === "dokter";
+        });
+
+        const anyStaff = staffList.find((s) => {
+          const fac = s.facilities as unknown as FacRel | null;
+          return fac?.type !== "rumah_sakit" && fac?.type !== "rumah-sakit";
+        }) || staffList[0];
+
+        const targetContextStaff = activeDoctorStaff || anyPrimerDoctor || anyStaff;
+        const targetFac = targetContextStaff?.facilities as unknown as FacRel | null;
+
+        // Simpan konteks identitas dan fasilitas agar navbar selalu akurat
         setStaffInfo({
           staffName: profile?.full_name || "Dokter",
-          facilityName: f?.name || "Fasilitas Kesehatan",
-          facilityId: staff.facility_id,
-          staffRole: staff.staff_role,
+          facilityName: targetFac?.name || "Fasilitas Kesehatan",
+          facilityId: targetContextStaff?.facility_id || "",
+          staffRole: targetContextStaff?.staff_role || "dokter",
         });
+
+        if (!activeDoctorStaff) {
+          if (anyPrimerDoctor) {
+            const fac = anyPrimerDoctor.facilities as unknown as FacRel | null;
+            if (fac?.status !== "aktif") {
+              setUnauthorizedMsg(`Fasilitas kesehatan Anda (${fac?.name || "Fasilitas"}) saat ini berstatus '${fac?.status}'. Surat rujukan hanya dapat diterbitkan dari fasilitas aktif.`);
+              return;
+            }
+            if (anyPrimerDoctor.status !== "aktif") {
+              setUnauthorizedMsg(`Status kepegawaian dokter Anda pada "${fac?.name}" saat ini berstatus '${anyPrimerDoctor.status}'. Hanya dokter dengan penugasan aktif yang berwenang menerbitkan rujukan digital.`);
+              return;
+            }
+          }
+          if (targetContextStaff.staff_role !== "dokter") {
+            setUnauthorizedMsg(`Halaman Buat Rujukan hanya dapat diakses oleh Dokter. Peran akun Anda: '${targetContextStaff.staff_role}'.`);
+            return;
+          }
+          setUnauthorizedMsg("Akun Anda tidak memiliki penugasan dokter aktif pada fasilitas kesehatan primer.");
+          return;
+        }
       } catch (err: unknown) {
         setUnauthorizedMsg("Terjadi kendala pemeriksaan otorisasi: " + (err instanceof Error ? err.message : String(err)));
       } finally {
@@ -430,7 +458,13 @@ export default function BuatRujukanBaruPage({ params }: PageProps) {
   if (unauthorizedMsg) {
     return (
       <div className="min-h-screen text-[#464858]" data-navbar-tone="light" data-portal-wallpaper="true">
-        <Navbar variant="dokter-puskesmas" userName="Tenaga Medis" userRole="Fasilitas Kesehatan" forceGlass={true} />
+        <Navbar
+          variant="dokter-puskesmas"
+          facilityName={staffInfo?.facilityName}
+          userName={staffInfo?.staffName || "Dokter"}
+          userRole={staffInfo?.facilityName || "Dokter Puskesmas"}
+          forceGlass={true}
+        />
         <main className="max-w-xl mx-auto px-4 sm:px-6 pt-28 pb-16 text-center">
           <Card variant="white" className="p-8 sm:p-10 shadow-sm border border-[#E2E8F0]">
             <div className="w-12 h-12 rounded-full bg-[#FDECEA] flex items-center justify-center text-[#B3261E] mx-auto mb-4">

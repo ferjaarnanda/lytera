@@ -103,6 +103,7 @@ function DaftarRujukanFaskesContent({ params }: PageProps) {
     facilityName: string;
     staffName: string;
     staffRole: string;
+    staffStatus?: string;
     isAdmin: boolean;
   } | null>(null);
   const [currentProfileName, setCurrentProfileName] = useState<string | null>(null);
@@ -217,165 +218,113 @@ function DaftarRujukanFaskesContent({ params }: PageProps) {
 
         type FacRel = { id: string; name: string; type: string; status: string };
 
-        // Cari relasi fasilitas yang cocok dengan subperan (isHospital ? RS : Faskes Primer)
+        // Cocokkan tipe fasilitas sesuai rute aktif (Rumah Sakit vs Faskes Primer)
+        const matchFacilityType = (type?: string | null) => {
+          if (!type) return false;
+          const isRS = type === "rumah_sakit" || type === "rumah-sakit";
+          return isHospital ? isRS : !isRS;
+        };
+
+        // 1. Identifikasi staf penugasan (prioritaskan staf aktif di fasilitas aktif)
+        const activeStaff = staffList?.find((s) => {
+          const fac = s.facilities as unknown as FacRel | null;
+          return matchFacilityType(fac?.type) && s.status === "aktif" && fac?.status === "aktif";
+        });
+        const anyStaff = staffList?.find((s) => {
+          const fac = s.facilities as unknown as FacRel | null;
+          return matchFacilityType(fac?.type);
+        });
+
+        // 2. Identifikasi admin fasilitas (prioritaskan admin aktif di faskes aktif)
+        const activeAdmin = adminFacs?.find((f) => matchFacilityType(f.type) && f.status === "aktif");
+        const anyAdmin = adminFacs?.find((f) => matchFacilityType(f.type));
+
+        // Prioritas resolusi identitas:
+        // Jika ada staf aktif -> pilih staf aktif
+        // Jika tidak ada staf aktif namun ada admin aktif -> pilih admin aktif
+        // Jika belum ada yang aktif -> utamakan staf penugasan (misal menunggu) lalu admin
+        const targetStaff = activeStaff || (!activeAdmin ? anyStaff : null);
+        const targetAdmin = !activeStaff && activeAdmin ? activeAdmin : (!targetStaff ? anyAdmin : null);
+
         let chosenFacId: string | undefined;
         let chosenFacName: string | undefined;
+        let chosenFacStatus: string | undefined;
         let chosenStaffRole = "Petugas";
+        let chosenStaffStatus: string | undefined;
         let chosenIsAdmin = false;
 
-        if (isHospital) {
-          // Konteks: Rumah Sakit
-          // 1. Prioritaskan staf aktif di RS yang aktif
-          const activeHospitalStaff = staffList?.find((s) => {
-            const fac = s.facilities as unknown as FacRel | null;
-            const isRS = fac?.type === "rumah_sakit" || fac?.type === "rumah-sakit";
-            return isRS && s.status === "aktif" && fac?.status === "aktif";
-          });
-
-          // 2. Prioritaskan admin di RS yang aktif
-          const activeHospitalAdmin = adminFacs?.find((f) => {
-            const isRS = f.type === "rumah_sakit" || f.type === "rumah-sakit";
-            return isRS && f.status === "aktif";
-          });
-
-          if (activeHospitalStaff) {
-            const fac = activeHospitalStaff.facilities as unknown as FacRel | null;
-            chosenFacId = activeHospitalStaff.facility_id;
-            chosenFacName = fac?.name;
-            chosenStaffRole = activeHospitalStaff.staff_role;
-            chosenIsAdmin = false;
-          } else if (activeHospitalAdmin) {
-            // Untuk admin fasilitas, akun profil harus aktif (disetujui Dinkes bersama faskes)
-            if (profile.status !== "aktif") {
-              setErrorMsg(
-                `Akun administrator fasilitas kesehatan Anda saat ini berstatus ${profile.status}. Mohon menunggu persetujuan verifikasi dari Dinas Kesehatan.`
-              );
-              setLoading(false);
-              return;
-            }
-            chosenFacId = activeHospitalAdmin.id;
-            chosenFacName = activeHospitalAdmin.name;
-            chosenStaffRole = "Admin Rumah Sakit";
-            chosenIsAdmin = true;
-          } else {
-            // Evaluasi relasi RS non-aktif untuk memberikan pesan yang informatif
-            const anyHospitalStaff = staffList?.find((s) => {
-              const fac = s.facilities as unknown as FacRel | null;
-              return fac?.type === "rumah_sakit" || fac?.type === "rumah-sakit";
-            });
-            const anyHospitalAdmin = adminFacs?.find(
-              (f) => f.type === "rumah_sakit" || f.type === "rumah-sakit"
-            );
-
-            if (anyHospitalStaff) {
-              const fac = anyHospitalStaff.facilities as unknown as FacRel | null;
-              if (fac?.status !== "aktif") {
-                setErrorMsg(
-                  `Rumah sakit "${fac?.name || "Tujuan"}" saat ini berstatus ${fac?.status}. Akses rujukan hanya untuk fasilitas aktif.`
-                );
-              } else {
-                setErrorMsg(
-                  `Status penugasan staf Anda pada "${fac?.name}" saat ini berstatus ${anyHospitalStaff.status}. Akses rujukan memerlukan penugasan aktif.`
-                );
-              }
-              setLoading(false);
-              return;
-            }
-
-            if (anyHospitalAdmin) {
-              setErrorMsg(
-                `Rumah sakit "${anyHospitalAdmin.name}" saat ini berstatus ${anyHospitalAdmin.status}. Akses rujukan hanya untuk fasilitas aktif.`
-              );
-              setLoading(false);
-              return;
-            }
-
-            setErrorMsg("Akun Anda tidak memiliki penugasan staf aktif atau wewenang administrator pada fasilitas Rumah Sakit.");
-            setLoading(false);
-            return;
-          }
-        } else {
-          // Konteks: Faskes Primer (Puskesmas / Klinik)
-          const activePrimerStaff = staffList?.find((s) => {
-            const fac = s.facilities as unknown as FacRel | null;
-            const isPrimer = fac?.type !== "rumah_sakit" && fac?.type !== "rumah-sakit";
-            return isPrimer && s.status === "aktif" && fac?.status === "aktif";
-          });
-
-          const activePrimerAdmin = adminFacs?.find((f) => {
-            const isPrimer = f.type !== "rumah_sakit" && f.type !== "rumah-sakit";
-            return isPrimer && f.status === "aktif";
-          });
-
-          if (activePrimerStaff) {
-            const fac = activePrimerStaff.facilities as unknown as FacRel | null;
-            chosenFacId = activePrimerStaff.facility_id;
-            chosenFacName = fac?.name;
-            chosenStaffRole = activePrimerStaff.staff_role;
-            chosenIsAdmin = false;
-          } else if (activePrimerAdmin) {
-            if (profile.status !== "aktif") {
-              setErrorMsg(
-                `Akun administrator fasilitas kesehatan Anda saat ini berstatus ${profile.status}. Mohon menunggu persetujuan verifikasi dari Dinas Kesehatan.`
-              );
-              setLoading(false);
-              return;
-            }
-            chosenFacId = activePrimerAdmin.id;
-            chosenFacName = activePrimerAdmin.name;
-            chosenStaffRole = "Admin Faskes";
-            chosenIsAdmin = true;
-          } else {
-            const anyPrimerStaff = staffList?.find((s) => {
-              const fac = s.facilities as unknown as FacRel | null;
-              return fac?.type !== "rumah_sakit" && fac?.type !== "rumah-sakit";
-            });
-            const anyPrimerAdmin = adminFacs?.find(
-              (f) => f.type !== "rumah_sakit" && f.type !== "rumah-sakit"
-            );
-
-            if (anyPrimerStaff) {
-              const fac = anyPrimerStaff.facilities as unknown as FacRel | null;
-              if (fac?.status !== "aktif") {
-                setErrorMsg(
-                  `Fasilitas kesehatan "${fac?.name || "Faskes"}" saat ini berstatus ${fac?.status}. Akses rujukan hanya untuk fasilitas aktif.`
-                );
-              } else {
-                setErrorMsg(
-                  `Status penugasan staf Anda pada "${fac?.name}" saat ini berstatus ${anyPrimerStaff.status}. Akses rujukan memerlukan penugasan aktif.`
-                );
-              }
-              setLoading(false);
-              return;
-            }
-
-            if (anyPrimerAdmin) {
-              setErrorMsg(
-                `Fasilitas kesehatan "${anyPrimerAdmin.name}" saat ini berstatus ${anyPrimerAdmin.status}. Akses rujukan hanya untuk fasilitas aktif.`
-              );
-              setLoading(false);
-              return;
-            }
-
-            setErrorMsg("Akun Anda tidak memiliki penugasan staf aktif atau wewenang administrator pada fasilitas kesehatan primer.");
-            setLoading(false);
-            return;
-          }
+        if (targetStaff) {
+          const fac = targetStaff.facilities as unknown as FacRel | null;
+          chosenFacId = targetStaff.facility_id;
+          chosenFacName = fac?.name;
+          chosenFacStatus = fac?.status;
+          chosenStaffRole = targetStaff.staff_role;
+          chosenStaffStatus = targetStaff.status;
+          chosenIsAdmin = false;
+        } else if (targetAdmin) {
+          chosenFacId = targetAdmin.id;
+          chosenFacName = targetAdmin.name;
+          chosenFacStatus = targetAdmin.status;
+          chosenStaffRole = isHospital ? "Admin Rumah Sakit" : "Admin Fasilitas";
+          chosenStaffStatus = "aktif";
+          chosenIsAdmin = true;
         }
 
-        if (!chosenFacId) {
-          setErrorMsg("Akun Anda belum terhubung ke fasilitas kesehatan aktif.");
+        // SIMPAN IDENTITAS PENGGUNA & FASILITAS SEGERA AGAR TAMPILAN NAVBAR KONSISTEN
+        if (chosenFacId || chosenFacName) {
+          setFacilityInfo({
+            facilityId: chosenFacId || "",
+            facilityName: chosenFacName || (isHospital ? "Rumah Sakit" : "Puskesmas"),
+            staffName: profile.full_name || (chosenIsAdmin ? "Admin Fasilitas" : "Tenaga Medis"),
+            staffRole: chosenStaffRole,
+            staffStatus: chosenStaffStatus || "menunggu",
+            isAdmin: chosenIsAdmin,
+          });
+        }
+
+        // 3. Evaluasi Otorisasi Hak Akses Operasional Rujukan
+        if (!chosenFacId && !targetStaff && !targetAdmin) {
+          setErrorMsg(
+            isHospital
+              ? "Akun Anda tidak memiliki penugasan staf atau wewenang administrator pada fasilitas Rumah Sakit."
+              : "Akun Anda tidak memiliki penugasan staf atau wewenang administrator pada fasilitas kesehatan primer."
+          );
           setLoading(false);
           return;
         }
 
-        setFacilityInfo({
-          facilityId: chosenFacId,
-          facilityName: chosenFacName || "Fasilitas Kesehatan",
-          staffName: profile.full_name || (chosenIsAdmin ? "Admin Fasilitas" : "Tenaga Medis"),
-          staffRole: chosenStaffRole,
-          isAdmin: chosenIsAdmin,
-        });
+        if (chosenIsAdmin) {
+          if (chosenFacStatus !== "aktif") {
+            setErrorMsg(
+              `${isHospital ? "Rumah sakit" : "Fasilitas kesehatan"} "${chosenFacName}" saat ini berstatus ${chosenFacStatus}. Akses rujukan hanya untuk fasilitas aktif.`
+            );
+            setLoading(false);
+            return;
+          }
+          if (profile.status !== "aktif") {
+            setErrorMsg(
+              `Akun administrator fasilitas kesehatan Anda saat ini berstatus ${profile.status}. Mohon menunggu persetujuan verifikasi dari Dinas Kesehatan.`
+            );
+            setLoading(false);
+            return;
+          }
+        } else {
+          // Tenaga Medis / Staf
+          if (chosenFacStatus !== "aktif") {
+            setErrorMsg(
+              `${isHospital ? "Rumah sakit" : "Fasilitas kesehatan"} "${chosenFacName || "Fasilitas"}" saat ini berstatus ${chosenFacStatus}. Akses rujukan hanya untuk fasilitas aktif.`
+            );
+            setLoading(false);
+            return;
+          }
+          if (chosenStaffStatus !== "aktif") {
+            setErrorMsg(
+              `Status penugasan ${chosenStaffRole === "dokter" ? "dokter" : "staf"} Anda pada "${chosenFacName}" saat ini berstatus ${chosenStaffStatus}. Akses operasional rujukan memerlukan penugasan aktif dari administrator fasilitas.`
+            );
+            setLoading(false);
+            return;
+          }
+        }
 
         // Ambil data rujukan via RPC list_facility_referrals
         const { data, error: refError } = await supabase.rpc("list_facility_referrals", {
@@ -530,7 +479,11 @@ function DaftarRujukanFaskesContent({ params }: PageProps) {
   };
 
   const isDoctor = facilityInfo?.staffRole === "dokter";
-  const isAdmin = facilityInfo?.staffRole === "Admin Rumah Sakit" || facilityInfo?.staffRole === "Admin Faskes" || (facilityInfo?.isAdmin && !isDoctor);
+  const isStaffActive = facilityInfo?.staffStatus === "aktif";
+  const isAdmin =
+    facilityInfo?.staffRole === "Admin Rumah Sakit" ||
+    facilityInfo?.staffRole === "Admin Faskes" ||
+    (facilityInfo?.isAdmin && !isDoctor);
 
   const navVariant = isAdmin
     ? "admin-faskes"
@@ -562,7 +515,9 @@ function DaftarRujukanFaskesContent({ params }: PageProps) {
       ]
     : [
         { label: "Beranda", href: `/portal/${peran}/${subperan}` },
-        ...(isDoctor ? [{ label: "Buat Rujukan", href: `/portal/${peran}/${subperan}/rujukan/baru` }] : []),
+        ...(isDoctor && isStaffActive && !errorMsg
+          ? [{ label: "Buat Rujukan", href: `/portal/${peran}/${subperan}/rujukan/baru` }]
+          : []),
         { label: "Riwayat Rujukan", href: `/portal/${peran}/${subperan}/rujukan` },
       ];
 
@@ -573,8 +528,8 @@ function DaftarRujukanFaskesContent({ params }: PageProps) {
         facilityName={facilityInfo?.facilityName}
         userName={
           isAdmin
-            ? (currentProfileName && currentProfileName !== "Pengguna" ? currentProfileName : "Admin")
-            : (facilityInfo?.staffName || currentProfileName || "Dokter")
+            ? (currentProfileName && currentProfileName !== "Pengguna" ? currentProfileName : "Admin Fasilitas")
+            : (currentProfileName || facilityInfo?.staffName || (isDoctor ? "Dokter" : "Petugas"))
         }
         userRole={facilityInfo?.facilityName || userRoleLabel}
         forceGlass={true}
@@ -613,7 +568,7 @@ function DaftarRujukanFaskesContent({ params }: PageProps) {
               <RotateCw className="w-4 h-4" />
             </button>
 
-            {!isHospital && isDoctor && (
+            {!isHospital && isDoctor && isStaffActive && !errorMsg && (
               <Link
                 href={`/portal/${peran}/${subperan}/rujukan/baru`}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold bg-[#8F5A4E] text-white hover:bg-[#A56F63] transition-colors shadow-sm"

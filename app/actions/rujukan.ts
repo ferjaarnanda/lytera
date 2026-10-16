@@ -236,12 +236,11 @@ export async function buatRujukanAction(payload: unknown): Promise<BuatRujukanRe
       };
     }
 
-    // 3. Verifikasi staf faskes: harus dokter, status aktif, dan punya facility_id
-    const { data: staff, error: staffError } = await supabase
+    // 3. Verifikasi staf faskes: harus dokter, status aktif, dan pada faskes primer aktif
+    const { data: staffList, error: staffError } = await supabase
       .from("facility_staff")
-      .select("id, profile_id, facility_id, staff_role, status")
-      .eq("profile_id", user.id)
-      .maybeSingle();
+      .select("id, profile_id, facility_id, staff_role, status, facilities(id, name, type, status)")
+      .eq("profile_id", user.id);
 
     if (staffError) {
       return {
@@ -250,49 +249,52 @@ export async function buatRujukanAction(payload: unknown): Promise<BuatRujukanRe
       };
     }
 
-    if (!staff || !staff.facility_id) {
+    if (!staffList || staffList.length === 0) {
       return {
         success: false,
-        error: "Akun Anda belum terdaftar atau belum terhubung ke fasilitas kesehatan mana pun.",
+        error: "Akun Anda belum terdaftar sebagai staf pada fasilitas kesehatan mana pun.",
       };
     }
 
-    if (staff.staff_role !== "dokter") {
+    type FacRel = { id: string; name: string; type: string; status: string };
+
+    // Cari penugasan dokter yang berstatus aktif pada faskes primer aktif
+    const activeDoctorStaff = staffList.find((s) => {
+      const fac = s.facilities as unknown as FacRel | null;
+      const isPrimer = fac?.type !== "rumah_sakit" && fac?.type !== "rumah-sakit";
+      return isPrimer && s.staff_role === "dokter" && s.status === "aktif" && fac?.status === "aktif";
+    });
+
+    if (!activeDoctorStaff) {
+      const anyDoctor = staffList.find((s) => s.staff_role === "dokter");
+      if (anyDoctor) {
+        const fac = anyDoctor.facilities as unknown as FacRel | null;
+        if (fac && fac.status !== "aktif") {
+          return {
+            success: false,
+            error: `Fasilitas kesehatan asal (${fac.name}) saat ini berstatus '${fac.status}'. Surat rujukan hanya dapat diterbitkan dari fasilitas kesehatan yang berstatus aktif.`,
+          };
+        }
+        return {
+          success: false,
+          error: `Penugasan dokter Anda saat ini berstatus '${anyDoctor.status}'. Hanya dokter dengan status aktif yang berwenang menerbitkan rujukan.`,
+        };
+      }
       return {
         success: false,
-        error: `Hak akses terbatas: Hanya staf dengan peran dokter yang berwenang membuat rujukan. Peran akun Anda: '${staff.staff_role}'.`,
+        error: `Hak akses terbatas: Hanya staf dengan peran dokter yang berwenang membuat rujukan.`,
       };
     }
 
-    if (staff.status !== "aktif") {
+    const originFacility = activeDoctorStaff.facilities as unknown as FacRel | null;
+    if (!originFacility || originFacility.status !== "aktif") {
       return {
         success: false,
-        error: `Akun staf Anda saat ini berstatus '${staff.status}'. Hanya dokter dengan status aktif yang berwenang menerbitkan rujukan.`,
+        error: "Fasilitas kesehatan asal saat ini tidak aktif atau tidak ditemukan pada basis data sistem Lytera.",
       };
     }
 
-    // 4. Verifikasi status fasilitas kesehatan asal harus aktif
-    const { data: originFacility, error: originFacError } = await supabase
-      .from("facilities")
-      .select("id, name, status")
-      .eq("id", staff.facility_id)
-      .maybeSingle();
-
-    if (originFacError || !originFacility) {
-      return {
-        success: false,
-        error: "Fasilitas kesehatan asal tidak ditemukan pada basis data sistem Lytera.",
-      };
-    }
-
-    if (originFacility.status !== "aktif") {
-      return {
-        success: false,
-        error: `Fasilitas kesehatan asal (${originFacility.name}) saat ini berstatus '${originFacility.status}'. Surat rujukan hanya dapat diterbitkan dari fasilitas kesehatan yang berstatus aktif.`,
-      };
-    }
-
-    // 5. Insert baris baru ke tabel 'referrals'
+    // 4. Insert baris baru ke tabel 'referrals'
     //    Database guard (trg_guard_referrals) akan memaksa status='diajukan'
     //    dan memvalidasi destination_facility_id harus rumah_sakit aktif.
     const { data: referral, error: referralError } = await supabase
@@ -300,7 +302,7 @@ export async function buatRujukanAction(payload: unknown): Promise<BuatRujukanRe
       .insert({
         patient_id: data.patientId,
         family_member_id: data.familyMemberId || null,
-        origin_facility_id: staff.facility_id,
+        origin_facility_id: activeDoctorStaff.facility_id,
         destination_facility_id: data.destinationFacilityId,
         destination_doctor_id: data.destinationDoctorId || null,
         poli: data.poli.trim(),
@@ -322,7 +324,7 @@ export async function buatRujukanAction(payload: unknown): Promise<BuatRujukanRe
       };
     }
 
-    // 6. Insert riwayat ke 'referral_events'
+    // 5. Insert riwayat ke 'referral_events'
     const { error: eventError } = await supabase.from("referral_events").insert({
       referral_id: referral.id,
       status: "diajukan",
@@ -331,9 +333,10 @@ export async function buatRujukanAction(payload: unknown): Promise<BuatRujukanRe
     });
 
     if (eventError) {
-      // Tidak membatalkan — rujukan sudah tersimpan
       console.error("Peringatan: Gagal mencatat referral_event:", eventError.message);
     }
+
+    revalidatePath("/portal", "layout");
 
     return {
       success: true,

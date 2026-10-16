@@ -51,6 +51,7 @@
 | Sinkronisasi Riwayat Medis Otoritatif Dokter–Pasien & Audit Log | SELESAI | 8f97a6f | Eliminasi manipulasi record lokal palsu di panel dokter, sinkronisasi otoritatif data rekam medis dari database pasca penyimpanan, revalidatePath portal, penyelarasan mapping kolom RPC (tanggal kunjungan & log doctor_name), empty state edukatif panel dokter, dan tombol segarkan data manual realtime pada dashboard pasien dan panel dokter. Uji SQL impersonasi end-to-end lolos 100%, lint 0 error, build exit 0 (21 rute). |
 | Tahap 52: Riwayat Kesehatan Terdahulu Berizin Pasien | SELESAI | dbf0edd | Entitas riwayat penyakit terdahulu pasien mandiri (tabel patient_medical_histories & 5 RPC SECURITY DEFINER) terpisah dari rekam medis faskes. Panel dokter memisahkan Bagian A (Laporan Pasien, Belum Diverifikasi) & Bagian B (Kunjungan Nakes). Token izin 6-digit diverifikasi, audit log tercatat, isolasi faskes terjamin. 10 skenario impersonasi SQL lolos 100%, lint 0 error, build exit 0. |
 | Tahap 53: Validasi Alamat Domisili, Resolusi Wilayah & Ikon Lokasi | SELESAI | 94f3f37 | Pencegahan nilai numerik mentah ('912939139') muncul sebagai alamat dengan fallback jelas 'Detail alamat belum dilengkapi' & konteks wilayah manusiawi. Ikon Wilayah Administratif diselaraskan ke MapPin hijau (menggantikan Sparkles). Penguatan validasi alamat di form pendaftaran (klien & Zod server) mewajibkan teks nama jalan/banjar/RT/RW tanpa menolak angka nomor rumah yang sah. 10 butir uji verifikasi lolos 100%, lint 0 error, build exit 0. |
+| Tahap 54: Identitas Dokter Faskes, Persetujuan Penugasan & Alur Rujukan Keluar | SELESAI | e76c810 | Pemisahan resolusi identitas pengguna & konteks faskes dari keputusan otorisasi operasional rujukan di rujukan/page.tsx dan rujukan/baru/page.tsx. Eliminasi regresi navbar 'Petugas Administrasi' pada dokter berpenugasan menunggu (tetap menampilkan nama dokter & nama puskesmas). Penegasan wewenang klinis operasional (menu/tombol buat rujukan hanya untuk dokter aktif). Verifikasi multi-staff & revalidatePath di buatRujukanAction. 5 skenario impersonasi SQL lolos 100%, lint 0 error, build exit 0. |
 
 ---
 
@@ -907,6 +908,35 @@
     10. Verifikasi linting dan build produksi Next.js 16.
   - `npm run lint`: **0 error**, **0 warning**.
   - `npm run build`: **Exit 0**, seluruh 21 rute lolos kompilasi optimal.
+
+---
+
+### Tahap 54: Identitas Dokter Faskes, Persetujuan Penugasan & Alur Rujukan Keluar (Selesai)
+- [x] **Audit & Forensik Nyata**:
+  - **Akar Masalah Regresi Navbar 'Petugas Administrasi'**: Pada `app/portal/[peran]/[subperan]/rujukan/page.tsx`, ketika akun dokter memiliki penugasan `facility_staff.status = 'menunggu'` (misal dr. Herianto di puskesmas hamster sejahtera), resolver melakukan early return sebelum memanggil `setFacilityInfo()`. Akibatnya `facilityInfo` bernilai `null`, `isDoctor` menjadi `false`, dan navbar jatuh ke fallback label generik `"Petugas Administrasi"` pada baris bawah menggantikan nama puskesmas.
+  - **Kebutuhan Pemisahan Identitas vs Hak Akses**: Identitas profil dokter dan nama puskesmas yang terhubung harus tetap dikenali dan ditampilkan secara jujur di antarmuka, sementara hak operasional klinis (membuat rujukan dan membaca rujukan keluar) tetap dibatasi sampai penugasan disetujui secara resmi oleh administrator faskes.
+  - **Integritas Alur Buat Rujukan**: Server action `buatRujukanAction` sebelumnya menggunakan `maybeSingle()` pada `facility_staff`, berisiko jika dokter memiliki riwayat penugasan lain atau tidak memprioritaskan penugasan dokter aktif di fasilitas primer aktif, serta belum memanggil `revalidatePath` pasca penerbitan rujukan sukses.
+- [x] **Perbaikan Implementasi**:
+  1. *Pemisahan Resolusi Identitas & Otorisasi Operasional (`app/portal/[peran]/[subperan]/rujukan/page.tsx`)*:
+     - Tahap 1 (Resolusi Identitas): Mengidentifikasi staf penugasan dan fasilitas terkait (memprioritaskan yang aktif, namun tetap menyimpan penugasan menunggu jika belum disetujui). `facilityInfo` (nama fasilitas, nama dokter, peran dokter, status penugasan) segera disimpan ke state sebelum evaluasi otorisasi.
+     - Tahap 2 (Evaluasi Otorisasi): Jika penugasan dokter masih `menunggu`, halaman menampilkan banner peringatan informatif (*"Status penugasan dokter Anda pada '[Nama Faskes]' saat ini berstatus menunggu. Akses operasional rujukan memerlukan penugasan aktif dari administrator fasilitas."*).
+     - Tahap 3 (Penyelarasan Navbar & Tombol): Navbar menampilkan nama dokter di baris atas dan nama fasilitas di baris bawah. Tombol dan menu navigasi "Buat Rujukan" hanya aktif jika `isDoctor && isStaffActive && !errorMsg`.
+  2. *Penyelarasan Identitas Halaman Buat Rujukan (`app/portal/[peran]/[subperan]/rujukan/baru/page.tsx`)*:
+     - Mengganti lookup tunggal dengan pencarian multi-staf dokter aktif di faskes primer aktif.
+     - Menyimpan konteks identitas dokter dan faskes ke `staffInfo` bahkan saat otorisasi belum terpenuhi, sehingga tampilan Navbar pada halaman akses dibatasi tetap menampilkan nama dokter dan nama puskesmas (bukan placeholder "Tenaga Medis" / "Fasilitas Kesehatan").
+  3. *Penguatan Server Action Rujukan (`app/actions/rujukan.ts`)*:
+     - Memperketat `buatRujukanAction` untuk mencari penugasan dokter aktif pada fasilitas primer aktif (`type !== 'rumah_sakit'`).
+     - Menolak pembuatan rujukan jika penugasan dokter atau faskes asal tidak aktif.
+     - Menambahkan `revalidatePath("/portal", "layout")` setelah rujukan dan event berhasil dicatat agar daftar rujukan seketika terbarui tanpa perlu refresh manual.
+- [x] **Pengujian & Validasi**:
+  - **Uji Impersonasi SQL Supabase (`execute_sql` RLS - 5 Skenario Komprehensif)**:
+    1. *Dokter Menunggu (`dr. Herianto` / `3843026f`)*: Mencoba membaca rujukan keluar via `list_facility_referrals('keluar')` -> Terbukti dikembalikan `KOSONG` (hak akses operasional aman dibatasi).
+    2. *Dokter Aktif (`dr. Budiono Siregar` / `4fc7cf0b`)*: Membaca rujukan keluar di faskes yang sama -> Lolos membaca rujukan faskesnya (`count = 1`).
+    3. *Admin Faskes (`892f0fee`)*: Menyetujui penugasan `dr. Herianto` via RPC `review_facility_staff` -> Sukses disetujui (*"Permohonan staf berhasil disetujui (status: aktif)"*).
+    4. *Penerbitan Rujukan Keluar Pasca-Persetujuan*: `dr. Herianto` kini dapat menerbitkan rujukan baru ke RS rujukan aktif (`referral_id` sukses terbit dengan status awal `diajukan` dan event tercatat) serta membaca kembali daftar rujukan keluar faskesnya (`count` bertambah menjadi 2).
+    5. *Rollback & Isolasi Data*: Seluruh transaksi pengujian dibatalkan via exception tanpa ada status akun uji yang diubah permanen.
+  - `npm run lint`: **0 error**, **0 warning**.
+  - `npm run build`: **Exit 0**, seluruh 21 rute lolos kompilasi optimal Next.js 16.
 
 ---
 
