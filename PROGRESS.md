@@ -53,6 +53,7 @@
 | Tahap 53: Validasi Alamat Domisili, Resolusi Wilayah & Ikon Lokasi | SELESAI | 94f3f37 | Pencegahan nilai numerik mentah ('912939139') muncul sebagai alamat dengan fallback jelas 'Detail alamat belum dilengkapi' & konteks wilayah manusiawi. Ikon Wilayah Administratif diselaraskan ke MapPin hijau (menggantikan Sparkles). Penguatan validasi alamat di form pendaftaran (klien & Zod server) mewajibkan teks nama jalan/banjar/RT/RW tanpa menolak angka nomor rumah yang sah. 10 butir uji verifikasi lolos 100%, lint 0 error, build exit 0. |
 | Tahap 54: Identitas Dokter Faskes, Persetujuan Penugasan & Alur Rujukan Keluar | SELESAI | b7f6b75 | Pemisahan resolusi identitas pengguna & konteks faskes dari keputusan otorisasi operasional rujukan di rujukan/page.tsx dan rujukan/baru/page.tsx. Eliminasi regresi navbar 'Petugas Administrasi' pada dokter berpenugasan menunggu (tetap menampilkan nama dokter & nama puskesmas). Penegasan wewenang klinis operasional (menu/tombol buat rujukan hanya untuk dokter aktif). Verifikasi multi-staff & revalidatePath di buatRujukanAction. 5 skenario impersonasi SQL lolos 100%, lint 0 error, build exit 0. |
 | Tahap 55: Deteksi Pertanyaan Sensitif, Privasi NIK & Akses Profil Berbasis Konteks | SELESAI | 07c371d | Penjaga privasi deterministik server-side Tetra (lib/tetra/privacy.ts): penolakan tegas & edukatif atas permintaan NIK, KK, password, token, rekam medis, kontak, dan data pribadi tanpa bocor ke LLM. Akses nama & alamat lengkap dari profil otoritatif Lytera berbasis autentikasi server sah (userId). Pengguna belum login diarahkan login tanpa membocorkan data. Pertanyaan edukatif tetap dijawab. Redaksi angka identitas pada riwayat LLM & output. 193 butir pengujian otomatis lolos 100%, lint 0 error, build exit 0. |
+| Tahap 58: Profil Pasien Belum Lengkap, Error Riwayat Kesehatan & Pendaftaran Atomik | SELESAI | HEAD | Migrasi 20261016233000_register_patient_atomic.sql: RPC register_patient_personal menjamin penyimpanan profil & data pasien dalam satu transaksi ACID, validasi NIK 16 digit, isolasi alamat non-numerik mentah. Penanganan akun aktif tanpa data pasien (contoh iwakpeyek@gmail.com): banner peringatan khusus di Beranda, nonaktifkan token akses dan pencatatan riwayat sampai profil dilengkapi, modal formulir pelengkapan profil interaktif via completePatientProfileAction. Formatter error formatSupabaseError menuntaskan tampilan [object Object] pada PostgrestError. Kontak tidak lagi menjadikan email sebagai nomor telepon. Lint 0 error/0 warning, build exit 0 (21 rute). |
 
 ---
 
@@ -1062,8 +1063,30 @@
 
 ---
 
+### Tahap 58: Profil Pasien Belum Lengkap, Error Riwayat Kesehatan & Pendaftaran Atomik (Selesai)
+- [x] **Migrasi Transaksional Atomik Database (`20261016233000_register_patient_atomic.sql`)**:
+  - Dibuat fungsi RPC `register_patient_personal` (`SECURITY DEFINER`) yang membungkus penulisan ke tabel `profiles` dan `patients` dalam 1 transaksi ACID.
+  - Memvalidasi ketat NIK 16 digit angka, menolak duplikasi NIK pada akun pengguna lain, menolak detail alamat yang hanya berisi angka mentah (`^[0-9\s.,\-_/]*$`).
+  - Teruji nyata via impersonasi SQL (pengujian duplikasi NIK & detail alamat angka ditolak dengan rollback bersih).
+  - Verifikasi keamanan Supabase Advisors: `get_advisors(security)` bersih tanpa celah baru.
+- [x] **Pembaruan Server Action Pendaftaran & Pelengkapan Profil (`app/actions/pendaftaran.ts`)**:
+  - `submitPendaftaranAction` untuk pasien pribadi kini memanggil RPC `register_patient_personal` atomik sehingga tidak ada lagi profil berstatus `aktif` yang tertinggal tanpa data pasien jika penulisan pasien gagal.
+  - Disediakan `completePatientProfileAction` untuk melengkapi profil pasien pada akun yang datanya belum lengkap.
+- [x] **Penanganan UI Akun Pasien Incomplete & Formatting Error (`components/PasienDashboard.tsx`)**:
+  - **Deteksi Akun Belum Lengkap**: Menghitung state `isPatientIncomplete = !patient` jika profil berstatus `aktif` tetapi tidak memiliki data kependudukan di tabel `patients` (contoh nyata: `iwakpeyek@gmail.com`).
+  - **Banner Peringatan Beranda**: Menampilkan kartu peringatan khusus di Beranda bahwa data kependudukan belum lengkap, serta tombol "Lengkapi Profil Sekarang".
+  - **Modal Lengkapi Profil**: Komponen `ModalLengkapiProfil` interaktif untuk mengisi NIK 16 digit, tanggal lahir, jenis kelamin, nomor telepon, wilayah, dan alamat yang tervalidasi.
+  - **Penonaktifan Token & Riwayat**: Tombol "Buat Kode Izin" dan tombol "Catat Riwayat Baru" dinonaktifkan dengan tooltip/banner peringatan jelas hingga profil dilengkapi.
+  - **Format Error PostgrestError (`formatSupabaseError`)**: Mengeliminasi tampilan `[object Object]` pada error riwayat kesehatan terdahulu dengan mengekstraksi properti objek (`message`, `details`, `hint`, `code`) dan memetakannya ke bahasa Indonesia yang ramah (termasuk foreign key `patient_medical_histories_patient_id_fkey`).
+  - **Perbaikan Kontak & Wilayah**: Kontak/WhatsApp tidak lagi menggunakan `profile.email` sebagai fallback nomor telepon. NIK dimasker jika lengkap atau menampilkan keterangan jelas jika belum terdaftar.
+- [x] **Verifikasi & Build**:
+  - `npm run lint`: **0 error**, **0 warning**.
+  - `npm run build`: **Exit 0**, seluruh rute Next.js 16 (Turbopack) terkompilasi optimal.
+
+---
+
 ### Berikutnya
-- Pelaksanaan sesi presentasi / live demo penjurian lomba menggunakan panduan `PANDUAN_PENJURIAN.md` dan akun pengujian terverifikasi.
+- Pengujian interaktif akun `iwakpeyek@gmail.com` dan simulasi pelengkapan data profil melalui modal, serta persiapan sesi demo penjurian akhir.
 
 
 

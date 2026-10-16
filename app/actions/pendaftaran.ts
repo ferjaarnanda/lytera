@@ -635,55 +635,63 @@ export async function submitPendaftaranAction(
       }
     }
 
-    // 3. Tulis baris ke tabel profiles
-    // Aturan: status 'aktif' untuk semua pasien (pribadi & keluarga) agar bisa demo tanpa approval
-    const profileStatus =
-      peran === "pasien" ? "aktif" : "menunggu";
-
-    const { error: profileError } = await supabase.from("profiles").insert({
-      id: userId,
-      role: peran,
-      sub_role: subperan,
-      full_name: fullName,
-      email: emailToRegister.trim(),
-      status: profileStatus,
-    });
-
-    if (profileError) {
-      return {
-        success: false,
-        error: "Gagal membuat profil pengguna: " + profileError.message,
-      };
-    }
-
-    // 4. Tulis baris ke tabel domain sesuai peran (dilakukan berurutan)
+    // 3. Tulis data profil & pasien
     if (peran === "pasien" && subperan === "pribadi" && pasienPribadiData) {
-      const { error: patientError } = await supabase.from("patients").insert({
-        id: userId,
-        patient_type: "pribadi",
-        nik: pasienPribadiData.nik,
-        dob: pasienPribadiData.tanggalLahir,
-        gender: pasienPribadiData.jenisKelamin,
-        phone: pasienPribadiData.noHp,
-        province: pasienPribadiData.provinsi,
-        city: pasienPribadiData.kota,
-        district: pasienPribadiData.kecamatan,
-        village: pasienPribadiData.kelurahan,
-        address: pasienPribadiData.alamatDetail,
-        bpjs_number: pasienPribadiData.penjamin === "bpjs" ? (pasienPribadiData.noBpjs || null) : null,
-        blood_type: null,
-        allergies: pasienPribadiData.riwayatAlergi || null,
-        payer_type: pasienPribadiData.penjamin || "mandiri",
-        insurance_name: pasienPribadiData.penjamin === "asuransi" ? (pasienPribadiData.namaAsuransi || null) : null,
-        insurance_policy_number: pasienPribadiData.penjamin === "asuransi" ? (pasienPribadiData.nomorPolisAsuransi || null) : null,
+      // Pendaftaran pasien pribadi dilakukan secara atomik melalui RPC register_patient_personal
+      // Menjamin profiles dan patients tersimpan dalam satu transaksi database ACID
+      const { error: regError } = await supabase.rpc("register_patient_personal", {
+        p_full_name: fullName,
+        p_nik: pasienPribadiData.nik,
+        p_dob: pasienPribadiData.tanggalLahir,
+        p_gender: pasienPribadiData.jenisKelamin,
+        p_phone: pasienPribadiData.noHp,
+        p_province: pasienPribadiData.provinsi,
+        p_city: pasienPribadiData.kota,
+        p_district: pasienPribadiData.kecamatan,
+        p_village: pasienPribadiData.kelurahan,
+        p_address: pasienPribadiData.alamatDetail,
+        p_bpjs_number: pasienPribadiData.penjamin === "bpjs" ? (pasienPribadiData.noBpjs || null) : null,
+        p_blood_type: null,
+        p_allergies: pasienPribadiData.riwayatAlergi || null,
+        p_payer_type: pasienPribadiData.penjamin || "mandiri",
+        p_insurance_name: pasienPribadiData.penjamin === "asuransi" ? (pasienPribadiData.namaAsuransi || null) : null,
+        p_insurance_policy_number: pasienPribadiData.penjamin === "asuransi" ? (pasienPribadiData.nomorPolisAsuransi || null) : null,
       });
 
-      if (patientError) {
+      if (regError) {
+        const errorMsg = regError.message || "Gagal menyimpan data pasien secara atomik";
+        const isNikConflict = errorMsg.toLowerCase().includes("nik sudah terdaftar") || errorMsg.toLowerCase().includes("nik");
         return {
           success: false,
-          error: "Gagal menyimpan data pasien: " + patientError.message,
+          error: errorMsg,
+          fieldErrors: isNikConflict ? { nik: errorMsg } : undefined,
         };
       }
+    } else {
+      // Peran non-pasien pribadi (keluarga, fasilitas, verifikator)
+      const profileStatus =
+        peran === "pasien" ? "aktif" : "menunggu";
+
+      const { error: profileError } = await supabase.from("profiles").insert({
+        id: userId,
+        role: peran,
+        sub_role: subperan,
+        full_name: fullName,
+        email: emailToRegister.trim(),
+        status: profileStatus,
+      });
+
+      if (profileError) {
+        return {
+          success: false,
+          error: "Gagal membuat profil pengguna: " + profileError.message,
+        };
+      }
+    }
+
+    // 4. Tulis baris ke tabel domain sesuai peran untuk peran non-pasien pribadi
+    if (peran === "pasien" && subperan === "pribadi" && pasienPribadiData) {
+      // Sudah selesai secara atomik via RPC register_patient_personal di atas
     } else if (peran === "pasien" && subperan === "keluarga" && pasienKeluargaData) {
       const { error: patientError } = await supabase.from("patients").insert({
         id: userId,
@@ -942,3 +950,86 @@ export async function submitPendaftaranAction(
     };
   }
 }
+
+/**
+ * Server action untuk melengkapi data profil pasien yang belum memiliki baris data pasien lengkap.
+ * Mengeksekusi RPC register_patient_personal dengan sesi pengguna aktif.
+ */
+export async function completePatientProfileAction(payload: {
+  nama: string;
+  nik: string;
+  tanggalLahir: string;
+  jenisKelamin: string;
+  noHp: string;
+  provinsi: string;
+  kota: string;
+  kecamatan: string;
+  kelurahan: string;
+  alamatDetail: string;
+  noBpjs?: string;
+  penjamin?: "mandiri" | "bpjs" | "asuransi" | "jaminan_daerah";
+  namaAsuransi?: string;
+  nomorPolisAsuransi?: string;
+  riwayatAlergi?: string;
+}): Promise<{ success: boolean; error?: string; fieldErrors?: Record<string, string> }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { success: false, error: "Sesi Anda telah berakhir. Silakan masuk kembali." };
+    }
+
+    const cleanNik = payload.nik.trim();
+    if (!/^\d{16}$/.test(cleanNik)) {
+      return { success: false, error: "NIK harus terdiri dari 16 digit angka", fieldErrors: { nik: "NIK harus 16 digit angka" } };
+    }
+
+    if (!payload.nama || payload.nama.trim().length < 2) {
+      return { success: false, error: "Nama lengkap wajib diisi minimal 2 karakter", fieldErrors: { nama: "Nama minimal 2 karakter" } };
+    }
+
+    if (!payload.alamatDetail || !/[a-zA-Z]/.test(payload.alamatDetail.trim())) {
+      return {
+        success: false,
+        error: "Detail alamat harus memuat nama jalan, banjar, nomor rumah, atau RT/RW (tidak boleh hanya angka)",
+        fieldErrors: { alamatDetail: "Alamat harus memuat nama jalan atau nomor rumah" },
+      };
+    }
+
+    const { error: rpcError } = await supabase.rpc("register_patient_personal", {
+      p_full_name: payload.nama.trim(),
+      p_nik: cleanNik,
+      p_dob: payload.tanggalLahir,
+      p_gender: payload.jenisKelamin,
+      p_phone: payload.noHp.trim(),
+      p_province: payload.provinsi.trim(),
+      p_city: payload.kota.trim(),
+      p_district: payload.kecamatan.trim(),
+      p_village: payload.kelurahan.trim(),
+      p_address: payload.alamatDetail.trim(),
+      p_bpjs_number: payload.penjamin === "bpjs" ? (payload.noBpjs?.trim() || null) : null,
+      p_blood_type: null,
+      p_allergies: payload.riwayatAlergi?.trim() || null,
+      p_payer_type: payload.penjamin || "mandiri",
+      p_insurance_name: payload.penjamin === "asuransi" ? (payload.namaAsuransi?.trim() || null) : null,
+      p_insurance_policy_number: payload.penjamin === "asuransi" ? (payload.nomorPolisAsuransi?.trim() || null) : null,
+    });
+
+    if (rpcError) {
+      const msg = rpcError.message || "Gagal melengkapi data profil pasien";
+      const isNik = msg.toLowerCase().includes("nik sudah terdaftar") || msg.toLowerCase().includes("nik");
+      return {
+        success: false,
+        error: msg,
+        fieldErrors: isNik ? { nik: msg } : undefined,
+      };
+    }
+
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: "Gagal menyimpan data: " + msg };
+  }
+}
+

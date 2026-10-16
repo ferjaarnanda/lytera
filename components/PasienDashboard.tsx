@@ -57,6 +57,7 @@ import {
   MedicalRecordItem,
   AccessAuditLogItem,
 } from "@/app/actions/rekam-medis";
+import { completePatientProfileAction } from "@/app/actions/pendaftaran";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Tipe Data Domain Supabase
@@ -222,6 +223,50 @@ function formatRelation(relation?: string | null): string {
   if (r === "pasangan" || r === "istri" || r === "suami") return "Pasangan";
   if (r === "orang_tua" || r === "orang tua") return "Orang Tua";
   return "Keluarga";
+}
+
+function formatSupabaseError(err: unknown, defaultMsg = "Terjadi kesalahan pada sistem basis data."): string {
+  if (!err) return defaultMsg;
+  if (typeof err === "string") return err;
+
+  if (typeof err === "object") {
+    const e = err as {
+      message?: string;
+      details?: string;
+      hint?: string;
+      code?: string;
+    };
+    const rawMsg = [e.message, e.details, e.hint].filter(Boolean).join(" ");
+    const lower = rawMsg.toLowerCase();
+
+    if (
+      lower.includes("patient_medical_histories_patient_id_fkey") ||
+      (lower.includes("violates foreign key constraint") && lower.includes("patient_id"))
+    ) {
+      return "Data profil pasien belum terdaftar di basis data. Silakan lengkapi profil pasien di Beranda sebelum mencatat riwayat kesehatan.";
+    }
+    if (lower.includes("unique") || lower.includes("sudah ada") || lower.includes("duplicate key")) {
+      return "Data ini sudah pernah dicatat sebelumnya.";
+    }
+    if (lower.includes("permission denied") || lower.includes("row-level security") || lower.includes("rls")) {
+      return "Akses ditolak oleh kebijakan keamanan data. Pastikan akun Anda memiliki hak akses yang sah.";
+    }
+    if (lower.includes("jwt") || lower.includes("unauthenticated") || lower.includes("auth")) {
+      return "Sesi login telah berakhir. Silakan masuk kembali.";
+    }
+    if (e.message && e.message.trim().length > 0) {
+      return e.message.trim();
+    }
+    if (e.code) {
+      return `Galat basis data (${e.code}): ${defaultMsg}`;
+    }
+  }
+
+  if (err instanceof Error) {
+    return err.message;
+  }
+
+  return defaultMsg;
 }
 
 // Warna badge status
@@ -470,7 +515,7 @@ const ACCESS_RESULT_LABEL: Record<string, { label: string; variant: "selesai" | 
   tanpa_token:        { label: "Tanpa Token", variant: "proses" },
 };
 
-function KartuIzinAkses() {
+function KartuIzinAkses({ isPatientIncomplete = false }: { isPatientIncomplete?: boolean }) {
   const [tokenStatus, setTokenStatus] = useState<TokenStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -679,12 +724,23 @@ function KartuIzinAkses() {
         </div>
       )}
 
+      {/* Peringatan akun belum lengkap */}
+      {isPatientIncomplete && (
+        <div className="p-4 rounded-[16px] bg-[#FAF5F2] border border-[#8F5A4E]/30 text-xs text-[#8F5A4E] mb-4 flex items-start gap-2.5">
+          <AlertTriangle className="w-4 h-4 shrink-0 text-[#B3261E] mt-0.5" />
+          <div className="leading-relaxed">
+            <span className="font-bold text-[#0F3040] block mb-0.5">Profil Pasien Belum Lengkap</span>
+            Akun ini belum memiliki data pasien resmi di basis data. Silakan lengkapi profil pasien terlebih dahulu di tab Beranda agar dapat membuat kode izin akses rekam medis.
+          </div>
+        </div>
+      )}
+
       {/* Tombol aksi */}
       <div className="flex flex-wrap items-center gap-3 mt-2">
         <button
           type="button"
           onClick={handleCreate}
-          disabled={creating || loadingStatus}
+          disabled={creating || loadingStatus || isPatientIncomplete}
           className="px-5 py-2.5 rounded-full bg-[#0F3040] text-white text-sm font-semibold hover:bg-[#0A2230] disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
         >
           {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
@@ -737,13 +793,14 @@ function KartuIzinAkses() {
 // Sub-Komponen: Kartu Riwayat Rekam Medis (Tahap 4b)
 // ──────────────────────────────────────────────────────────────────────────────
 
-function KartuRiwayatMedis() {
+function KartuRiwayatMedis({ isPatientIncomplete = false }: { isPatientIncomplete?: boolean }) {
   const [records, setRecords] = useState<MedicalRecordItem[] | null>(null);
   const [auditLogs, setAuditLogs] = useState<AccessAuditLogItem[] | null>(null);
   const [histories, setHistories] = useState<PatientMedicalHistoryItem[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloading, setReloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [historiesError, setHistoriesError] = useState<string | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<"riwayat-terdahulu" | "kunjungan" | "log-akses">("riwayat-terdahulu");
 
   // State Formulir Riwayat Terdahulu
@@ -775,6 +832,10 @@ function KartuRiwayatMedis() {
     if (logRes.success) setAuditLogs(logRes.logs ?? []);
     if (!histRes.error && histRes.data) {
       setHistories(histRes.data as PatientMedicalHistoryItem[]);
+      setHistoriesError(null);
+    } else if (histRes.error) {
+      setHistories([]);
+      setHistoriesError(formatSupabaseError(histRes.error, "Gagal memuat riwayat kesehatan terdahulu."));
     }
   }, []);
 
@@ -841,8 +902,8 @@ function KartuRiwayatMedis() {
       setFormCatatan("");
       await loadData(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setFormError(msg || "Gagal menyimpan riwayat kesehatan.");
+      const msg = formatSupabaseError(err, "Gagal menyimpan riwayat kesehatan.");
+      setFormError(msg);
     } finally {
       setFormSubmitting(false);
     }
@@ -859,8 +920,8 @@ function KartuRiwayatMedis() {
       setDeleteConfirmId(null);
       await loadData(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      alert("Gagal menghapus riwayat: " + msg);
+      const msg = formatSupabaseError(err, "Gagal menghapus riwayat kesehatan.");
+      alert(msg);
     } finally {
       setDeleting(false);
     }
@@ -934,13 +995,37 @@ function KartuRiwayatMedis() {
               <button
                 type="button"
                 onClick={handleOpenAddForm}
-                className="px-4 py-2 rounded-xl bg-[#0F3040] text-white text-xs font-semibold hover:bg-[#0A2230] transition-colors inline-flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-2xs"
+                disabled={isPatientIncomplete}
+                className="px-4 py-2 rounded-xl bg-[#0F3040] text-white text-xs font-semibold hover:bg-[#0A2230] disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-2xs"
+                title={isPatientIncomplete ? "Lengkapi data profil pasien di Beranda sebelum mencatat riwayat" : undefined}
               >
                 <Plus className="w-4 h-4" />
                 <span>Catat Riwayat Baru</span>
               </button>
             )}
           </div>
+
+          {/* Banner Peringatan Akun Belum Lengkap */}
+          {isPatientIncomplete && (
+            <div className="mb-6 p-4 rounded-xl bg-[#FAF5F2] border border-[#8F5A4E]/30 flex items-start gap-3">
+              <AlertTriangle className="w-4 h-4 text-[#B3261E] shrink-0 mt-0.5" />
+              <div className="text-xs text-[#8F5A4E] leading-relaxed">
+                <span className="font-bold block mb-0.5 text-[#0F3040]">Data Profil Pasien Belum Lengkap</span>
+                Akun ini belum memiliki data pasien yang tersimpan secara sah di basis data. Anda belum dapat mencatat riwayat kesehatan terdahulu hingga profil pasien dilengkapi di menu Beranda.
+              </div>
+            </div>
+          )}
+
+          {/* Banner Error Pemuatan Riwayat jika terjadi kendala database */}
+          {historiesError && (
+            <div className="mb-6 p-4 rounded-xl bg-[#FDECEA] border border-[#B3261E]/30 flex items-start gap-3">
+              <AlertTriangle className="w-4 h-4 text-[#B3261E] shrink-0 mt-0.5" />
+              <div className="text-xs text-[#B3261E] leading-relaxed">
+                <span className="font-bold block mb-0.5">Gagal Memuat Riwayat Kesehatan</span>
+                {historiesError}
+              </div>
+            </div>
+          )}
 
           {/* Banner Edukasi Laporan Mandiri Pasien */}
           <div className="mb-6 p-4 rounded-xl bg-amber-50/70 border border-amber-200/80 flex items-start gap-3">
@@ -1323,6 +1408,403 @@ function KartuRiwayatMedis() {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Modal Lengkapi Profil Pasien (Penanganan Akun Pasien Yatim / Incomplete)
+// ──────────────────────────────────────────────────────────────────────────────
+
+interface ModalLengkapiProfilProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  defaultFullName?: string;
+}
+
+function ModalLengkapiProfil({
+  isOpen,
+  onClose,
+  onSuccess,
+  defaultFullName = "",
+}: ModalLengkapiProfilProps) {
+  const [nama, setNama] = useState(defaultFullName);
+  const [nik, setNik] = useState("");
+  const [tanggalLahir, setTanggalLahir] = useState("");
+  const [jenisKelamin, setJenisKelamin] = useState<"L" | "P">("L");
+  const [noHp, setNoHp] = useState("");
+  const [provinsi, setProvinsi] = useState("");
+  const [kota, setKota] = useState("");
+  const [kecamatan, setKecamatan] = useState("");
+  const [kelurahan, setKelurahan] = useState("");
+  const [alamatDetail, setAlamatDetail] = useState("");
+  const [penjamin, setPenjamin] = useState<"mandiri" | "bpjs" | "asuransi" | "jaminan_daerah">("mandiri");
+  const [noBpjs, setNoBpjs] = useState("");
+  const [namaAsuransi, setNamaAsuransi] = useState("");
+  const [nomorPolisAsuransi, setNomorPolisAsuransi] = useState("");
+  const [riwayatAlergi, setRiwayatAlergi] = useState("");
+
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setFieldErrors({});
+
+    const cleanNik = nik.trim();
+    if (!/^\d{16}$/.test(cleanNik)) {
+      setFieldErrors((prev) => ({ ...prev, nik: "NIK harus tepat 16 digit angka" }));
+      return;
+    }
+    if (!nama.trim() || nama.trim().length < 2) {
+      setFieldErrors((prev) => ({ ...prev, nama: "Nama lengkap wajib diisi" }));
+      return;
+    }
+    if (!tanggalLahir) {
+      setFieldErrors((prev) => ({ ...prev, tanggalLahir: "Tanggal lahir wajib diisi" }));
+      return;
+    }
+    if (!noHp.trim()) {
+      setFieldErrors((prev) => ({ ...prev, noHp: "Nomor kontak / WhatsApp wajib diisi" }));
+      return;
+    }
+    if (!provinsi.trim() || !kota.trim() || !kecamatan.trim() || !kelurahan.trim()) {
+      setErrorMessage("Semua data wilayah (Provinsi, Kota/Kab, Kecamatan, Kelurahan) wajib diisi");
+      return;
+    }
+    if (!alamatDetail.trim() || !/[a-zA-Z]/.test(alamatDetail.trim())) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        alamatDetail: "Detail alamat harus memuat nama jalan atau nomor rumah (tidak boleh hanya angka)",
+      }));
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await completePatientProfileAction({
+        nama: nama.trim(),
+        nik: cleanNik,
+        tanggalLahir,
+        jenisKelamin,
+        noHp: noHp.trim(),
+        provinsi: provinsi.trim(),
+        kota: kota.trim(),
+        kecamatan: kecamatan.trim(),
+        kelurahan: kelurahan.trim(),
+        alamatDetail: alamatDetail.trim(),
+        penjamin,
+        noBpjs: penjamin === "bpjs" ? noBpjs.trim() : undefined,
+        namaAsuransi: penjamin === "asuransi" ? namaAsuransi.trim() : undefined,
+        nomorPolisAsuransi: penjamin === "asuransi" ? nomorPolisAsuransi.trim() : undefined,
+        riwayatAlergi: riwayatAlergi.trim() || undefined,
+      });
+
+      if (res.success) {
+        onSuccess();
+        onClose();
+      } else {
+        setErrorMessage(res.error || "Gagal melengkapi data profil pasien.");
+        if (res.fieldErrors) {
+          setFieldErrors(res.fieldErrors);
+        }
+      }
+    } catch (err: unknown) {
+      setErrorMessage(formatSupabaseError(err, "Terjadi kendala saat menyimpan profil pasien."));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs overflow-y-auto">
+      <div className="relative w-full max-w-2xl bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-[#E2E8F0] my-8 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-start justify-between pb-4 border-b border-[#E2E8F0] mb-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#FAF5F2] flex items-center justify-center text-[#8F5A4E] shrink-0">
+              <User className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-[#0F3040]">Lengkapi Data Profil Pasien</h2>
+              <p className="text-xs text-slate-500">
+                Hubungkan akun Anda dengan data kependudukan resmi untuk mengaktifkan seluruh fitur rekam medis.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+          >
+            <XCircle className="w-6 h-6" />
+          </button>
+        </div>
+
+        {errorMessage && (
+          <div className="mb-5 p-4 rounded-xl bg-[#FDECEA] border border-[#B3261E]/30 text-xs text-[#B3261E] flex items-start gap-2.5">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div className="leading-relaxed">{errorMessage}</div>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Nama Lengkap Sesuai KTP <span className="text-[#B3261E]">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={nama}
+                onChange={(e) => setNama(e.target.value)}
+                placeholder="Contoh: Iwak Peyek"
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-[#E2E8F0] bg-white focus:outline-none focus:border-[#0F3040]"
+              />
+              {fieldErrors.nama && <p className="text-[11px] text-[#B3261E] mt-1">{fieldErrors.nama}</p>}
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                NIK (16 Digit Angka) <span className="text-[#B3261E]">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                maxLength={16}
+                value={nik}
+                onChange={(e) => setNik(e.target.value.replace(/\D/g, ""))}
+                placeholder="Contoh: 330101xxxxxxxxxx"
+                className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-[#E2E8F0] bg-white focus:outline-none focus:border-[#0F3040]"
+              />
+              {fieldErrors.nik && <p className="text-[11px] text-[#B3261E] mt-1">{fieldErrors.nik}</p>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Tanggal Lahir <span className="text-[#B3261E]">*</span>
+              </label>
+              <input
+                type="date"
+                required
+                value={tanggalLahir}
+                onChange={(e) => setTanggalLahir(e.target.value)}
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-[#E2E8F0] bg-white focus:outline-none focus:border-[#0F3040]"
+              />
+              {fieldErrors.tanggalLahir && <p className="text-[11px] text-[#B3261E] mt-1">{fieldErrors.tanggalLahir}</p>}
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Jenis Kelamin <span className="text-[#B3261E]">*</span>
+              </label>
+              <select
+                value={jenisKelamin}
+                onChange={(e) => setJenisKelamin(e.target.value as "L" | "P")}
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-[#E2E8F0] bg-white focus:outline-none focus:border-[#0F3040]"
+              >
+                <option value="L">Laki-laki</option>
+                <option value="P">Perempuan</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Nomor Kontak / WA <span className="text-[#B3261E]">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={noHp}
+                onChange={(e) => setNoHp(e.target.value)}
+                placeholder="Contoh: 081234567890"
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-[#E2E8F0] bg-white focus:outline-none focus:border-[#0F3040]"
+              />
+              {fieldErrors.noHp && <p className="text-[11px] text-[#B3261E] mt-1">{fieldErrors.noHp}</p>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Provinsi <span className="text-[#B3261E]">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={provinsi}
+                onChange={(e) => setProvinsi(e.target.value)}
+                placeholder="Contoh: Jawa Tengah / Bali"
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-[#E2E8F0] bg-white focus:outline-none focus:border-[#0F3040]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Kota / Kabupaten <span className="text-[#B3261E]">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={kota}
+                onChange={(e) => setKota(e.target.value)}
+                placeholder="Contoh: Kota Semarang / Kabupaten Bangli"
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-[#E2E8F0] bg-white focus:outline-none focus:border-[#0F3040]"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Kecamatan <span className="text-[#B3261E]">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={kecamatan}
+                onChange={(e) => setKecamatan(e.target.value)}
+                placeholder="Contoh: Semarang Tengah / Kintamani"
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-[#E2E8F0] bg-white focus:outline-none focus:border-[#0F3040]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Kelurahan / Desa <span className="text-[#B3261E]">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={kelurahan}
+                onChange={(e) => setKelurahan(e.target.value)}
+                placeholder="Contoh: Pandansari / Abang Batu Dinding"
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-[#E2E8F0] bg-white focus:outline-none focus:border-[#0F3040]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Detail Alamat (Jalan / Gang / RT / RW) <span className="text-[#B3261E]">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={alamatDetail}
+              onChange={(e) => setAlamatDetail(e.target.value)}
+              placeholder="Contoh: Jl. Pemuda No. 12 RT 01/RW 02"
+              className="w-full px-3.5 py-2 text-xs rounded-xl border border-[#E2E8F0] bg-white focus:outline-none focus:border-[#0F3040]"
+            />
+            {fieldErrors.alamatDetail && (
+              <p className="text-[11px] text-[#B3261E] mt-1">{fieldErrors.alamatDetail}</p>
+            )}
+            <p className="text-[10px] text-slate-400 mt-1">
+              Wajib memuat nama jalan atau nomor rumah. Tidak boleh hanya angka mentah.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Skema Penjamin Kesehatan
+              </label>
+              <select
+                value={penjamin}
+                onChange={(e) => setPenjamin(e.target.value as "mandiri" | "bpjs" | "asuransi" | "jaminan_daerah")}
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-[#E2E8F0] bg-white focus:outline-none focus:border-[#0F3040]"
+              >
+                <option value="mandiri">Mandiri / Umum</option>
+                <option value="bpjs">BPJS Kesehatan</option>
+                <option value="asuransi">Asuransi Swasta</option>
+                <option value="jaminan_daerah">Jaminan Daerah (SKTM)</option>
+              </select>
+            </div>
+
+            {penjamin === "bpjs" && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Nomor Kartu BPJS (13 Digit)
+                </label>
+                <input
+                  type="text"
+                  maxLength={13}
+                  value={noBpjs}
+                  onChange={(e) => setNoBpjs(e.target.value.replace(/\D/g, ""))}
+                  placeholder="Contoh: 0001234567890"
+                  className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-[#E2E8F0] bg-white focus:outline-none focus:border-[#0F3040]"
+                />
+              </div>
+            )}
+
+            {penjamin === "asuransi" && (
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Nama Asuransi
+                  </label>
+                  <input
+                    type="text"
+                    value={namaAsuransi}
+                    onChange={(e) => setNamaAsuransi(e.target.value)}
+                    placeholder="Contoh: Prudential / Astra Life"
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-[#E2E8F0] bg-white focus:outline-none focus:border-[#0F3040]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Nomor Polis
+                  </label>
+                  <input
+                    type="text"
+                    value={nomorPolisAsuransi}
+                    onChange={(e) => setNomorPolisAsuransi(e.target.value)}
+                    placeholder="Nomor polis asuransi"
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-[#E2E8F0] bg-white focus:outline-none focus:border-[#0F3040]"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Riwayat Alergi Obat / Makanan (Opsional)
+            </label>
+            <input
+              type="text"
+              value={riwayatAlergi}
+              onChange={(e) => setRiwayatAlergi(e.target.value)}
+              placeholder="Contoh: Alergi Penisilin, Seafood (kosongkan jika tidak ada)"
+              className="w-full px-3.5 py-2 text-xs rounded-xl border border-[#E2E8F0] bg-white focus:outline-none focus:border-[#0F3040]"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E2E8F0] mt-6">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="px-5 py-2.5 rounded-full border border-[#E2E8F0] text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-6 py-2.5 rounded-full bg-[#0F3040] text-white text-xs font-semibold hover:bg-[#0A2230] disabled:opacity-50 transition-colors inline-flex items-center gap-2 shadow-sm"
+            >
+              {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+              <span>{submitting ? "Menyimpan Data..." : "Simpan Profil Pasien"}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Komponen Utama PasienDashboard
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -1342,6 +1824,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
   const [familyMembers, setFamilyMembers] = useState<FamilyMemberData[]>([]);
   const [referrals, setReferrals] = useState<MyReferralItem[]>([]);
   const [lookupLogs, setLookupLogs] = useState<LookupLogItem[]>([]);
+  const [showCompleteProfileModal, setShowCompleteProfileModal] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(() => {
     if (typeof window !== "undefined") {
       const tabParam = new URLSearchParams(window.location.search).get("tab");
@@ -1722,6 +2205,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
 
   // ── 4. STATUS 'aktif': DASHBOARD PASIEN ASLI ──
   const isKeluarga = subperan === "keluarga" || profile.sub_role === "keluarga";
+  const isPatientIncomplete = !patient;
   const rujukanAktif = sortRujukanAktif(referrals.filter((r) => isRujukanAktif(r.status)));
   const rujukanLalu = referrals.filter((r) => !isRujukanAktif(r.status));
 
@@ -1744,8 +2228,8 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
               <div>
                 <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <Badge variant="selesai" showDot>
-                    Pasien Terverifikasi
+                  <Badge variant={isPatientIncomplete ? "proses" : "selesai"} showDot>
+                    {isPatientIncomplete ? "Profil Belum Lengkap" : "Pasien Terverifikasi"}
                   </Badge>
                   <Badge variant="info">
                     {isKeluarga ? "Kategori: Pasien Keluarga" : "Kategori: Pasien Pribadi"}
@@ -1766,6 +2250,41 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
             </div>
           </Card>
         </Reveal>
+
+        {/* ── BANNER PERINGATAN DATA PROFIL PASIEN BELUM LENGKAP ── */}
+        {isPatientIncomplete && (
+          <Reveal delayMs={40}>
+            <Card variant="white" className="p-6 sm:p-8 rounded-[24px] border-2 border-[#8F5A4E]/30 bg-[#FAF5F2] shadow-sm mb-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#FDECEA] flex items-center justify-center text-[#B3261E] shrink-0 mt-0.5 border border-[#B3261E]/20">
+                    <AlertTriangle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <h2 className="text-lg sm:text-xl font-bold text-[#0F3040]">
+                        Data profil pasien belum lengkap pada akun ini
+                      </h2>
+                      <Badge variant="proses">Perlu Dilengkapi</Badge>
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
+                      Akun Anda telah berstatus aktif, namun data kependudukan (NIK 16 digit, tanggal lahir, dan wilayah domisili) belum tersimpan secara sah di basis data pasien. Fitur pembuatan kode izin akses dan riwayat kesehatan dinonaktifkan hingga profil dilengkapi.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowCompleteProfileModal(true)}
+                  className="px-6 py-3 rounded-full bg-[#0F3040] text-white text-xs sm:text-sm font-semibold hover:bg-[#0A2230] transition-colors shrink-0 shadow-md inline-flex items-center gap-2 self-start sm:self-auto"
+                >
+                  <User className="w-4 h-4" />
+                  <span>Lengkapi Profil Sekarang</span>
+                </button>
+              </div>
+            </Card>
+          </Reveal>
+        )}
 
         {/* ── TAB NAVIGASI CEPAT ── */}
         <Reveal delayMs={50}>
@@ -1814,10 +2333,10 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
                   Nomor Induk Kependudukan (NIK)
                 </span>
                 <span className="text-sm sm:text-base font-bold text-[#0F3040] font-mono tabular-nums block">
-                  {maskNik(patient?.nik)}
+                  {isPatientIncomplete ? "Profil Belum Lengkap" : maskNik(patient?.nik)}
                 </span>
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  Dimasker demi privasi data medis
+                  {isPatientIncomplete ? "Silakan lengkapi data profil" : "Dimasker demi privasi data medis"}
                 </span>
               </div>
 
@@ -1827,10 +2346,12 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
                   Tanggal Lahir
                 </span>
                 <span className="text-sm sm:text-base font-semibold text-[#0F3040] block">
-                  {formatDateIndo(patient?.dob)}
+                  {isPatientIncomplete ? "Belum dilengkapi" : formatDateIndo(patient?.dob)}
                 </span>
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  {patient?.gender === "L"
+                  {isPatientIncomplete
+                    ? "Data belum tercatat"
+                    : patient?.gender === "L"
                     ? "Laki-laki"
                     : patient?.gender === "P"
                     ? "Perempuan"
@@ -1844,7 +2365,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
                   Kontak / WhatsApp
                 </span>
                 <span className="text-sm sm:text-base font-semibold text-[#0F3040] tabular-nums block">
-                  {patient?.phone || profile.email}
+                  {patient?.phone?.trim() ? patient.phone.trim() : "Nomor kontak belum dilengkapi"}
                 </span>
                 <span className="text-[10px] text-slate-400 mt-1 block truncate">
                   {profile.email}
@@ -1872,11 +2393,13 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
                 <div className="text-xs sm:text-sm">
                   <span className="text-slate-500 block">Alamat Domisili</span>
                   <span className="font-semibold text-[#0F3040]">
-                    {isValidAddressDetail(patient?.address)
+                    {isPatientIncomplete
+                      ? "Data profil pasien belum tersimpan"
+                      : isValidAddressDetail(patient?.address)
                       ? patient?.address?.trim()
                       : "Detail alamat belum dilengkapi"}
                   </span>
-                  {!isValidAddressDetail(patient?.address) && (
+                  {!isPatientIncomplete && !isValidAddressDetail(patient?.address) && (
                     <span className="text-[11px] text-slate-400 block mt-0.5 font-normal">
                       {getRegionDisplay(
                         patient?.province,
@@ -1901,12 +2424,14 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
                 <div className="text-xs sm:text-sm">
                   <span className="text-slate-500 block">Wilayah Administratif</span>
                   <span className="font-semibold text-[#0F3040]">
-                    {getRegionDisplay(
-                      patient?.province,
-                      patient?.city,
-                      patient?.district,
-                      patient?.village
-                    )}
+                    {isPatientIncomplete
+                      ? "Data wilayah belum tersimpan"
+                      : getRegionDisplay(
+                          patient?.province,
+                          patient?.city,
+                          patient?.district,
+                          patient?.village
+                        )}
                   </span>
                 </div>
               </div>
@@ -2049,8 +2574,12 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
                       <div>
                         <div className="flex items-center gap-2">
                           <h2 className="text-base font-bold text-[#0F3040]">Token Akses Medis</h2>
-                          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
-                            Belum ada token aktif
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
+                            isPatientIncomplete
+                              ? "bg-[#FAF5F2] text-[#8F5A4E] border-[#8F5A4E]/30"
+                              : "bg-slate-100 text-slate-600 border-slate-200"
+                          }`}>
+                            {isPatientIncomplete ? "Profil Belum Lengkap" : "Belum ada token aktif"}
                           </span>
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5">
@@ -2265,7 +2794,7 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
           <Reveal>
             <div className="space-y-6">
               {/* Kartu token 6 digit — menggunakan KartuIzinAkses */}
-              <KartuIzinAkses />
+              <KartuIzinAkses isPatientIncomplete={isPatientIncomplete} />
 
               {/* Log Pencarian NIK oleh Dokter */}
               <Card variant="white" className="p-6 sm:p-8 shadow-sm border border-[#E2E8F0]">
@@ -2354,9 +2883,18 @@ export const PasienDashboard: React.FC<PasienDashboardProps> = ({ subperan }) =>
         {/* ── TAB RIWAYAT MEDIS ── */}
         {activeTab === "Riwayat Medis" && (
           <Reveal>
-            <KartuRiwayatMedis />
+            <KartuRiwayatMedis isPatientIncomplete={isPatientIncomplete} />
           </Reveal>
         )}
+
+        {/* Modal Lengkapi Profil Pasien */}
+        <ModalLengkapiProfil
+          key={profile.full_name}
+          isOpen={showCompleteProfileModal}
+          onClose={() => setShowCompleteProfileModal(false)}
+          onSuccess={handleRefetch}
+          defaultFullName={profile.full_name}
+        />
       </main>
     </div>
   );
