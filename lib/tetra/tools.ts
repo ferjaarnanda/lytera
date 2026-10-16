@@ -100,6 +100,30 @@ export interface DoctorCandidate {
 }
 
 /**
+ * Deduplikasi dokter berdasarkan nama dan fasilitas:
+ * Jika ada entri dengan nama & fasilitas sama, utamakan entri yang memiliki spesialisasi terverifikasi/terisi.
+ */
+export function deduplicateDoctors(doctors: DoctorCandidate[]): DoctorCandidate[] {
+  const map = new Map<string, DoctorCandidate>();
+
+  for (const doc of doctors) {
+    const key = `${doc.full_name.trim().toLowerCase()}__${doc.facility_id || doc.facility_name || ""}`;
+    const existing = map.get(key);
+
+    if (!existing) {
+      map.set(key, doc);
+    } else {
+      // Jika existing belum ada spesialisasi tapi entri baru punya spesialisasi, ganti dengan yang baru
+      if (!existing.specialization && doc.specialization) {
+        map.set(key, doc);
+      }
+    }
+  }
+
+  return Array.from(map.values());
+}
+
+/**
  * Mencari fasilitas kesehatan aktif di Lytera melalui RPC resmi list_active_facilities.
  */
 export async function searchActiveFacilities(options: {
@@ -112,7 +136,7 @@ export async function searchActiveFacilities(options: {
     const { data, error } = await supabase.rpc("list_active_facilities", {
       p_type: options.type || null,
       p_query: options.query || null,
-      p_limit: options.limit || 20,
+      p_limit: options.limit || 100,
     });
 
     if (error) {
@@ -175,24 +199,42 @@ export async function searchActiveDoctors(facilityId: string): Promise<DoctorCan
  * Mencari semua dokter aktif di seluruh faskes aktif (dengan mencari faskes lalu mengambil dokternya).
  */
 export async function searchAllActiveDoctors(options?: {
+  facilityId?: string;
+  facilityName?: string;
   specialization?: string;
   query?: string;
 }): Promise<DoctorCandidate[]> {
-  const facilities = await searchActiveFacilities({ limit: 20 });
+  let facilities: FacilityCandidate[] = [];
+
+  if (options?.facilityId) {
+    facilities = [{ id: options.facilityId, name: "", type: "rumah_sakit", city: null, district: null }];
+  } else if (options?.facilityName) {
+    const fLower = options.facilityName.toLowerCase().trim();
+    const allFacs = await searchActiveFacilities({ limit: 100 });
+    facilities = allFacs.filter((f) => {
+      const nameLower = f.name.toLowerCase();
+      return nameLower.includes(fLower) || fLower.includes(nameLower);
+    });
+  } else {
+    facilities = await searchActiveFacilities({ limit: 100 });
+  }
+
   const allDoctors: DoctorCandidate[] = [];
 
   for (const fac of facilities) {
     const doctors = await searchActiveDoctors(fac.id);
     for (const doc of doctors) {
-      doc.facility_name = fac.name;
-      doc.facility_type = fac.type;
+      doc.facility_name = fac.name || doc.facility_name;
+      doc.facility_type = fac.type || doc.facility_type;
       doc.city = doc.city || fac.city;
       doc.district = doc.district || fac.district;
       allDoctors.push(doc);
     }
   }
 
-  let filtered = allDoctors;
+  const deduped = deduplicateDoctors(allDoctors);
+
+  let filtered = deduped;
   if (options?.specialization) {
     const specLower = options.specialization.toLowerCase();
     filtered = filtered.filter((d) => d.specialization?.toLowerCase().includes(specLower));
@@ -214,19 +256,24 @@ export interface DoctorHierarchySearchResult {
   exactMatches: DoctorCandidate[];
   broaderMatches: DoctorCandidate[];
   allSpecialtyMatches: DoctorCandidate[];
+  facilityDoctors?: DoctorCandidate[];
+  facilityMatch?: FacilityCandidate;
   requestedSpecialization?: string;
   requestedLocation?: string;
+  requestedFacility?: string;
 }
 
 /**
  * Pencarian dokter cerdas bertingkat:
- * 1. Wilayah spesifik yang diminta (kecamatan / kota)
- * 2. Jika tidak ada di wilayah tersebut, cari alternatif di wilayah lain yang tersedia
- * 3. Menghormati spesialisasi terverifikasi
+ * 1. Fasilitas spesifik jika ditanyakan (misal RS Colombia, Puskesmas Hamster Sejahtera)
+ * 2. Wilayah spesifik yang diminta (kecamatan / kota)
+ * 3. Jika tidak ada di wilayah tersebut dan ada spesialisasi khusus, cari alternatif di wilayah lain yang tersedia
+ * 4. Menghormati spesialisasi terverifikasi
  */
 export async function searchDoctorsWithLocationHierarchy(options: {
   specialization?: string;
   location?: string;
+  facility?: string;
   userCity?: string | null;
   userDistrict?: string | null;
   query?: string;
@@ -244,6 +291,55 @@ export async function searchDoctorsWithLocationHierarchy(options: {
     }
   }
 
+  // Jika ada target fasilitas spesifik
+  if (options.facility) {
+    const facQuery = options.facility.toLowerCase().trim();
+    const normalizeName = (s: string) =>
+      s
+        .toLowerCase()
+        .replace(/\brs\b/g, "rumah sakit")
+        .replace(/\brs\.\s*/g, "rumah sakit ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const facQueryNorm = normalizeName(facQuery);
+    const allFacs = await searchActiveFacilities({ limit: 100 });
+    const matchedFac = allFacs.find((f) => {
+      const fnNorm = normalizeName(f.name);
+      return fnNorm.includes(facQueryNorm) || facQueryNorm.includes(fnNorm);
+    });
+
+    if (matchedFac) {
+      const rawDocs = await searchActiveDoctors(matchedFac.id);
+      const docsWithFac = rawDocs.map((d) => ({
+        ...d,
+        facility_name: matchedFac.name,
+        facility_type: matchedFac.type,
+        city: d.city || matchedFac.city,
+        district: d.district || matchedFac.district,
+      }));
+      const dedupedDocs = deduplicateDoctors(docsWithFac);
+
+      let exactMatches = dedupedDocs;
+      if (options.specialization) {
+        const specLower = options.specialization.toLowerCase();
+        exactMatches = dedupedDocs.filter((d) =>
+          d.specialization?.toLowerCase().includes(specLower)
+        );
+      }
+
+      return {
+        exactMatches,
+        broaderMatches: [],
+        allSpecialtyMatches: dedupedDocs,
+        facilityDoctors: dedupedDocs,
+        facilityMatch: matchedFac,
+        requestedSpecialization: options.specialization,
+        requestedFacility: options.facility,
+      };
+    }
+  }
+
   const allDoctors = await searchAllActiveDoctors({
     specialization: options.specialization,
     query: nameQuery,
@@ -256,14 +352,15 @@ export async function searchDoctorsWithLocationHierarchy(options: {
   if (reqLoc) {
     // Filter kandidat yang cocok dengan nama lokasi pencarian (di city atau district)
     const matched = allDoctors.filter((d) => {
-      const cityLower = (d.city || "").toLowerCase();
-      const distLower = (d.district || "").toLowerCase();
-      return (
-        cityLower.includes(reqLoc) ||
-        reqLoc.includes(cityLower) ||
-        distLower.includes(reqLoc) ||
-        reqLoc.includes(distLower)
-      );
+      const cityLower = (d.city || "").toLowerCase().trim();
+      const distLower = (d.district || "").toLowerCase().trim();
+      const cityMatch =
+        cityLower.length >= 2 &&
+        (cityLower.includes(reqLoc) || (reqLoc.length >= 3 && reqLoc.includes(cityLower)));
+      const distMatch =
+        distLower.length >= 2 &&
+        (distLower.includes(reqLoc) || (reqLoc.length >= 3 && reqLoc.includes(distLower)));
+      return Boolean(cityMatch || distMatch);
     });
 
     if (matched.length > 0) {
@@ -275,10 +372,12 @@ export async function searchDoctorsWithLocationHierarchy(options: {
         requestedLocation: options.location,
       };
     } else {
-      // Tidak ditemukan di lokasi yang diminta, sediakan kandidat di wilayah lain sebagai broaderMatches
+      // Tidak ditemukan di lokasi yang diminta:
+      // Hanya sediakan broaderMatches jika ada spesialisasi spesifik yang diminta.
+      // Jika pengguna hanya mencari dokter umum di lokasi tersebut tanpa spesialisasi, JANGAN mencampur dokter kota lain!
       return {
         exactMatches: [],
-        broaderMatches: allDoctors,
+        broaderMatches: options.specialization ? allDoctors : [],
         allSpecialtyMatches: allDoctors,
         requestedSpecialization: options.specialization,
         requestedLocation: options.location,
@@ -289,8 +388,8 @@ export async function searchDoctorsWithLocationHierarchy(options: {
   // Jika tidak menyebutkan lokasi spesifik di pesan, tetapi user login memiliki data domisili
   if (userCity || userDistrict) {
     const userLocalDoctors = allDoctors.filter((d) => {
-      const cityLower = (d.city || "").toLowerCase();
-      const distLower = (d.district || "").toLowerCase();
+      const cityLower = (d.city || "").toLowerCase().trim();
+      const distLower = (d.district || "").toLowerCase().trim();
       const cityMatch = userCity && (cityLower.includes(userCity) || userCity.includes(cityLower));
       const distMatch = userDistrict && (distLower.includes(userDistrict) || userDistrict.includes(distLower));
       return cityMatch || distMatch;
@@ -404,7 +503,7 @@ export function rankFacilities(
  */
 export function buildFacilityRecommendations(
   ranked: Array<{ facility: FacilityCandidate; relevanceReason: string }>,
-  limit = 3,
+  limit = 5,
   context?: TetraUserContext
 ): TetraRecommendation[] {
   return ranked.slice(0, limit).map(({ facility }) => {
@@ -490,7 +589,7 @@ export function buildFacilityRecommendations(
  */
 export function buildDoctorRecommendations(
   doctors: DoctorCandidate[],
-  limit = 3
+  limit = 5
 ): TetraRecommendation[] {
   return doctors.slice(0, limit).map((doc) => {
     const facName = doc.facility_name

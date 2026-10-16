@@ -7,45 +7,191 @@ export interface IntentMatchResult {
   targetType?: "puskesmas" | "klinik" | "rumah_sakit" | "apotek";
   targetSpecialization?: string;
   targetLocation?: string;
+  targetFacility?: string;
+  isFacilityDoctorInquiry?: boolean;
+  isRelativeFacility?: boolean;
+}
+
+export interface FacilityExtractionResult {
+  facilityName?: string;
+  isRelativeFacility?: boolean;
+}
+
+/**
+ * Ekstraksi nama fasilitas spesifik atau penanda fasilitas relatif dari teks input.
+ */
+export function extractFacility(input: string): FacilityExtractionResult {
+  const lower = input.toLowerCase();
+
+  // 1. Rujukan relatif ke fasilitas (misal: "rumah sakit ini", "faskes ini", "fasilitas ini", "di sini", "disini")
+  if (
+    /\b(?:rumah sakit|rs|puskesmas|klinik|faskes|fasilitas)\s+(?:ini|tersebut)\b/i.test(lower) ||
+    lower.includes("di faskes ini") ||
+    lower.includes("di fasilitas ini") ||
+    lower.includes("fasilitas ini") ||
+    lower.includes("di sini") ||
+    lower.includes("disini")
+  ) {
+    return { isRelativeFacility: true };
+  }
+
+  // 2. Pola nama fasilitas diawali tipe faskes: "puskesmas hamster sejahtera", "rumah sakit kucing garong", "rs colombia", dll.
+  const facMatch = input.match(
+    /\b(rumah sakit|rs|puskesmas|klinik|apotek)\s+([a-zA-Z0-9\s]+?)(?:\s+(?:ada|punya|mempunyai|tersedia|yang|untuk|dengan|buka|di|ini|terdekat|aktif|nggak|ngga|gak|apakah|berapa|siapa|apa)|[.,?!]|$)/i
+  );
+  if (facMatch && facMatch[2]) {
+    const rawSuffix = facMatch[2].trim();
+    const stopwords = [
+      "ini",
+      "itu",
+      "tersebut",
+      "rujukan",
+      "terdekat",
+      "aktif",
+      "daerah",
+      "wilayah",
+      "kota",
+      "kabupaten",
+      "saya",
+      "kami",
+      "kita",
+    ];
+    if (rawSuffix.length >= 3 && !stopwords.includes(rawSuffix.toLowerCase())) {
+      const full = `${facMatch[1].trim()} ${rawSuffix}`.toLowerCase();
+      return { facilityName: full };
+    }
+  }
+
+  // 3. Pola bertugas di / terdaftar di [nama faskes]
+  const bertugasMatch = input.match(
+    /\b(?:bertugas di|terdaftar di|pada)\s+(?:faskes|fasilitas|rumah sakit|rs|puskesmas|klinik|apotek)?\s*([a-zA-Z0-9\s]+?)(?:\s+(?:yang|ada|tersedia|aktif)|[.,?!]|$)/i
+  );
+  if (bertugasMatch && bertugasMatch[1]) {
+    const raw = bertugasMatch[1].trim();
+    if (raw.length >= 3 && !["ini", "itu", "tersebut"].includes(raw.toLowerCase())) {
+      return { facilityName: raw.toLowerCase() };
+    }
+  }
+
+  return {};
 }
 
 /**
  * Ekstraksi spesialisasi medis dari teks input berdasarkan katalog spesialisasi resmi Lytera.
+ * Urutan evaluasi: istilah majemuk / lebih spesifik diperiksa terlebih dahulu agar tidak salah tertangkap istilah umum.
  */
 export function extractSpecialization(input: string): string | undefined {
   const lower = input.toLowerCase();
-  if (lower.includes("penyakit dalam") || lower.includes("sp.pd") || lower.includes("internist")) return "Penyakit Dalam";
-  if (lower.includes("jantung") || lower.includes("kardiolog") || lower.includes("sp.jp")) return "Jantung dan Pembuluh Darah";
-  if (lower.includes("anak") || lower.includes("pediatri") || lower.includes("sp.a")) return "Anak";
-  if (lower.includes("bedah mulut")) return "Bedah Mulut dan Maksilofasial";
-  if (lower.includes("bedah") || lower.includes("sp.b")) return "Bedah";
-  if (lower.includes("saraf") || lower.includes("neurolog") || lower.includes("sp.s") || lower.includes("sp.n")) return "Saraf (Neurologi)";
-  if (lower.includes("mata") || lower.includes("oftalmolog") || lower.includes("sp.m")) return "Mata";
-  if (lower.includes("kandungan") || lower.includes("kebidanan") || lower.includes("obgyn") || lower.includes("sp.og")) return "Obstetri dan Ginekologi (Kebidanan & Kandungan)";
-  if (lower.includes("tht") || lower.includes("telinga") || lower.includes("hidung") || lower.includes("sp.tht")) return "THT-KL";
-  if (lower.includes("paru") || lower.includes("pulmonolog") || lower.includes("sp.p")) return "Paru (Pulmonologi)";
-  if (lower.includes("kulit") || lower.includes("kelamin") || lower.includes("dermatolog") || lower.includes("sp.kk") || lower.includes("sp.dv")) return "Kulit dan Kelamin (Dermatologi)";
-  if (lower.includes("jiwa") || lower.includes("psikiater") || lower.includes("psikiatri") || lower.includes("sp.kj")) return "Kedokteran Jiwa (Psikiatri)";
-  if (lower.includes("ortopedi") || lower.includes("tulang") || lower.includes("sp.ot")) return "Ortopedi dan Traumatologi";
-  if (lower.includes("gigi anak")) return "Gigi Anak (Pedodonsia)";
-  if (lower.includes("gigi")) return "Konservasi Gigi (Endodonsia)";
-  if (lower.includes("anestesi")) return "Anestesiologi dan Terapi Intensif";
-  if (lower.includes("radiolog")) return "Radiologi";
-  if (lower.includes("rehabilitasi") || lower.includes("fisioterapi")) return "Rehabilitasi Medik";
+
+  // 1. Prioritas istilah majemuk / spesifik
+  if (lower.includes("gigi anak") || lower.includes("pedodonsia")) return "Gigi Anak (Pedodonsia)";
+  if (lower.includes("bedah mulut") || lower.includes("maksilofasial")) return "Bedah Mulut dan Maksilofasial";
+  if (lower.includes("konservasi gigi") || lower.includes("endodonsia") || lower.includes("dokter gigi") || lower.includes("spesialis gigi"))
+    return "Konservasi Gigi (Endodonsia)";
+  if (lower.includes("penyakit dalam") || lower.includes("sp.pd") || lower.includes("internist") || lower.includes("internis"))
+    return "Penyakit Dalam";
+  if (lower.includes("jantung") || lower.includes("kardiolog") || lower.includes("sp.jp"))
+    return "Jantung dan Pembuluh Darah";
+  if (
+    lower.includes("saraf") ||
+    lower.includes("syaraf") ||
+    lower.includes("neurolog") ||
+    lower.includes("neurologi") ||
+    lower.includes("sp.s") ||
+    lower.includes("sp.n")
+  )
+    return "Saraf (Neurologi)";
+  if (lower.includes("mata") || lower.includes("oftalmolog") || lower.includes("sp.m"))
+    return "Mata";
+  if (
+    lower.includes("kandungan") ||
+    lower.includes("kebidanan") ||
+    lower.includes("obgyn") ||
+    lower.includes("sp.og")
+  )
+    return "Obstetri dan Ginekologi (Kebidanan & Kandungan)";
+  if (lower.includes("tht") || lower.includes("telinga") || lower.includes("hidung") || lower.includes("sp.tht"))
+    return "THT-KL";
+  if (lower.includes("paru") || lower.includes("pulmonolog") || lower.includes("pulmonologi") || lower.includes("sp.p"))
+    return "Paru (Pulmonologi)";
+  if (
+    lower.includes("kulit") ||
+    lower.includes("kelamin") ||
+    lower.includes("dermatolog") ||
+    lower.includes("sp.kk") ||
+    lower.includes("sp.dv")
+  )
+    return "Kulit dan Kelamin (Dermatologi)";
+  if (lower.includes("jiwa") || lower.includes("psikiater") || lower.includes("psikiatri") || lower.includes("sp.kj"))
+    return "Kedokteran Jiwa (Psikiatri)";
+  if (lower.includes("ortopedi") || lower.includes("tulang") || lower.includes("traumatologi") || lower.includes("sp.ot"))
+    return "Ortopedi dan Traumatologi";
+  if (lower.includes("pediatri") || lower.includes("sp.a") || /\b(?:dokter\s+)?anak\b/i.test(lower))
+    return "Anak";
+  if (lower.includes("sp.b") || /\b(?:dokter\s+)?bedah\b/i.test(lower))
+    return "Bedah";
+  if (lower.includes("anestesi") || lower.includes("sp.an"))
+    return "Anestesiologi dan Terapi Intensif";
+  if (lower.includes("radiolog") || lower.includes("radiologi") || lower.includes("sp.rad"))
+    return "Radiologi";
+  if (lower.includes("rehabilitasi") || lower.includes("fisioterapi") || lower.includes("sp.kfr"))
+    return "Rehabilitasi Medik";
+  if (lower.includes("patologi") || lower.includes("sp.pk"))
+    return "Patologi Klinik";
+  if (lower.includes("periodonsia") || lower.includes("gusi"))
+    return "Periodonsia";
+  if (lower.includes("gigi"))
+    return "Konservasi Gigi (Endodonsia)";
+
   return undefined;
 }
 
 /**
  * Ekstraksi nama wilayah (kota, kabupaten, kecamatan) dari teks input.
+ * Menjamin tidak menangkap nama fasilitas kesehatan sebagai wilayah.
  */
-export function extractLocation(input: string): string | undefined {
-  const match = input.match(/\b(?:di|wilayah|daerah|kota|kecamatan)\s+([a-zA-Z\s]+?)(?:\s+(?:yang|untuk|dengan|terdekat|aktif|ada|tersedia)|[.,?!]|$)/i);
+export function extractLocation(input: string, targetFacility?: string): string | undefined {
+  const match = input.match(
+    /\b(?:di|wilayah|daerah|lokasi|kota|kabupaten|kab|kecamatan|kec)\s+([a-zA-Z0-9\s]+?)(?:\s+(?:siapa|ada|yang|untuk|dengan|terdekat|aktif|tersedia|nggak|ngga|gak|bisa|saja|aja|dong|apa)|[.,?!]|$)/i
+  );
   if (match && match[1]) {
-    const loc = match[1].trim();
+    let loc = match[1].trim();
+
+    // Jika loc mengandung kata fasilitas kesehatan, ini bukan wilayah
+    if (/\b(?:rumah sakit|rs|puskesmas|klinik|apotek|faskes|fasilitas)\b/i.test(loc)) {
+      return undefined;
+    }
+
+    if (targetFacility && targetFacility.toLowerCase().includes(loc.toLowerCase())) {
+      return undefined;
+    }
+
+    // Bersihkan trailing partikel/kata tanya
+    loc = loc.replace(/\s+(?:siapa saja|siapa aja|siapa|ada siapa|saja|aja|dong|ya)$/i, "").trim();
+
     const stopwords = [
-      "lytera", "sini", "mana", "faskes", "rumah", "sakit", "rs",
-      "puskesmas", "klinik", "dokter", "spesialis", "poli", "rujukan",
-      "terdekat", "aktif", "atas", "bawah"
+      "lytera",
+      "sini",
+      "mana",
+      "faskes",
+      "rumah",
+      "sakit",
+      "rs",
+      "puskesmas",
+      "klinik",
+      "dokter",
+      "spesialis",
+      "poli",
+      "rujukan",
+      "terdekat",
+      "aktif",
+      "atas",
+      "bawah",
+      "ini",
+      "itu",
+      "tersebut",
+      "saya",
+      "kamu",
     ];
     if (loc.length >= 3 && !stopwords.includes(loc.toLowerCase())) {
       return loc;
@@ -293,8 +439,10 @@ export function classifyTetraIntent(
     return { intent: "medical_record", confidence: 0.85 };
   }
 
-  // 7. PENCARIAN DOKTER / SPESIALIS
-  // "cari dokter", "dokter spesialis", "carikan dokter", "spesialis penyakit dalam", dsb.
+  // 7. PENCARIAN DOKTER / SPESIALIS / PERTANYAAN KETERSEDIAAN DOKTER FASKES
+  const facilityResult = extractFacility(rawInput);
+  const detectedLocationFinal = extractLocation(rawInput, facilityResult.facilityName);
+
   const doctorKeywords = [
     "dokter",
     "spesialis",
@@ -303,14 +451,118 @@ export function classifyTetraIntent(
     "sp.jp",
     "sp.a",
     "sp.b",
+    "sp.s",
+    "sp.m",
+    "neurologi",
+    "neurolog",
+    "internis",
+    "internist",
   ];
-  const isDoctorSearch = doctorKeywords.some((k) => input.includes(k)) || !!detectedSpecialization;
-  if (isDoctorSearch && (input.includes("cari") || input.includes("carikan") || input.includes("rekomendasi") || input.includes("daftar") || input.includes("siapa") || input.includes("tersedia") || input.includes("ada"))) {
+  const hasDoctorKeyword =
+    doctorKeywords.some((k) => input.includes(k)) || !!detectedSpecialization;
+
+  const doctorQueryIndicators = [
+    "cari",
+    "carikan",
+    "kasih",
+    "minta",
+    "tolong",
+    "butuh",
+    "mau",
+    "tampilkan",
+    "tunjukkan",
+    "lihat",
+    "daftar",
+    "rekomendasi",
+    "siapa",
+    "siapa saja",
+    "siapa aja",
+    "ada",
+    "ada siapa",
+    "tersedia",
+    "punya",
+    "mempunyai",
+    "bertugas",
+    "terdaftar",
+    "berapa",
+    "buka",
+    "jadwal",
+    "apakah",
+    "nggak",
+    "ngga",
+    "gak",
+  ];
+  const hasDoctorIndicator = doctorQueryIndicators.some((w) => input.includes(w));
+
+  const isFacilityDoctorInquiry =
+    (facilityResult.facilityName !== undefined || facilityResult.isRelativeFacility === true) &&
+    hasDoctorKeyword &&
+    hasDoctorIndicator;
+
+  const isDoctorFollowUp =
+    hasDoctorKeyword &&
+    (input.startsWith("kalau ") ||
+      input.startsWith("gimana ") ||
+      input.startsWith("bagaimana ") ||
+      input.startsWith("terus ") ||
+      input.includes("mata?") ||
+      input.includes("anak?"));
+
+  const isDoctorSearch =
+    hasDoctorKeyword &&
+    (hasDoctorIndicator ||
+      isDoctorFollowUp ||
+      !!detectedLocationFinal ||
+      !!facilityResult.facilityName);
+
+  if (isDoctorSearch || isFacilityDoctorInquiry) {
+    let targetLoc = detectedLocationFinal;
+    let targetFac = facilityResult.facilityName;
+
+    // Resolusi konteks percakapan untuk pertanyaan lanjutan
+    if (conversationHistory && conversationHistory.length > 0) {
+      const lastUser = [...conversationHistory].reverse().find((m) => m.role === "user");
+
+      if (!targetFac && !targetLoc) {
+        if (lastUser) {
+          const userFac = extractFacility(lastUser.content);
+          if (userFac.facilityName) {
+            targetFac = userFac.facilityName;
+          } else {
+            const userLoc = extractLocation(lastUser.content);
+            if (userLoc) {
+              targetLoc = userLoc;
+            }
+          }
+        }
+
+        // Jika pada pesan user sebelumnya belum ditemukan, telusuri pesan-pesan sebelumnya
+        if (!targetFac && !targetLoc) {
+          const reversedMessages = [...conversationHistory].reverse();
+          for (const msg of reversedMessages) {
+            const prevFac = extractFacility(msg.content);
+            if (prevFac.facilityName) {
+              targetFac = prevFac.facilityName;
+              break;
+            }
+            const prevLoc = extractLocation(msg.content);
+            if (prevLoc) {
+              targetLoc = prevLoc;
+              break;
+            }
+          }
+        }
+      }
+    }
+
     return {
       intent: "search_doctor",
       confidence: 0.95,
       targetSpecialization: detectedSpecialization,
-      targetLocation: detectedLocation,
+      targetLocation: targetLoc,
+      targetFacility: targetFac,
+      isFacilityDoctorInquiry: isFacilityDoctorInquiry || facilityResult.isRelativeFacility,
+      isRelativeFacility: facilityResult.isRelativeFacility,
       extractedQuery: input,
     };
   }
@@ -330,7 +582,7 @@ export function classifyTetraIntent(
       intent: "search_referral_hospital",
       confidence: 0.9,
       targetType: "rumah_sakit",
-      targetLocation: detectedLocation,
+      targetLocation: detectedLocationFinal,
       extractedQuery: input,
     };
   }
@@ -340,7 +592,7 @@ export function classifyTetraIntent(
     return {
       intent: "search_poli",
       confidence: 0.85,
-      targetLocation: detectedLocation,
+      targetLocation: detectedLocationFinal,
       extractedQuery: input,
     };
   }
@@ -363,7 +615,7 @@ export function classifyTetraIntent(
         intent: "search_facility",
         confidence: 0.88,
         targetType: ftype,
-        targetLocation: detectedLocation,
+        targetLocation: detectedLocationFinal,
         extractedQuery: input,
       };
     }

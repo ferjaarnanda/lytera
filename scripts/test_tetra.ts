@@ -632,6 +632,119 @@ async function runTests() {
   }
 
   // ============================================================
+  // BLOK D — AKURASI BAHASA, DATA AKTUAL & PERTANYAAN LANJUTAN
+  // ============================================================
+  console.log("\n=== BLOK D: AKURASI BAHASA, DATA AKTUAL & PERTANYAAN LANJUTAN ===");
+
+  // D-1: Variasi bahasa pencarian dokter di lokasi tertentu
+  console.log("\n[D-1] Variasi bahasa pencarian dokter di Semarang");
+  {
+    const q1 = "Kasih saya dokter di Semarang";
+    const res1 = await executeTetraChat({ userInput: q1, messages: [], context: landingContext });
+    assert("Intent search_doctor untuk 'Kasih saya dokter di Semarang'", res1.intent === "search_doctor");
+    assert("Menemukan dr. Andi Wicaksono di Semarang", res1.recommendations?.some((r) => r.name.toLowerCase().includes("andi wicaksono")) ?? false);
+    assert("Maksimal 5 kartu rekomendasi", (res1.recommendations?.length ?? 0) <= 5);
+
+    const q2 = "Dokter lokasi Semarang ada siapa aja?";
+    const res2 = await executeTetraChat({ userInput: q2, messages: [], context: landingContext });
+    assert("Intent search_doctor untuk 'Dokter lokasi Semarang ada siapa aja?'", res2.intent === "search_doctor");
+    assert("Menemukan dokter di Semarang pada variasi bahasa", res2.recommendations?.some((r) => r.name.toLowerCase().includes("andi wicaksono")) ?? false);
+  }
+
+  // D-2: Lokasi tanpa dokter aktif (Tebing Tinggi) — tidak boleh mencampur kota lain
+  console.log("\n[D-2] Lokasi tanpa dokter terdaftar (Tebing Tinggi)");
+  {
+    const res = await executeTetraChat({
+      userInput: "ada dokter di tebing tinggi gak",
+      messages: [],
+      context: landingContext,
+    });
+    assert("Intent search_doctor untuk 'ada dokter di tebing tinggi gak'", res.intent === "search_doctor");
+    assert("Menyatakan jujur belum ada dokter di Tebing Tinggi", res.message.toLowerCase().includes("belum ada data dokter aktif"));
+    assert("Tidak memunculkan kartu dokter dari wilayah lain", res.recommendations === undefined || res.recommendations.length === 0);
+    assert("Tidak menyebut Semarang dalam jawaban lokasi Tebing Tinggi", !res.message.toLowerCase().includes("semarang"));
+  }
+
+  // D-3: Faskes RS Colombia (0 dokter aktif di Lytera)
+  console.log("\n[D-3] Faskes tanpa dokter aktif terdaftar (RS Colombia)");
+  {
+    const res1 = await executeTetraChat({
+      userInput: "RS Colombia ada spesialis mata nggak?",
+      messages: [],
+      context: landingContext,
+    });
+    assert("Intent search_doctor untuk kueri RS Colombia", res1.intent === "search_doctor");
+    assert("Menyatakan jujur belum ada dokter aktif di RS Colombia", res1.message.toLowerCase().includes("belum ada dokter aktif"));
+    assert("Tidak mengarang kartu dokter untuk RS Colombia", res1.recommendations === undefined);
+
+    const res2 = await executeTetraChat({
+      userInput: "Apakah ada dokter spesialis neurologi di rumah sakit colombia?",
+      messages: [],
+      context: landingContext,
+    });
+    assert("Neurologi di RS Colombia dijawab jujur belum ada dokter aktif", res2.message.toLowerCase().includes("belum ada dokter aktif"));
+  }
+
+  // D-4: Faskes RS Kucing Garong (ada Penyakit Dalam, tidak ada Neurologi)
+  console.log("\n[D-4] Faskes RS Kucing Garong (Penyakit Dalam ada, Neurologi tidak ada)");
+  {
+    const resAll = await executeTetraChat({
+      userInput: "di rumah sakit kucing garong ada dokter apa",
+      messages: [],
+      context: landingContext,
+    });
+    assert("Menemukan dokter yang ada di RS Kucing Garong", resAll.recommendations?.some((r) => r.name.toLowerCase().includes("anggi dwi susanti")) ?? false);
+
+    const resSaraf = await executeTetraChat({
+      userInput: "apakah ada dokter saraf di rumah sakit kucing garong",
+      messages: [],
+      context: landingContext,
+    });
+    assert("Menjelaskan belum ada dokter saraf/neurologi di RS Kucing Garong", resSaraf.message.toLowerCase().includes("belum tercatat dokter aktif spesialis"));
+    assert("Menyebutkan spesialisasi yang tersedia di faskes tersebut", resSaraf.message.toLowerCase().includes("penyakit dalam"));
+  }
+
+  // D-5: Faskes Puskesmas Hamster Sejahtera (ada dokter spesialis mata)
+  console.log("\n[D-5] Faskes Puskesmas Hamster Sejahtera (ada Spesialis Mata)");
+  {
+    const res = await executeTetraChat({
+      userInput: "apakah ada dokter spesialis mata di puskesmas hamster sejahtera?",
+      messages: [],
+      context: landingContext,
+    });
+    assert("Menemukan dokter spesialis mata di Puskesmas Hamster Sejahtera", res.recommendations?.some((r) => r.name.toLowerCase().includes("martin lavendera")) ?? false);
+    assert("Kategori rekomendasi adalah Spesialis Mata", res.recommendations?.some((r) => (r.category || "").toLowerCase().includes("mata")) ?? false);
+  }
+
+  // D-6: Pertanyaan lanjutan berbasis percakapan (conversationHistory)
+  console.log("\n[D-6] Pertanyaan lanjutan berbasis riwayat percakapan");
+  {
+    // Konteks percakapan faskes RS Colombia
+    const history1: Array<{ role: "user" | "assistant" | "system"; content: string }> = [
+      { role: "user", content: "bagaimana fasilitas di rumah sakit colombia?" },
+      { role: "assistant", content: "Rumah Sakit Colombia berlokasi di Kota Semarang." },
+    ];
+    const resFollowUpFac = await executeTetraChat({
+      userInput: "ada dokter apa di sini?",
+      messages: history1,
+      context: landingContext,
+    });
+    assert("Mewarisi target faskes RS Colombia dari konteks", resFollowUpFac.message.toLowerCase().includes("colombia"));
+
+    // Konteks percakapan wilayah Semarang
+    const history2: Array<{ role: "user" | "assistant" | "system"; content: string }> = [
+      { role: "user", content: "ada rumah sakit apa di Semarang?" },
+      { role: "assistant", content: "Ada Rumah Sakit Colombia di Kota Semarang." },
+    ];
+    const resFollowUpLoc = await executeTetraChat({
+      userInput: "ada dokter penyakit dalam di sini?",
+      messages: history2,
+      context: landingContext,
+    });
+    assert("Mewarisi target wilayah Semarang dan menemukan dr. Andi Wicaksono", resFollowUpLoc.recommendations?.some((r) => r.name.toLowerCase().includes("andi wicaksono")) ?? false);
+  }
+
+  // ============================================================
   // RINGKASAN
   // ============================================================
   console.log(`\n=== TEST SELESAI — PASS: ${passCount} | FAIL: ${failCount} ===`);

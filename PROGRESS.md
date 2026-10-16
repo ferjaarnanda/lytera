@@ -991,6 +991,56 @@
 
 ---
 
+### Tahap 56: LYTERA TETRA — Peningkatan Pemahaman Bahasa, Pencarian Data Aktual & Jawaban Terverifikasi (Selesai)
+- [x] **Audit & Pemetaan Data Aktual Database**:
+  - Mengaudit data nyata Supabase Lytera (`losqwizqvuikoueswxnc`) melalui RPC resmi `list_active_facilities`, `get_active_facility_doctors`, dan `list_active_doctors`:
+    - **Faskes & Dokter Aktif Riil**:
+      - `puskemas kedung rejo` (Kota Semarang, Semarang Tengah): `dr. Andi Wicaksono, Sp.PD` (spesialisasi terverifikasi: Penyakit Dalam).
+      - `puskesmas hamster sejahtera` (Kabupaten Bengkulu Tengah, Karang Tinggi): `dr. Martin Lavendera , Sp.PD` (spesialisasi terverifikasi: Mata), `dr. Budiono Siregar` (Dokter Umum).
+      - `rumah sakit kucing garong` (Kabupaten Kampar, Gunung Sahilan): `dr. Anggi Dwi Susanti Sp.PD` (spesialisasi terverifikasi: Penyakit Dalam), `dr. Herianto Maknyus` (Dokter Umum). Tidak memiliki dokter spesialis Neurologi/Saraf.
+      - `rumah sakit colombia` (Kota Semarang, Semarang Tengah): 0 dokter aktif terdaftar di sistem Lytera.
+  - Mengidentifikasi katalog 20 spesialisasi resmi pada tabel `staff_specializations`.
+- [x] **Peningkatan Implementasi Komprehensif**:
+  1. *Router Semantik Bahasa Alami (`lib/tetra/router.ts`)*:
+     - **Pemisahan Entitas Fasilitas vs Wilayah**: Memisahkan entitas `targetFacility` dan `targetLocation` agar kueri fasilitas spesifik tidak disalahartikan sebagai lokasi (contoh: "RS Colombia" atau "Rumah Sakit Kucing Garong" tidak tertangkap sebagai nama kota).
+     - **Ekstraksi Fasilitas & Rujukan Relatif**: Mengembangkan `extractFacility` untuk mengenali pola awalan faskes (`rumah sakit`, `rs`, `puskesmas`, `klinik`, `apotek`), serta penanda rujukan relatif seperti *"rumah sakit ini"*, *"faskes ini"*, *"di fasilitas ini"*, *"di sini"*, dan *"disini"*.
+     - **Pembersihan Nama Lokasi (`extractLocation`)**: Menghapus trailing partikel pertanyaan/bahasa santai (*"siapa aja"*, *"ada siapa"*, *"saja"*, *"dong"*), menyaring stopwords, dan mendeteksi berbagai variasi wilayah (*"Semarang"*, *"Kota Semarang"*, *"daerah Semarang"*, *"Kecamatan Tebing Tinggi"*).
+     - **Ekstraksi Spesialisasi Bertingkat**: Mengurutkan pencocokan sub-spesialisasi majemuk sebelum kata umum (misal: "gigi anak" sebelum "anak", "bedah mulut" sebelum "bedah") dan memperluas sinonim (neurologi/neurolog/saraf, oftalmologi/mata, internis/penyakit dalam, psikiatri/jiwa).
+     - **Variasi Kalimat Pencarian Dokter**: Mendukung ragam kalimat informal dan formal ("Kasih saya dokter di Semarang", "RS Colombia ada spesialis mata nggak?", "Dokter lokasi Semarang ada siapa aja?", "ada dokter di tebing tinggi gak", "di rumah sakit kucing garong ada dokter apa", dll.).
+     - **Resolusi Konteks Pertanyaan Lanjutan**: Mewarisi target faskes atau lokasi dari riwayat percakapan sebelumnya (`conversationHistory`) dengan memprioritaskan entitas yang secara eksplisit ditanyakan pengguna pada turn sebelumnya.
+  2. *Data Retrieval & Hierarchy Tools (`lib/tetra/tools.ts`)*:
+     - **Kapasitas Pemuatan Fasilitas**: Menaikkan limit default `searchActiveFacilities` ke 100 agar mencakup seluruh faskes aktif.
+     - **Deduplikasi Dokter Cerdas (`deduplicateDoctors`)**: Mencegah duplikasi entri staf dengan memprioritaskan entri yang memiliki spesialisasi terverifikasi.
+     - **Pencarian Dokter Fleksibel (`searchAllActiveDoctors`)**: Mendukung opsi pencarian dokter per `facilityId` atau `facilityName`.
+     - **Pencarian Bertingkat & Isolasi Wilayah (`searchDoctorsWithLocationHierarchy`)**:
+       - Mendukung parameter `facility` dengan normalisasi singkatan (`rs` -> `rumah sakit`).
+       - Memperbaiki bug kecocokan string kosong pada `reqLoc.includes(cityLower)`.
+       - **Isolasi Hasil Wilayah**: Jika pengguna menanyakan dokter di wilayah tertentu tanpa spesialisasi (misal: Tebing Tinggi) dan tidak ada dokter di sana, sistem TIDAK mencampur dokter dari wilayah lain (seperti Semarang/Kampar) ke dalam hasil rekomendasi.
+     - **Batas Rekomendasi 5 Kartu**: Memperbarui default limit `buildDoctorRecommendations` dan `buildFacilityRecommendations` menjadi maksimal 5 kartu (sebelumnya 3).
+  3. *Engine Penalaran & Jawaban Faktual (`lib/tetra/engine.ts`)*:
+     - Mengarahkan `search_doctor` ke intent generator deterministik berbasis data aktual Supabase untuk menjamin kepatuhan 100% tanpa halusinasi model.
+     - **Penanganan Faskes Jujur Berbasis Data**:
+       - RS Colombia: melaporkan jujur bahwa saat ini belum ada dokter aktif yang terdaftar di basis data Lytera.
+       - RS Kucing Garong: ketika ditanya dokter saraf/neurologi, menjelaskan belum ada dokter spesialis saraf dan menyebutkan bahwa dokter yang tersedia adalah spesialis Penyakit Dalam.
+       - Puskesmas Hamster Sejahtera: menampilkan dokter spesialis mata (dr. Martin Lavendera).
+     - **Pesan Edukatif Batas Kartu**: Jika kecocokan dokter > 5, sistem menampilkan 5 kartu teratas dan menyertakan pesan: *"Aku menemukan lebih dari lima dokter yang sesuai. Aku tampilkan lima hasil teratas dulu. Kamu bisa mempersempit pencarian berdasarkan spesialisasi, nama rumah sakit, atau kecamatan/kabupaten supaya hasilnya lebih tepat."*
+     - Mempertahankan seluruh mekanisme privasi UU PDP (`privacy.ts`) pada lapisan terdepan.
+- [x] **Pengujian & Validasi**:
+  - **Rangkaian Uji Otomatis Komprehensif (`scripts/test_tetra.ts`)**:
+    - Seluruh 193 tes privasi (Blok A, B, C) tetap lulus 100% tanpa regresi.
+    - **Blok D (20 skenario akurasi baru)**:
+      - D-1: Variasi bahasa alami pencarian dokter Semarang ("Kasih saya dokter di Semarang", "Dokter lokasi Semarang ada siapa aja?") -> 100% mengenali intent dan menemukan dr. Andi Wicaksono, Sp.PD dengan maksimal 5 kartu.
+      - D-2: Lokasi tanpa dokter (Tebing Tinggi) -> 100% dijawab jujur belum ada data dokter aktif dan tidak mencampur kartu dokter dari wilayah lain (Semarang/Kampar).
+      - D-3: Faskes RS Colombia (0 dokter aktif) -> 100% dijawab jujur belum ada dokter aktif terdaftar di Lytera, tanpa kartu rekomendasi fiktif.
+      - D-4: RS Kucing Garong (Penyakit Dalam ada, Neurologi tidak ada) -> 100% menemukan dr. Anggi Dwi Susanti, dan menolak kueri saraf dengan menyebut dokter Penyakit Dalam yang tersedia.
+      - D-5: Puskesmas Hamster Sejahtera -> 100% menemukan dr. Martin Lavendera (Spesialis Mata).
+      - D-6: Pertanyaan lanjutan berbasis riwayat percakapan -> 100% mewarisi konteks faskes RS Colombia dan konteks wilayah Semarang.
+    - **Hasil Akhir Test Suite**: **213 uji lulus (PASS: 213 | FAIL: 0)**.
+  - `npm run lint`: **0 error**, **0 warning**.
+  - `npm run build`: **Exit 0**, seluruh 21 rute lolos kompilasi optimal Next.js 16 (Turbopack).
+
+---
+
 ### Berikutnya
 - Persiapan Final Berkas Proyek & Dokumentasi Penjurian: Audit akhir seluruh alur platform (Landing page, Pasien Pribadi/Keluarga, Faskes Primer, RS Rujukan, Verifikator, Dinkes), pembuatan panduan demo penjurian, dan verifikasi akhir security advisors Supabase.
 

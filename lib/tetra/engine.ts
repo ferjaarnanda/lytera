@@ -200,6 +200,7 @@ async function generateIntentResponse(
     const searchResult = await searchDoctorsWithLocationHierarchy({
       specialization: match.targetSpecialization,
       location: match.targetLocation,
+      facility: match.targetFacility,
       userCity: context.city,
       userDistrict: context.district,
       query: match.extractedQuery,
@@ -207,14 +208,85 @@ async function generateIntentResponse(
 
     const requestedSpec = match.targetSpecialization;
     const requestedLoc = match.targetLocation;
+    const requestedFac = match.targetFacility;
 
-    // KASUS 1: Ada kecocokan dokter di wilayah yang diminta
+    // KASUS A: Pengguna menanyakan dokter di fasilitas tertentu
+    if (requestedFac && searchResult.facilityMatch) {
+      const fac = searchResult.facilityMatch;
+      const facName = fac.name
+        .split(" ")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+      const allFacDocs = searchResult.facilityDoctors || [];
+
+      // A1. Faskes belum memiliki dokter aktif sama sekali di Lytera (contoh: RS Colombia)
+      if (allFacDocs.length === 0) {
+        return {
+          success: true,
+          intent: "search_doctor",
+          message:
+            `Di **${facName}**, saat ini belum ada dokter aktif yang terdaftar di basis data Lytera. ` +
+            `Kamu dapat memeriksa fasilitas kesehatan rujukan lainnya yang memiliki dokter aktif.`,
+          recommendations: undefined,
+          suggestions,
+        };
+      }
+
+      // A2. Ditanyakan spesialisasi tertentu di faskes ini
+      if (requestedSpec) {
+        if (searchResult.exactMatches.length > 0) {
+          const recs = buildDoctorRecommendations(searchResult.exactMatches, 5);
+          return {
+            success: true,
+            intent: "search_doctor",
+            message: `Ya, di **${facName}** terdapat dokter aktif spesialis **${requestedSpec}**:`,
+            recommendations: recs,
+            suggestions,
+          };
+        } else {
+          // Spesialisasi yang ditanyakan tidak ada di faskes ini (contoh RS Kucing Garong tidak ada Neurologi)
+          const otherSpecs = Array.from(
+            new Set(allFacDocs.map((d) => d.specialization).filter(Boolean))
+          );
+          const docsDesc =
+            otherSpecs.length > 0
+              ? `Dokter yang saat ini bertugas di fasilitas ini memiliki spesialisasi: **${otherSpecs.join(", ")}**.`
+              : `Dokter yang terdaftar di fasilitas ini belum mencatatkan spesialisasi ${requestedSpec}.`;
+
+          return {
+            success: true,
+            intent: "search_doctor",
+            message:
+              `Di **${facName}**, saat ini belum tercatat dokter aktif spesialis **${requestedSpec}**.\n\n` +
+              `${docsDesc}`,
+            recommendations: buildDoctorRecommendations(allFacDocs, 5),
+            suggestions,
+          };
+        }
+      }
+
+      // A3. Ditanyakan daftar dokter secara umum di faskes ini
+      return {
+        success: true,
+        intent: "search_doctor",
+        message: `Berikut adalah dokter aktif yang terdaftar dan bertugas di **${facName}**:`,
+        recommendations: buildDoctorRecommendations(allFacDocs, 5),
+        suggestions,
+      };
+    }
+
+    // KASUS B: Ada dokter yang cocok dengan kriteria (wilayah / spesialisasi)
     if (searchResult.exactMatches.length > 0) {
-      const recommendations = buildDoctorRecommendations(searchResult.exactMatches, 3);
-      
-      const msg = requestedLoc
+      const isMoreThanFive = searchResult.exactMatches.length > 5;
+      const recommendations = buildDoctorRecommendations(searchResult.exactMatches, 5);
+
+      let msg = requestedLoc
         ? `Berikut adalah dokter aktif${requestedSpec ? ` spesialis **${requestedSpec}**` : ""} di wilayah **${requestedLoc}**:`
         : `Berikut adalah dokter aktif${requestedSpec ? ` spesialis **${requestedSpec}**` : ""} yang terdaftar di platform Lytera:`;
+
+      if (isMoreThanFive) {
+        msg += `\n\n*Catatan: Aku menemukan lebih dari lima dokter yang sesuai. Aku tampilkan lima hasil teratas dulu. Kamu bisa mempersempit pencarian berdasarkan spesialisasi, nama rumah sakit, atau kecamatan/kabupaten supaya hasilnya lebih tepat.*`;
+      }
 
       return {
         success: true,
@@ -225,15 +297,15 @@ async function generateIntentResponse(
       };
     }
 
-    // KASUS 2: Pengguna meminta lokasi tertentu, tidak ditemukan di wilayah itu, tetapi ada di wilayah lain
-    if (requestedLoc && searchResult.broaderMatches.length > 0) {
-      const recommendations = buildDoctorRecommendations(searchResult.broaderMatches, 3);
+    // KASUS C: Pengguna meminta wilayah tertentu, tidak ada di wilayah itu tapi ada di wilayah lain (khusus jika ada requestedSpec)
+    if (requestedLoc && requestedSpec && searchResult.broaderMatches.length > 0) {
+      const recommendations = buildDoctorRecommendations(searchResult.broaderMatches, 5);
       const availableLocations = Array.from(
         new Set(searchResult.broaderMatches.map((d) => d.city).filter(Boolean))
       ).join(", ");
 
       const msg =
-        `Tidak ditemukan data dokter aktif${requestedSpec ? ` spesialis **${requestedSpec}**` : ""} yang bertugas di wilayah **${requestedLoc}** pada sistem Lytera.\n\n` +
+        `Tidak ditemukan data dokter aktif spesialis **${requestedSpec}** yang bertugas di wilayah **${requestedLoc}** pada sistem Lytera.\n\n` +
         `Sebagai alternatif faskes rujukan di wilayah lain${availableLocations ? ` (${availableLocations})` : ""}, berikut dokter spesialis terverifikasi yang tersedia:`;
 
       return {
@@ -245,7 +317,20 @@ async function generateIntentResponse(
       };
     }
 
-    // KASUS 3: Spesialisasi yang dicari memang belum ada di basis data Lytera
+    // KASUS D: Pengguna mencari dokter di wilayah tertentu tanpa spesialisasi, dan tidak ada dokter di wilayah itu
+    if (requestedLoc && !requestedSpec) {
+      return {
+        success: true,
+        intent: "search_doctor",
+        message:
+          `Saat ini belum ada data dokter aktif yang terdaftar bertugas di wilayah **${requestedLoc}** pada sistem Lytera. ` +
+          `Kamu dapat memeriksa fasilitas kesehatan rujukan terdekat atau menyebutkan kota lain.`,
+        recommendations: undefined,
+        suggestions,
+      };
+    }
+
+    // KASUS E: Spesialisasi yang dicari belum ada di basis data Lytera sama sekali
     if (requestedSpec) {
       let msg = requestedLoc
         ? `Saat ini belum ditemukan dokter spesialis **${requestedSpec}** di wilayah **${requestedLoc}** maupun di fasilitas terdaftar lainnya pada basis data sistem Lytera.\n\n`
@@ -255,9 +340,14 @@ async function generateIntentResponse(
         `Untuk penanganan keluhan medis terkait, Tetra menyarankan untuk mengunjungi Rumah Sakit rujukan terdekat atau berkonsultasi ke faskes primer terdekat (Puskesmas/Klinik) terlebih dahulu guna evaluasi awal.`;
 
       const rsOnly = availableFacilities.filter((f) => f.type === "rumah_sakit");
-      const rsRecs = rsOnly.length > 0
-        ? buildFacilityRecommendations(rankFacilities(rsOnly, { targetLocation: requestedLoc, userCity: context.city }), 2, context)
-        : undefined;
+      const rsRecs =
+        rsOnly.length > 0
+          ? buildFacilityRecommendations(
+              rankFacilities(rsOnly, { targetLocation: requestedLoc, userCity: context.city }),
+              5,
+              context
+            )
+          : undefined;
 
       return {
         success: true,
@@ -268,7 +358,7 @@ async function generateIntentResponse(
       };
     }
 
-    // KASUS 4: Pencarian dokter umum / kriteria lain tidak menghasilkan data
+    // KASUS F: Pencarian kriteria lain tidak menghasilkan data
     return {
       success: true,
       intent: "search_doctor",
@@ -292,7 +382,7 @@ async function generateIntentResponse(
       userDistrict: context.district,
       userProvince: context.province,
     });
-    const recommendations = buildFacilityRecommendations(rankedRS, 3, context);
+    const recommendations = buildFacilityRecommendations(rankedRS, 5, context);
 
     let prefixMessage = "Berikut adalah Rumah Sakit rujukan aktif di sistem Lytera:";
     if (context.role === "landing" && !context.city) {
@@ -325,7 +415,7 @@ async function generateIntentResponse(
       userDistrict: context.district,
       userProvince: context.province,
     });
-    const recommendations = buildFacilityRecommendations(ranked, 3, context);
+    const recommendations = buildFacilityRecommendations(ranked, 5, context);
 
     let replyMsg = "Berikut fasilitas kesehatan aktif di Lytera yang sesuai dengan pencarianmu:";
     if (context.role === "landing" && !context.city) {
@@ -383,7 +473,7 @@ export async function executeTetraChat(request: TetraChatRequest): Promise<Tetra
   // 2. Ambil data fasilitas aktif nyata dari Lytera via RPC resmi
   const activeFacilities = await searchActiveFacilities({
     type: intentMatch.targetType || null,
-    limit: 20,
+    limit: 100,
   });
 
   // 3. Jika API key Groq tidak tersedia atau formatnya bukan gsk_, gunakan deterministic intent engine
@@ -391,14 +481,15 @@ export async function executeTetraChat(request: TetraChatRequest): Promise<Tetra
     return generateIntentResponse(userInput, context, activeFacilities, messages);
   }
 
-  // 4. Jika intent adalah informational murni (identity, token, referral flow, medical record, general info),
-  // gunakan intent handler langsung agar akurat dan konsisten tanpa halusinasi kartu faskes
+  // 4. Jika intent adalah informational murni atau pencarian dokter terstruktur,
+  // gunakan intent handler langsung agar akurat, deterministik, dan bebas halusinasi
   if (
     intentMatch.intent === "identity" ||
     intentMatch.intent === "token_access" ||
     intentMatch.intent === "referral_flow" ||
     intentMatch.intent === "medical_record" ||
-    intentMatch.intent === "payer_verification"
+    intentMatch.intent === "payer_verification" ||
+    intentMatch.intent === "search_doctor"
   ) {
     return generateIntentResponse(userInput, context, activeFacilities, messages);
   }
@@ -473,23 +564,7 @@ export async function executeTetraChat(request: TetraChatRequest): Promise<Tetra
     // Bangun kartu rekomendasi HANYA JIKA intent memang pencarian atau emergency
     let recommendations: TetraRecommendation[] | undefined = undefined;
 
-    if (intentMatch.intent === "search_doctor") {
-      const { searchDoctorsWithLocationHierarchy } = await import("./tools");
-      const searchResult = await searchDoctorsWithLocationHierarchy({
-        specialization: intentMatch.targetSpecialization,
-        location: intentMatch.targetLocation,
-        userCity: context.city,
-        userDistrict: context.district,
-        query: intentMatch.extractedQuery,
-      });
-
-      const candidates =
-        searchResult.exactMatches.length > 0
-          ? searchResult.exactMatches
-          : searchResult.broaderMatches;
-
-      recommendations = candidates.length > 0 ? buildDoctorRecommendations(candidates, 3) : undefined;
-    } else if (
+    if (
       intentMatch.intent === "search_referral_hospital" ||
       intentMatch.intent === "search_facility" ||
       intentMatch.intent === "search_poli" ||
@@ -503,7 +578,7 @@ export async function executeTetraChat(request: TetraChatRequest): Promise<Tetra
         userDistrict: context.district,
         userProvince: context.province,
       });
-      recommendations = buildFacilityRecommendations(ranked, 3, context);
+      recommendations = buildFacilityRecommendations(ranked, 5, context);
     }
 
     return {
