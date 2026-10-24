@@ -236,5 +236,9 @@ body:has([data-hero-wallpaper]),
   .animate-tetra-wave {
     animation: none !important;
   }
+
+  header[data-scrolled] {
+    transition: none !important;
+  }
 }
 

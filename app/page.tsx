@@ -856,11 +856,11 @@ export default function HomePage() {
       >
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="glass-frost rounded-[24px] p-6 sm:p-8">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pb-6">
               <div className="flex items-center gap-3">
                 <Logo tone="dark" size="sm" />
               </div>
-              <div className="flex flex-wrap items-center justify-center gap-6">
+              <div className="flex flex-wrap items-center justify-center sm:justify-end gap-6">
                 <a
                   className="text-xs text-[#0F3040] font-semibold hover:underline transition-colors"
                   href="#masuk-peran"
@@ -885,15 +885,6 @@ export default function HomePage() {
                   href="#kenapa-lytera"
                 >
                   Kenapa Lytera?
-                </a>
-              </div>
-              <div className="flex items-center">
-                <a
-                  href="#masuk-peran"
-                  onClick={handleMulaiSekarang}
-                  className="inline-flex items-center justify-center px-4 py-2 rounded-[12px] bg-[#2E7D51] hover:bg-[#246843] text-white text-xs font-bold transition-all shadow-sm cursor-pointer hover:-translate-y-[1px] active:scale-[0.98]"
-                >
-                  Mulai Sekarang
                 </a>
               </div>
             </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/Logo";
@@ -69,6 +69,40 @@ const VARIANT_MENUS: Record<NavbarVariant, { label: string; href?: string }[]> =
   ],
 };
 
+// External store subscriber untuk landing scroll ambang 10px
+function subscribeLandingScroll(callback: () => void) {
+  window.addEventListener("scroll", callback, { passive: true });
+  window.addEventListener("resize", callback, { passive: true });
+  return () => {
+    window.removeEventListener("scroll", callback);
+    window.removeEventListener("resize", callback);
+  };
+}
+
+function getLandingScrollSnapshot() {
+  return window.scrollY > 10;
+}
+
+function getLandingScrollServerSnapshot() {
+  return false;
+}
+
+function subscribeReducedMotion(callback: () => void) {
+  const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  mediaQuery.addEventListener("change", callback);
+  return () => {
+    mediaQuery.removeEventListener("change", callback);
+  };
+}
+
+function getReducedMotionSnapshot() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function getReducedMotionServerSnapshot() {
+  return false;
+}
+
 export const Navbar: React.FC<NavbarProps> = ({
   variant = "landing",
   activeItem,
@@ -92,6 +126,19 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [rolePickerOpen, setRolePickerOpen] = useState(false);
 
+  // State scroll landing berbasis useSyncExternalStore: reaktif ambang 10px tanpa setState effect
+  const isLandingScrolled = useSyncExternalStore(
+    subscribeLandingScroll,
+    getLandingScrollSnapshot,
+    getLandingScrollServerSnapshot
+  );
+
+  const prefersReducedMotion = useSyncExternalStore(
+    subscribeReducedMotion,
+    getReducedMotionSnapshot,
+    getReducedMotionServerSnapshot
+  );
+
   // glassAlpha: opacity latar kaca putih.
   // Landing = 0.48 (tipis, wallpaper samar terlihat). Variant lain = 0.62.
   const glassAlpha = isLanding ? 0.48 : 0.62;
@@ -99,9 +146,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   // easeOutCubic(t) = 1 - (1 - t)^3
   const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
-  // Scroll listener dengan requestAnimationFrame & passive listener
+  // Scroll listener dengan requestAnimationFrame & passive listener untuk varian portal / non-landing
   useEffect(() => {
+    if (isLanding) return;
+
     let ticking = false;
+
+    // --- VARIANT PORTAL / NON-LANDING ---
+    // Mempertahankan 100% perilaku awal portal pasien, dokter, RS, admin faskes, verifikator, dinkes
     let lastPShape = -1;
     let lastPColor = -1;
     let lastToneCheck = 0;
@@ -110,7 +162,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       const scrollY = window.scrollY;
       const rawP = Math.min(Math.max(scrollY / 90, 0), 1);
       const pShape = easeOutCubic(rawP);
-      const pColor = (isLanding || forceGlass) ? 1 : pShape;
+      const pColor = forceGlass ? 1 : pShape;
 
       // Hanya tulis ke CSS Variables bila nilainya benar-benar berubah (threshold 0.001)
       if (headerRef.current) {
@@ -125,8 +177,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       }
 
       // Deteksi tone latar:
-      // Landing: dikunci Deep Navy (isDarkTone = false), TIDAK ada elementsFromPoint.
-      if (isLanding || forceGlass || pColor >= 0.75) {
+      if (forceGlass || pColor >= 0.75) {
         // Latar kaca putih -> selalu teks Deep Navy (darkTone = false)
         if (darkToneRef.current !== false) {
           darkToneRef.current = false;
@@ -157,7 +208,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       ticking = false;
     };
 
-    const onScroll = () => {
+    const onScrollNonLanding = () => {
       if (!ticking) {
         window.requestAnimationFrame(updateScrollProgress);
         ticking = true;
@@ -167,12 +218,12 @@ export const Navbar: React.FC<NavbarProps> = ({
     // Panggil sekali saat inisialisasi
     updateScrollProgress();
 
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll, { passive: true });
+    window.addEventListener("scroll", onScrollNonLanding, { passive: true });
+    window.addEventListener("resize", onScrollNonLanding, { passive: true });
 
     return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      window.removeEventListener("scroll", onScrollNonLanding);
+      window.removeEventListener("resize", onScrollNonLanding);
     };
   }, [forceGlass, isLanding]);
 
@@ -246,28 +297,30 @@ export const Navbar: React.FC<NavbarProps> = ({
       >
         <header
           ref={headerRef}
+          data-scrolled={isLanding ? (isLandingScrolled ? "true" : "false") : undefined}
           style={
             (isLanding
               ? {
-                  // LANDING: warna dikunci konstan sejak render pertama (--p-color = 1 tetap).
-                  // Hanya --p-shape yang beranimasi (bar rata → kapsul melayang saat scroll).
-                  "--p-shape": "0",
-                  "--p-color": "1",
-                  width: "calc(100% - (var(--p-shape, 0) * 32px))",
-                  maxWidth: "min(100%, calc(1200px + (1 - var(--p-shape, 0)) * 1200px))",
-                  marginTop: "calc(var(--p-shape, 0) * 16px)",
-                  height: "calc(72px - (var(--p-shape, 0) * 8px))",
-                  borderRadius: "calc(var(--p-shape, 0) * 32px)",
+                  // LANDING: transisi berbasis ambang scroll 10px
+                  width: isLandingScrolled ? "calc(100% - 32px)" : "100%",
+                  maxWidth: isLandingScrolled ? "1200px" : "100%",
+                  marginTop: isLandingScrolled ? "16px" : "0px",
+                  height: isLandingScrolled ? "64px" : "72px",
+                  borderRadius: isLandingScrolled ? "32px" : "0px",
                   backgroundColor: "rgba(252, 254, 253, 0.82)",
                   backdropFilter: "blur(20px) saturate(160%)",
                   WebkitBackdropFilter: "blur(20px) saturate(160%)",
                   borderWidth: "1px",
                   borderStyle: "solid",
                   borderColor: "rgba(46, 125, 81, 0.22)",
-                  boxShadow: "0 8px 28px -8px rgba(15, 45, 28, 0.15)",
-                  willChange: "width, max-width, height, border-radius",
-                  // Warna tidak berubah → tidak perlu transisi warna
-                  transition: "none",
+                  boxShadow: isLandingScrolled
+                    ? "0 8px 28px -8px rgba(15, 45, 28, 0.15)"
+                    : "0 4px 20px -4px rgba(15, 45, 28, 0.08)",
+                  willChange: "width, max-width, height, border-radius, margin-top, box-shadow",
+                  // Transisi CSS halus 280ms dengan cubic-bezier natural, nonaktif saat initial mount & reduced-motion
+                  transition: prefersReducedMotion
+                    ? "none"
+                    : "width 280ms cubic-bezier(0.22, 1, 0.36, 1), max-width 280ms cubic-bezier(0.22, 1, 0.36, 1), margin-top 280ms cubic-bezier(0.22, 1, 0.36, 1), height 280ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 280ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 280ms cubic-bezier(0.22, 1, 0.36, 1)",
                 }
               : {
                   // NON-LANDING: perilaku lama — warna fade-in dari 0 ke 1 saat scroll.
